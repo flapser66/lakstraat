@@ -7,5 +7,5 @@ window.LAKSTRAAT_FIREBASE = {
   messagingSenderId: "542780477111",
   appId: "1:542780477111:web:b8a53f9a0ea4f5feaa8732"
 };
-// E-mailadres van de beheerder (mag gebruikers toevoegen en verwijderen). Moet gelijk zijn aan firestore.rules.
-window.LAKSTRAAT_BEHEERDER = "flapser66@gmail.com";
+// E-mailadressen van de beheerders (mag gebruikers toevoegen en verwijderen). Moet gelijk zijn aan firestore.rules.
+window.LAKSTRAAT_BEHEERDER = ["flapser66@gmail.com", "jasperuitlobith@hotmail.com"];

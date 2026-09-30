@@ -638,7 +638,7 @@ async function start(user){
   $("#whoEmail").textContent=user.email;
   if(!user.emailVerified){authView="verify";return renderAuth()}
   const email=(user.email||"").toLowerCase();
-  const isAdmin=email===String(window.LAKSTRAAT_BEHEERDER||"").toLowerCase();
+  const isAdmin=[].concat(window.LAKSTRAAT_BEHEERDER||[]).map(x=>String(x).toLowerCase()).includes(email);
   if(!isAdmin){
     try{const m=await db.collection("leden").doc(email).get(); if(!m.exists){authView="noaccess";return renderAuth()}}
     catch(e){authView="noaccess";return renderAuth()}
