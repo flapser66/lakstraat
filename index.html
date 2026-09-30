@@ -116,17 +116,20 @@ main.sheet{background:var(--panel);border:1px solid var(--line);border-radius:8p
 .inp .unit{padding:0 10px;font-family:var(--f-mono);font-size:13px;color:var(--muted);white-space:nowrap}
 .hint{font-size:12px;color:var(--muted);font-family:var(--f-mono)}
 
-.walsen{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.walsen{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+.wals .pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.wals .cell{display:flex;flex-direction:column;gap:6px;min-width:0}
+.wals .grp-t{font-family:var(--f-body);font-size:13px;font-weight:600;border-top:1px solid var(--line);padding-top:8px}
 .wals{border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--panel)}
 .wals .nm{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
 .wals .nm b{font-family:var(--f-display);font-size:20px;font-weight:600;line-height:1.1}
 .wals .nm .no{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
 .wals.gone{opacity:.75;border-style:dashed}
-.stepper{display:grid;grid-template-columns:40px minmax(0,1fr) 40px;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--sunk)}
+.stepper{display:grid;grid-template-columns:32px minmax(0,1fr) 32px;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--sunk)}
 .stepper:focus-within{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .stepper button{border:0;background:transparent;font-family:var(--f-mono);font-size:20px;color:var(--muted)}
 .stepper button:hover{background:var(--line);color:var(--fg)}
-.stepper input{border:0;background:transparent;text-align:center;font-family:var(--f-mono);font-size:26px;font-weight:600;padding:6px 0;width:100%;min-width:0;font-variant-numeric:tabular-nums}
+.stepper input{border:0;background:transparent;text-align:center;font-family:var(--f-mono);font-size:21px;font-weight:600;padding:6px 0;width:100%;min-width:0;font-variant-numeric:tabular-nums}
 .stepper input:focus{outline:none}
 .delta{font-family:var(--f-mono);font-size:12px;color:var(--muted);margin-top:-4px}
 .wals .lbl{font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:-4px}
@@ -188,6 +191,8 @@ textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 1px var(
 (function(){
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const VELDEN = ["stand","eind","hoogte","hoogteEind"];
+const BEGIN_VAN = {eind:"stand",hoogteEind:"hoogte"};
 const DAGEN = ["zondag","maandag","dinsdag","woensdag","donderdag","vrijdag","zaterdag"];
 const MAANDEN = ["januari","februari","maart","april","mei","juni","juli","augustus","september","oktober","november","december"];
 const MND = ["jan","feb","mrt","apr","mei","jun","jul","aug","sep","okt","nov","dec"];
@@ -217,7 +222,7 @@ function blankDraft(){
   return {id:null,datum:today(),temperatuur:null,luchtvochtigheid:null,walsen:{},bijzonderheden:""};
 }
 function draftFrom(rec){
-  const w={};(rec.walsen||[]).forEach(x=>{const o={naam:x.naam};if(x.stand!=null)o.stand=x.stand;if(x.eind!=null)o.eind=x.eind;w[x.id]=o});
+  const w={};(rec.walsen||[]).forEach(x=>{const o={naam:x.naam};VELDEN.forEach(f=>{if(x[f]!=null)o[f]=x[f]});w[x.id]=o});
   return {id:rec.id,datum:rec.datum||"",temperatuur:rec.temperatuur??null,luchtvochtigheid:rec.luchtvochtigheid??null,walsen:w,bijzonderheden:rec.bijzonderheden||""};
 }
 function sorted(){return dagen.slice().sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||(b.bijgewerkt||0)-(a.bijgewerkt||0))}
@@ -250,7 +255,7 @@ function newDay(){
   draft=blankDraft();
   // standen van vorige lakdag voorinvullen
   const prev=sorted()[0];
-  if(prev){(prev.walsen||[]).forEach(x=>{if(x.stand!=null)draft.walsen[x.id]={naam:x.naam,stand:x.stand}})}
+  if(prev){(prev.walsen||[]).forEach(x=>{const o={naam:x.naam};if(x.stand!=null)o.stand=x.stand;if(x.hoogte!=null)o.hoogte=x.hoogte;if(o.stand!=null||o.hoogte!=null)draft.walsen[x.id]=o})}
   dirty=true; render();
 }
 
@@ -292,14 +297,14 @@ function renderSheet(){
   if(!draft){
     const first=dagenLoaded&&!dagen.length;
     el.innerHTML=first
-      ? `<div class="blank"><strong>Welkom bij het logboek</strong><span>Stel eerst de walsen van de lakstraat in (namen en volgorde). Daarna vul je per lakdag de standen, temperatuur, luchtvochtigheid en bijzonderheden in.</span><div class="top-actions"><button class="btn" type="button" id="blankSetup">Walsen instellen</button><button class="btn primary" type="button" id="blankNew">+ Nieuwe lakdag</button></div></div>`
+      ? `<div class="blank"><strong>Welkom bij het logboek</strong><span>Stel eerst de walsen van de lakstraat in (namen en volgorde). Daarna vul je per lakdag de standen en hoogtes, temperatuur, luchtvochtigheid en bijzonderheden in.</span><div class="top-actions"><button class="btn" type="button" id="blankSetup">Walsen instellen</button><button class="btn primary" type="button" id="blankNew">+ Nieuwe lakdag</button></div></div>`
       : `<div class="blank"><strong>${dagenLoaded?"Kies een lakdag":"Laden…"}</strong><span>Selecteer links een dag, of begin een nieuw blad.</span><button class="btn primary" type="button" id="blankNew">+ Nieuwe lakdag</button></div>`;
     $("#blankNew").onclick=newDay; const bs=$("#blankSetup"); if(bs)bs.onclick=openSetup; return;
   }
   const rows=sorted();
   const idx=rows.findIndex(r=>r.id===draft.id);
   const prev=previousOf(draft);
-  const prevW={};(prev?.walsen||[]).forEach(x=>prevW[x.id]=x.stand);
+  const prevW={};(prev?.walsen||[]).forEach(x=>prevW[x.id]=x);
 
   // walsen: huidige configuratie + walsen die alleen in dit record staan
   const list=walsen.map(w=>({id:w.id,naam:w.naam,gone:false}));
@@ -310,24 +315,22 @@ function renderSheet(){
     wHtml=`<div class="blank" style="padding:18px"><span>Er zijn nog geen walsen ingesteld.</span><button class="btn" type="button" id="goSetup">Walsen instellen</button></div>`;
   } else {
     wHtml='<div class="walsen">'+list.map((w,i)=>{
-      const v=draft.walsen[w.id]?.stand;
-      const e=draft.walsen[w.id]?.eind;
+      const val=f=>draft.walsen[w.id]?.[f];
+      const cell=(f,lab,kind,cls)=>`<div class="cell">
+          <span class="lbl">${lab}</span>
+          <div class="stepper ${cls}">
+            <button type="button" data-step="-1" data-f="${f}" data-w="${esc(w.id)}" aria-label="${kind} ${lab.toLowerCase()} ${esc(w.naam)} lager">−</button>
+            <input id="w-${f}-${esc(w.id)}" data-f="${f}" data-w="${esc(w.id)}" data-naam="${esc(w.naam)}" inputmode="decimal" autocomplete="off" value="${esc(fmt(val(f)))}" placeholder="—" aria-label="${kind} ${lab.toLowerCase()} ${esc(w.naam)}">
+            <button type="button" data-step="1" data-f="${f}" data-w="${esc(w.id)}" aria-label="${kind} ${lab.toLowerCase()} ${esc(w.naam)} hoger">+</button>
+          </div>
+          <span class="delta" data-d="${f}"></span>
+        </div>`;
       return `<div class="wals ${w.gone?"gone":""}" data-card="${esc(w.id)}">
         <div class="nm"><b>${esc(w.naam)}</b><span class="no">${w.gone?"niet meer in gebruik":"#"+(i+1)}</span></div>
-        <span class="lbl">Beginstand</span>
-        <div class="stepper">
-          <button type="button" data-step="-1" data-f="stand" data-w="${esc(w.id)}" aria-label="Beginstand ${esc(w.naam)} lager">−</button>
-          <input id="wals-${esc(w.id)}" data-f="stand" data-w="${esc(w.id)}" data-naam="${esc(w.naam)}" inputmode="decimal" autocomplete="off" value="${esc(fmt(v))}" placeholder="—" aria-label="Beginstand ${esc(w.naam)}">
-          <button type="button" data-step="1" data-f="stand" data-w="${esc(w.id)}" aria-label="Beginstand ${esc(w.naam)} hoger">+</button>
-        </div>
-        <span class="delta" data-d="stand"></span>
-        <span class="lbl">Eindstand</span>
-        <div class="stepper eind">
-          <button type="button" data-step="-1" data-f="eind" data-w="${esc(w.id)}" aria-label="Eindstand ${esc(w.naam)} lager">−</button>
-          <input id="walse-${esc(w.id)}" data-f="eind" data-w="${esc(w.id)}" data-naam="${esc(w.naam)}" inputmode="decimal" autocomplete="off" value="${esc(fmt(e))}" placeholder="—" aria-label="Eindstand ${esc(w.naam)}">
-          <button type="button" data-step="1" data-f="eind" data-w="${esc(w.id)}" aria-label="Eindstand ${esc(w.naam)} hoger">+</button>
-        </div>
-        <span class="delta" data-d="eind"></span>
+        <div class="grp-t">Stand</div>
+        <div class="pair">${cell("stand","Begin","Stand","")}${cell("eind","Eind","Stand","eind")}</div>
+        <div class="grp-t">Hoogte</div>
+        <div class="pair">${cell("hoogte","Begin","Hoogte","")}${cell("hoogteEind","Eind","Hoogte","eind")}</div>
       </div>`}).join("")+'</div>';
   }
 
@@ -365,7 +368,7 @@ function renderSheet(){
     </div>
 
     <div class="section">
-      <h3><span>Walsstanden</span><button class="link" type="button" id="editWalsen">Walsen aanpassen</button></h3>
+      <h3><span>Walsen: stand en hoogte</span><button class="link" type="button" id="editWalsen">Walsen aanpassen</button></h3>
       ${wHtml}
     </div>
 
@@ -396,7 +399,7 @@ function renderSheet(){
   function setVal(id,f,v,naam){
     const cur=draft.walsen[id]||{naam};
     cur.naam=naam; if(v==null)delete cur[f]; else cur[f]=v;
-    if(cur.stand==null&&cur.eind==null)delete draft.walsen[id]; else draft.walsen[id]=cur;
+    if(VELDEN.every(f=>cur[f]==null))delete draft.walsen[id]; else draft.walsen[id]=cur;
   }
   el.querySelectorAll(".stepper input").forEach(inp=>{
     inp.oninput=()=>{const id=inp.dataset.w,f=inp.dataset.f;const v=num(inp.value);
@@ -407,21 +410,24 @@ function renderSheet(){
   el.querySelectorAll(".stepper button").forEach(b=>b.onclick=()=>{
     const id=b.dataset.w, f=b.dataset.f, inp=el.querySelector(`input[data-w="${CSS.escape(id)}"][data-f="${f}"]`);
     const w=draft.walsen[id]||{};
-    const cur=w[f] ?? (f==="eind"?w.stand:null) ?? prevW[id] ?? 0;
+    const b=BEGIN_VAN[f]||f; const cur=w[f] ?? (BEGIN_VAN[f]?w[b]:null) ?? prevW[id]?.[b] ?? 0;
     const v=Math.round((cur+Number(b.dataset.step)*stepFor(cur))*100)/100;
     setVal(id,f,v,inp.dataset.naam); inp.value=fmt(v); touch(); updateDelta(id);
   });
   function updateDelta(id){
     const card=el.querySelector(`[data-card="${CSS.escape(id)}"]`); if(!card)return;
     const w=draft.walsen[id]||{};
-    const bs=card.querySelector('[data-d="stand"]'), be=card.querySelector('[data-d="eind"]');
-    const p=prevW[id], v=w.stand, e=w.eind;
-    if(prev&&p!=null){const chg=v!=null&&Math.abs(v-p)>1e-9;
-      bs.className="delta"+(chg?" chg":""); bs.textContent=`vorige: ${fmt(p)}${chg?` · ${v>p?"+":"−"}${fmt(Math.abs(v-p))}`:""}`;
-    } else bs.innerHTML="&nbsp;";
-    if(v!=null&&e!=null){const d=e-v;const chg=Math.abs(d)>1e-9;
-      be.className="delta"+(chg?" chg":""); be.textContent=chg?`t.o.v. begin: ${d>0?"+":"−"}${fmt(Math.abs(d))}`:"gelijk aan begin";
-    } else be.innerHTML="&nbsp;";
+    const pw=prevW[id]||{};
+    for(const [bf,ef] of [["stand","eind"],["hoogte","hoogteEind"]]){
+      const bs=card.querySelector(`[data-d="${bf}"]`), be=card.querySelector(`[data-d="${ef}"]`);
+      const p=pw[bf], v=w[bf], e=w[ef];
+      if(prev&&p!=null){const chg=v!=null&&Math.abs(v-p)>1e-9;
+        bs.className="delta"+(chg?" chg":""); bs.textContent=`vorige: ${fmt(p)}${chg?` · ${v>p?"+":"−"}${fmt(Math.abs(v-p))}`:""}`;
+      } else bs.innerHTML="&nbsp;";
+      if(v!=null&&e!=null){const d=e-v;const chg=Math.abs(d)>1e-9;
+        be.className="delta"+(chg?" chg":""); be.textContent=chg?`t.o.v. begin: ${d>0?"+":"−"}${fmt(Math.abs(d))}`:"gelijk aan begin";
+      } else be.innerHTML="&nbsp;";
+    }
   }
   Object.keys(draft.walsen).concat(walsen.map(w=>w.id)).forEach(updateDelta);
   $("#save").onclick=save;
@@ -452,7 +458,7 @@ function toRecord(){
   const ws=[];
   const order=walsen.map(w=>w.id);
   const ids=Object.keys(draft.walsen).sort((a,b)=>{const ia=order.indexOf(a),ib=order.indexOf(b);return (ia<0?999:ia)-(ib<0?999:ib)});
-  for(const id of ids){const x=draft.walsen[id];if(x&&(x.stand!=null||x.eind!=null)){const cfg=walsen.find(w=>w.id===id);ws.push({id,naam:cfg?cfg.naam:x.naam,stand:x.stand??null,eind:x.eind??null})}}
+  for(const id of ids){const x=draft.walsen[id];if(x&&VELDEN.some(f=>x[f]!=null)){const cfg=walsen.find(w=>w.id===id);const o={id,naam:cfg?cfg.naam:x.naam};VELDEN.forEach(f=>o[f]=x[f]??null);ws.push(o)}}
   return {datum:draft.datum,temperatuur:draft.temperatuur,luchtvochtigheid:draft.luchtvochtigheid,walsen:ws,bijzonderheden:draft.bijzonderheden||"",bijgewerkt:Date.now()};
 }
 async function save(){
@@ -566,10 +572,10 @@ function exportCsv(){
   const naam=id=>{const w=walsen.find(w=>w.id===id);if(w)return w.naam;for(const r of rows){const x=(r.walsen||[]).find(x=>x.id===id);if(x)return x.naam}return id};
   const q=v=>{const s=String(v??"");return /[;"\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
   const head=["Datum","Temperatuur (°C)","Luchtvochtigheid (%)"];
-  ids.forEach(id=>{head.push(naam(id)+" begin",naam(id)+" eind")}); head.push("Bijzonderheden");
+  ids.forEach(id=>{head.push(naam(id)+" stand begin",naam(id)+" stand eind",naam(id)+" hoogte begin",naam(id)+" hoogte eind")}); head.push("Bijzonderheden");
   const lines=[head.map(q).join(";")];
   rows.forEach(r=>{const l=[r.datum,fmt(r.temperatuur),fmt(r.luchtvochtigheid)];
-    ids.forEach(id=>{const x=(r.walsen||[]).find(x=>x.id===id);l.push(fmt(x?.stand),fmt(x?.eind))});
+    ids.forEach(id=>{const x=(r.walsen||[]).find(x=>x.id===id);l.push(fmt(x?.stand),fmt(x?.eind),fmt(x?.hoogte),fmt(x?.hoogteEind))});
     l.push(r.bijzonderheden||""); lines.push(l.map(q).join(";"))});
   const blob=new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="lakstraat-logboek-"+today()+".csv";
