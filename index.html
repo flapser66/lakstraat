@@ -1,0 +1,680 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Lakstraat Logboek</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1D6A50">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Lakstraat">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="config.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: werkplaats-logboek — lijst met lakdagen links, invulblad per dag rechts; op telefoon onder elkaar */
+:root{
+  --bg:#EEF1EF; --panel:#FFFFFF; --sunk:#E3E8E5; --line:#CBD3CE;
+  --fg:#18201C; --muted:#5B6760; --accent:#1D6A50; --accent-fg:#FFFFFF; --accent-soft:#D5E9E0;
+  --warn:#9A5B00; --warn-soft:#FBEBD0; --danger:#B3261E; --danger-soft:#F9DEDC;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --panel:#19201D; --sunk:#0D1210; --line:#2D3833;
+  --fg:#E4EBE7; --muted:#95A39B; --accent:#4FB78F; --accent-fg:#08130E; --accent-soft:#1B3A2E;
+  --warn:#F0B35A; --warn-soft:#3A2A10; --danger:#F2857C; --danger-soft:#3D1715; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111614; --panel:#19201D; --sunk:#0D1210; --line:#2D3833;
+  --fg:#E4EBE7; --muted:#95A39B; --accent:#4FB78F; --accent-fg:#08130E; --accent-soft:#1B3A2E;
+  --warn:#F0B35A; --warn-soft:#3A2A10; --danger:#F2857C; --danger-soft:#3D1715; color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+[hidden]{display:none!important}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.auth{max-width:400px;margin:40px auto;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:24px;display:flex;flex-direction:column;gap:14px}
+.auth h2{font-family:var(--f-display);font-size:28px;margin:0;text-transform:uppercase}
+.auth p{margin:0;color:var(--muted);font-size:14px}
+.auth .inp input{font-family:var(--f-body);font-size:16px}
+.auth .row{display:flex;gap:8px;flex-wrap:wrap}
+.linkbtn{background:none;border:0;padding:0;color:var(--accent);font-weight:500;text-align:left}
+.ok{color:var(--accent);font-size:14px}
+.who{font-size:13px;color:var(--muted);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 48px}
+.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:2px solid var(--fg);padding-bottom:10px}
+.brand .eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.brand h1{font-family:var(--f-display);font-weight:700;font-size:40px;line-height:1;margin:2px 0 0;letter-spacing:.01em;text-transform:uppercase}
+.top-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:8px 14px;font-weight:500}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--danger);border-color:transparent;background:transparent}
+.btn.danger:hover{background:var(--danger-soft)}
+.btn.danger-solid{background:var(--danger);border-color:var(--danger);color:var(--panel)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+.notice{border:1px solid var(--warn);background:var(--warn-soft);color:var(--fg);border-radius:6px;padding:10px 14px;font-size:14px}
+
+.layout{display:grid;grid-template-columns:260px minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:760px){.layout{grid-template-columns:minmax(0,1fr)}}
+
+/* lijst */
+aside.list{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.list h2{font-family:var(--f-mono);font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0;padding:12px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+.list ul{list-style:none;margin:0;padding:0;max-height:560px;overflow-y:auto}
+@media (max-width:760px){.list ul{max-height:220px}}
+.list li button{width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:10px 14px;display:grid;grid-template-columns:1fr auto;gap:2px 10px}
+.list li:last-child button{border-bottom:0}
+.list li button:hover{background:var(--sunk)}
+.list li button[aria-current="true"]{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.list .d{font-weight:600}
+.list .wd{font-size:12px;color:var(--muted)}
+.list .cond{font-family:var(--f-mono);font-size:12px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.list .flag{font-size:11px;color:var(--warn);grid-column:1/-1}
+.list .empty{padding:18px 14px;color:var(--muted);font-size:14px}
+
+/* blad */
+main.sheet{background:var(--panel);border:1px solid var(--line);border-radius:8px;min-width:0}
+.sheet-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line)}
+.sheet-head .title{font-family:var(--f-display);font-size:28px;font-weight:600;line-height:1.1;text-transform:capitalize}
+.sheet-head .sub{font-size:13px;color:var(--muted)}
+.nav{display:flex;gap:6px}
+.nav .btn{padding:6px 10px}
+.status{font-family:var(--f-mono);font-size:12px;padding:3px 8px;border-radius:99px;background:var(--sunk);color:var(--muted)}
+.status.dirty{background:var(--warn-soft);color:var(--warn)}
+.status.saved{background:var(--accent-soft);color:var(--accent)}
+
+.section{padding:18px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:12px}
+.section:last-of-type{border-bottom:0}
+.section h3{margin:0;font-family:var(--f-mono);font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.section h3 a,.section h3 button.link{font-family:var(--f-body);letter-spacing:0;text-transform:none;font-size:13px;color:var(--accent);background:none;border:0;padding:0;font-weight:500}
+
+.conds{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:560px){.conds{grid-template-columns:minmax(0,1fr)}}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label{font-size:13px;font-weight:500}
+.inp{display:flex;align-items:center;border:1px solid var(--line);border-radius:6px;background:var(--sunk);overflow:hidden}
+.inp:focus-within{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.inp input{border:0;background:transparent;padding:9px 10px;width:100%;min-width:0;font-family:var(--f-mono);font-size:18px;font-variant-numeric:tabular-nums}
+.inp input:focus{outline:none}
+.inp .unit{padding:0 10px;font-family:var(--f-mono);font-size:13px;color:var(--muted);white-space:nowrap}
+.hint{font-size:12px;color:var(--muted);font-family:var(--f-mono)}
+
+.walsen{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.wals{border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--panel)}
+.wals .nm{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.wals .nm b{font-family:var(--f-display);font-size:20px;font-weight:600;line-height:1.1}
+.wals .nm .no{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.wals.gone{opacity:.75;border-style:dashed}
+.stepper{display:grid;grid-template-columns:40px minmax(0,1fr) 40px;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--sunk)}
+.stepper:focus-within{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.stepper button{border:0;background:transparent;font-family:var(--f-mono);font-size:20px;color:var(--muted)}
+.stepper button:hover{background:var(--line);color:var(--fg)}
+.stepper input{border:0;background:transparent;text-align:center;font-family:var(--f-mono);font-size:26px;font-weight:600;padding:6px 0;width:100%;min-width:0;font-variant-numeric:tabular-nums}
+.stepper input:focus{outline:none}
+.delta{font-family:var(--f-mono);font-size:12px;color:var(--muted);margin-top:-4px}
+.wals .lbl{font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:-4px}
+.stepper.eind{background:var(--accent-soft)}
+.delta.chg{color:var(--warn)}
+
+textarea{width:100%;min-height:130px;resize:vertical;border:1px solid var(--line);border-radius:6px;background:var(--sunk);padding:10px 12px;line-height:1.5}
+textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+
+.foot{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:14px 18px;border-top:1px solid var(--line);background:var(--sunk);border-radius:0 0 8px 8px}
+.foot .grp{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px}
+
+.blank{padding:40px 24px;text-align:center;color:var(--muted);display:flex;flex-direction:column;gap:12px;align-items:center}
+.blank strong{font-family:var(--f-display);font-size:26px;color:var(--fg);font-weight:600}
+
+/* walsen instellen */
+.setup{display:flex;flex-direction:column;gap:8px}
+.setup-row{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:8px;align-items:center}
+.setup-row .n{font-family:var(--f-mono);font-size:13px;color:var(--muted);text-align:right}
+.setup-row input{border:1px solid var(--line);border-radius:6px;background:var(--sunk);padding:8px 10px;width:100%;min-width:0}
+.setup-row .ctl{display:flex;gap:2px}
+.setup-row .ctl button{border:1px solid transparent;background:none;border-radius:4px;padding:4px 8px;color:var(--muted)}
+.setup-row .ctl button:hover{border-color:var(--line);color:var(--fg)}
+.err{color:var(--danger);font-size:14px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="eyebrow">Houtindustrie Ideaal · Lakstraat</div>
+      <h1>Walsinstellingen logboek</h1>
+    </div>
+    <div class="top-actions" id="topActions" hidden>
+      <button class="btn" id="btnExport" type="button">Exporteren naar Excel</button>
+      <button class="btn" id="btnUsers" type="button" hidden>Gebruikers</button>
+      <button class="btn" id="btnSetup" type="button">Walsen instellen</button>
+      <button class="btn primary" id="btnNew" type="button">+ Nieuwe lakdag</button>
+    </div>
+  </header>
+  <div class="who" id="who" hidden><span id="whoEmail"></span><button class="linkbtn" id="btnLogout" type="button">Uitloggen</button></div>
+
+  <div class="notice" id="offline" hidden>Geen verbinding met de database. Controleer je internet en ververs de pagina.</div>
+
+  <section class="auth" id="authBox" hidden></section>
+
+  <div class="layout" id="appLayout" hidden>
+    <aside class="list" aria-label="Lakdagen">
+      <h2><span>Lakdagen</span><span id="count">–</span></h2>
+      <ul id="list"><li class="empty">Laden…</li></ul>
+    </aside>
+    <main class="sheet" id="sheet"></main>
+  </div>
+</div>
+
+<script>
+(function(){
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const DAGEN = ["zondag","maandag","dinsdag","woensdag","donderdag","vrijdag","zaterdag"];
+const MAANDEN = ["januari","februari","maart","april","mei","juni","juli","augustus","september","oktober","november","december"];
+const MND = ["jan","feb","mrt","apr","mei","jun","jul","aug","sep","okt","nov","dec"];
+
+function today(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function parseDate(s){const [y,m,d]=(s||"").split("-").map(Number);return y?new Date(y,m-1,d):null}
+function longDate(s){const d=parseDate(s);return d?`${DAGEN[d.getDay()]} ${d.getDate()} ${MAANDEN[d.getMonth()]} ${d.getFullYear()}`:"Geen datum"}
+function shortDate(s){const d=parseDate(s);return d?`${d.getDate()} ${MND[d.getMonth()]} ${d.getFullYear()}`:"—"}
+function num(v){if(v===""||v==null)return null;const n=Number(String(v).replace(",",".").trim());return isFinite(n)?n:null}
+function fmt(n){return n==null?"":String(Math.round(n*100)/100).replace(".",",")}
+function uid(){return "w"+Math.random().toString(36).slice(2,8)}
+
+// ---- state
+let db=null, dbReady=false;
+let walsen=[];            // [{id,naam}]
+let walsenLoaded=false;
+let dagen=[];             // [{id, ...data}]
+let dagenLoaded=false;
+let selectedId=null;      // id of record, or "__new"
+let draft=null;           // editable copy
+let dirty=false, saving=false, justSaved=false, confirmDel=false, error="";
+let mode="dag";           // "dag" | "setup"
+let setupDraft=null;
+
+// ---- draft handling
+function blankDraft(){
+  return {id:null,datum:today(),temperatuur:null,luchtvochtigheid:null,walsen:{},bijzonderheden:""};
+}
+function draftFrom(rec){
+  const w={};(rec.walsen||[]).forEach(x=>{const o={naam:x.naam};if(x.stand!=null)o.stand=x.stand;if(x.eind!=null)o.eind=x.eind;w[x.id]=o});
+  return {id:rec.id,datum:rec.datum||"",temperatuur:rec.temperatuur??null,luchtvochtigheid:rec.luchtvochtigheid??null,walsen:w,bijzonderheden:rec.bijzonderheden||""};
+}
+function sorted(){return dagen.slice().sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||(b.bijgewerkt||0)-(a.bijgewerkt||0))}
+function previousOf(d){
+  // meest recente lakdag vóór de datum van dit blad (anders dan zichzelf)
+  const s=sorted().filter(r=>r.id!==d.id && (r.datum||"")<= (d.datum||"9999") );
+  return s.find(r=>r.datum<d.datum) || s[0] || null;
+}
+
+function select(id){
+  if(dirty && !window.__skipDirty){ if(!confirmLeave())return; }
+  mode="dag"; confirmDel=false; error=""; justSaved=false;
+  selectedId=id;
+  const rec=dagen.find(r=>r.id===id);
+  draft=rec?draftFrom(rec):blankDraft();
+  dirty=false;
+  render();
+}
+let leaveArmed=false;
+function confirmLeave(){
+  // eerste klik: waarschuwen; tweede klik: toch verlaten
+  if(leaveArmed){leaveArmed=false;return true}
+  leaveArmed=true; error="Je hebt niet-opgeslagen wijzigingen. Klik nog eens om ze te laten vallen, of sla eerst op.";
+  renderSheet(); setTimeout(()=>{leaveArmed=false},6000);
+  return false;
+}
+function newDay(){
+  if(dirty && !confirmLeave())return;
+  mode="dag"; selectedId="__new"; confirmDel=false; error=""; justSaved=false;
+  draft=blankDraft();
+  // standen van vorige lakdag voorinvullen
+  const prev=sorted()[0];
+  if(prev){(prev.walsen||[]).forEach(x=>{if(x.stand!=null)draft.walsen[x.id]={naam:x.naam,stand:x.stand}})}
+  dirty=true; render();
+}
+
+// ---- rendering
+function render(){renderList();renderSheet()}
+
+function renderList(){
+  const ul=$("#list");
+  $("#count").textContent=dagenLoaded?String(dagen.length):"–";
+  if(!dagenLoaded){ul.innerHTML='<li class="empty">Laden…</li>';return}
+  const rows=sorted();
+  let html="";
+  if(selectedId==="__new") html+=`<li><button type="button" aria-current="true"><span><span class="d">Nieuwe lakdag</span><br><span class="wd">nog niet opgeslagen</span></span><span class="cond"></span></button></li>`;
+  if(!rows.length && selectedId!=="__new") html+='<li class="empty">Nog geen lakdagen. Klik op <b>+ Nieuwe lakdag</b> om de eerste in te vullen.</li>';
+  for(const r of rows){
+    const d=parseDate(r.datum);
+    const c=[r.temperatuur!=null?fmt(r.temperatuur)+"°C":null,r.luchtvochtigheid!=null?fmt(r.luchtvochtigheid)+"%":null].filter(Boolean).join(" · ");
+    html+=`<li><button type="button" data-id="${esc(r.id)}" aria-current="${r.id===selectedId}">
+      <span><span class="d">${esc(shortDate(r.datum))}</span><br><span class="wd">${d?DAGEN[d.getDay()]:""}</span></span>
+      <span class="cond">${esc(c)}</span>
+      ${r.bijzonderheden&&r.bijzonderheden.trim()?'<span class="flag">● bijzonderheden</span>':""}
+    </button></li>`;
+  }
+  ul.innerHTML=html;
+  ul.querySelectorAll("button[data-id]").forEach(b=>b.onclick=()=>select(b.dataset.id));
+}
+
+function statusPill(){
+  if(saving)return '<span class="status">Opslaan…</span>';
+  if(dirty)return '<span class="status dirty">Niet opgeslagen</span>';
+  if(justSaved)return '<span class="status saved">Opgeslagen</span>';
+  return "";
+}
+
+function renderSheet(){
+  const el=$("#sheet");
+  if(mode==="setup")return renderSetup(el);
+  if(mode==="users")return renderUsers(el);
+  if(!draft){
+    const first=dagenLoaded&&!dagen.length;
+    el.innerHTML=first
+      ? `<div class="blank"><strong>Welkom bij het logboek</strong><span>Stel eerst de walsen van de lakstraat in (namen en volgorde). Daarna vul je per lakdag de standen, temperatuur, luchtvochtigheid en bijzonderheden in.</span><div class="top-actions"><button class="btn" type="button" id="blankSetup">Walsen instellen</button><button class="btn primary" type="button" id="blankNew">+ Nieuwe lakdag</button></div></div>`
+      : `<div class="blank"><strong>${dagenLoaded?"Kies een lakdag":"Laden…"}</strong><span>Selecteer links een dag, of begin een nieuw blad.</span><button class="btn primary" type="button" id="blankNew">+ Nieuwe lakdag</button></div>`;
+    $("#blankNew").onclick=newDay; const bs=$("#blankSetup"); if(bs)bs.onclick=openSetup; return;
+  }
+  const rows=sorted();
+  const idx=rows.findIndex(r=>r.id===draft.id);
+  const prev=previousOf(draft);
+  const prevW={};(prev?.walsen||[]).forEach(x=>prevW[x.id]=x.stand);
+
+  // walsen: huidige configuratie + walsen die alleen in dit record staan
+  const list=walsen.map(w=>({id:w.id,naam:w.naam,gone:false}));
+  Object.keys(draft.walsen).forEach(id=>{if(!list.find(w=>w.id===id))list.push({id,naam:draft.walsen[id].naam||"Wals",gone:true})});
+
+  let wHtml="";
+  if(!list.length){
+    wHtml=`<div class="blank" style="padding:18px"><span>Er zijn nog geen walsen ingesteld.</span><button class="btn" type="button" id="goSetup">Walsen instellen</button></div>`;
+  } else {
+    wHtml='<div class="walsen">'+list.map((w,i)=>{
+      const v=draft.walsen[w.id]?.stand;
+      const e=draft.walsen[w.id]?.eind;
+      return `<div class="wals ${w.gone?"gone":""}" data-card="${esc(w.id)}">
+        <div class="nm"><b>${esc(w.naam)}</b><span class="no">${w.gone?"niet meer in gebruik":"#"+(i+1)}</span></div>
+        <span class="lbl">Beginstand</span>
+        <div class="stepper">
+          <button type="button" data-step="-1" data-f="stand" data-w="${esc(w.id)}" aria-label="Beginstand ${esc(w.naam)} lager">−</button>
+          <input id="wals-${esc(w.id)}" data-f="stand" data-w="${esc(w.id)}" data-naam="${esc(w.naam)}" inputmode="decimal" autocomplete="off" value="${esc(fmt(v))}" placeholder="—" aria-label="Beginstand ${esc(w.naam)}">
+          <button type="button" data-step="1" data-f="stand" data-w="${esc(w.id)}" aria-label="Beginstand ${esc(w.naam)} hoger">+</button>
+        </div>
+        <span class="delta" data-d="stand"></span>
+        <span class="lbl">Eindstand</span>
+        <div class="stepper eind">
+          <button type="button" data-step="-1" data-f="eind" data-w="${esc(w.id)}" aria-label="Eindstand ${esc(w.naam)} lager">−</button>
+          <input id="walse-${esc(w.id)}" data-f="eind" data-w="${esc(w.id)}" data-naam="${esc(w.naam)}" inputmode="decimal" autocomplete="off" value="${esc(fmt(e))}" placeholder="—" aria-label="Eindstand ${esc(w.naam)}">
+          <button type="button" data-step="1" data-f="eind" data-w="${esc(w.id)}" aria-label="Eindstand ${esc(w.naam)} hoger">+</button>
+        </div>
+        <span class="delta" data-d="eind"></span>
+      </div>`}).join("")+'</div>';
+  }
+
+  const isNew=!draft.id;
+  el.innerHTML=`
+    <div class="sheet-head">
+      <div>
+        <div class="title">${esc(longDate(draft.datum))}</div>
+        <div class="sub">${isNew?"Nieuw blad":`Blad ${rows.length-idx} van ${rows.length}`} ${statusPill()}</div>
+      </div>
+      <div class="nav">
+        <button class="btn" type="button" id="navOlder" ${isNew||idx<0||idx>=rows.length-1?"disabled":""} aria-label="Oudere lakdag">← Ouder</button>
+        <button class="btn" type="button" id="navNewer" ${isNew||idx<=0?"disabled":""} aria-label="Nieuwere lakdag">Nieuwer →</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Algemeen</h3>
+      <div class="conds">
+        <div class="field">
+          <label for="f-datum">Datum lakken</label>
+          <div class="inp"><input id="f-datum" type="date" value="${esc(draft.datum)}" style="font-size:16px"></div>
+        </div>
+        <div class="field">
+          <label for="f-temp">Temperatuur</label>
+          <div class="inp"><input id="f-temp" inputmode="decimal" autocomplete="off" placeholder="—" value="${esc(fmt(draft.temperatuur))}"><span class="unit">°C</span></div>
+          <span class="hint">${prev&&prev.temperatuur!=null?"vorige: "+fmt(prev.temperatuur)+" °C":"&nbsp;"}</span>
+        </div>
+        <div class="field">
+          <label for="f-rv">Luchtvochtigheid</label>
+          <div class="inp"><input id="f-rv" inputmode="decimal" autocomplete="off" placeholder="—" value="${esc(fmt(draft.luchtvochtigheid))}"><span class="unit">% RV</span></div>
+          <span class="hint">${prev&&prev.luchtvochtigheid!=null?"vorige: "+fmt(prev.luchtvochtigheid)+" %":"&nbsp;"}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3><span>Walsstanden</span><button class="link" type="button" id="editWalsen">Walsen aanpassen</button></h3>
+      ${wHtml}
+    </div>
+
+    <div class="section">
+      <h3><label for="f-bijz" style="all:inherit">Bijzonderheden</label></h3>
+      <textarea id="f-bijz" placeholder="Bijv. storing, andere laksoort, nieuwe rol geplaatst, afwijkende houtsoort, klachten over de afwerking…">${esc(draft.bijzonderheden)}</textarea>
+    </div>
+
+    <div class="foot">
+      <div class="grp">
+        ${confirmDel
+          ? `<span class="confirm">Dit blad verwijderen? <button class="btn danger-solid" type="button" id="delYes">Ja, verwijderen</button><button class="btn" type="button" id="delNo">Annuleren</button></span>`
+          : (isNew?`<button class="btn danger" type="button" id="discard">Weggooien</button>`:`<button class="btn danger" type="button" id="del">Verwijderen</button>`)}
+      </div>
+      <div class="grp">
+        ${error?`<span class="err">${esc(error)}</span>`:""}
+        ${dirty&&!isNew?'<button class="btn" type="button" id="revert">Wijzigingen ongedaan maken</button>':""}
+        <button class="btn primary" type="button" id="save" ${saving||(!dirty)?"disabled":""}>Opslaan</button>
+      </div>
+    </div>`;
+
+  // wiring
+  const touch=()=>{if(!dirty){dirty=true;justSaved=false;refreshHead()} else refreshHead()};
+  $("#f-datum").onchange=e=>{draft.datum=e.target.value;touch();renderSheetKeepFocus("f-datum")};
+  $("#f-temp").oninput=e=>{draft.temperatuur=num(e.target.value);touch()};
+  $("#f-rv").oninput=e=>{draft.luchtvochtigheid=num(e.target.value);touch()};
+  $("#f-bijz").oninput=e=>{draft.bijzonderheden=e.target.value;touch()};
+  function setVal(id,f,v,naam){
+    const cur=draft.walsen[id]||{naam};
+    cur.naam=naam; if(v==null)delete cur[f]; else cur[f]=v;
+    if(cur.stand==null&&cur.eind==null)delete draft.walsen[id]; else draft.walsen[id]=cur;
+  }
+  el.querySelectorAll(".stepper input").forEach(inp=>{
+    inp.oninput=()=>{const id=inp.dataset.w,f=inp.dataset.f;const v=num(inp.value);
+      if(v==null && inp.value.trim()==="")setVal(id,f,null,inp.dataset.naam); else if(v!=null) setVal(id,f,v,inp.dataset.naam);
+      touch(); updateDelta(id)};
+    inp.onblur=()=>{inp.value=fmt(draft.walsen[inp.dataset.w]?.[inp.dataset.f])};
+  });
+  el.querySelectorAll(".stepper button").forEach(b=>b.onclick=()=>{
+    const id=b.dataset.w, f=b.dataset.f, inp=el.querySelector(`input[data-w="${CSS.escape(id)}"][data-f="${f}"]`);
+    const w=draft.walsen[id]||{};
+    const cur=w[f] ?? (f==="eind"?w.stand:null) ?? prevW[id] ?? 0;
+    const v=Math.round((cur+Number(b.dataset.step)*stepFor(cur))*100)/100;
+    setVal(id,f,v,inp.dataset.naam); inp.value=fmt(v); touch(); updateDelta(id);
+  });
+  function updateDelta(id){
+    const card=el.querySelector(`[data-card="${CSS.escape(id)}"]`); if(!card)return;
+    const w=draft.walsen[id]||{};
+    const bs=card.querySelector('[data-d="stand"]'), be=card.querySelector('[data-d="eind"]');
+    const p=prevW[id], v=w.stand, e=w.eind;
+    if(prev&&p!=null){const chg=v!=null&&Math.abs(v-p)>1e-9;
+      bs.className="delta"+(chg?" chg":""); bs.textContent=`vorige: ${fmt(p)}${chg?` · ${v>p?"+":"−"}${fmt(Math.abs(v-p))}`:""}`;
+    } else bs.innerHTML="&nbsp;";
+    if(v!=null&&e!=null){const d=e-v;const chg=Math.abs(d)>1e-9;
+      be.className="delta"+(chg?" chg":""); be.textContent=chg?`t.o.v. begin: ${d>0?"+":"−"}${fmt(Math.abs(d))}`:"gelijk aan begin";
+    } else be.innerHTML="&nbsp;";
+  }
+  Object.keys(draft.walsen).concat(walsen.map(w=>w.id)).forEach(updateDelta);
+  $("#save").onclick=save;
+  $("#editWalsen").onclick=openSetup;
+  const gs=$("#goSetup"); if(gs)gs.onclick=openSetup;
+  const o=$("#navOlder"), n=$("#navNewer");
+  if(o)o.onclick=()=>{const r=rows[idx+1];if(r)select(r.id)};
+  if(n)n.onclick=()=>{const r=rows[idx-1];if(r)select(r.id)};
+  const del=$("#del"); if(del)del.onclick=()=>{confirmDel=true;renderSheet()};
+  const dsc=$("#discard"); if(dsc)dsc.onclick=()=>{confirmDel=true;renderSheet()};
+  const dn=$("#delNo"); if(dn)dn.onclick=()=>{confirmDel=false;renderSheet()};
+  const dy=$("#delYes"); if(dy)dy.onclick=removeDay;
+  const rv=$("#revert"); if(rv)rv.onclick=()=>{const rec=dagen.find(r=>r.id===draft.id);if(rec){draft=draftFrom(rec);dirty=false;error="";render()}};
+}
+function stepFor(v){return 0.5}
+function refreshHead(){
+  const sub=document.querySelector(".sheet-head .sub"); if(!sub)return;
+  sub.innerHTML=sub.innerHTML.replace(/<span class="status[^"]*">[^<]*<\/span>/,"")+statusPill();
+  const s=$("#save"); if(s)s.disabled=saving||!dirty;
+  if(dirty&&draft.id&&!$("#revert")){const b=document.createElement("button");b.className="btn";b.type="button";b.id="revert";b.textContent="Wijzigingen ongedaan maken";
+    b.onclick=()=>{const rec=dagen.find(r=>r.id===draft.id);if(rec){draft=draftFrom(rec);dirty=false;error="";render()}};
+    s.parentNode.insertBefore(b,s)}
+}
+function renderSheetKeepFocus(id){renderSheet();const e=document.getElementById(id);if(e)e.focus()}
+
+// ---- persistence
+function toRecord(){
+  const ws=[];
+  const order=walsen.map(w=>w.id);
+  const ids=Object.keys(draft.walsen).sort((a,b)=>{const ia=order.indexOf(a),ib=order.indexOf(b);return (ia<0?999:ia)-(ib<0?999:ib)});
+  for(const id of ids){const x=draft.walsen[id];if(x&&(x.stand!=null||x.eind!=null)){const cfg=walsen.find(w=>w.id===id);ws.push({id,naam:cfg?cfg.naam:x.naam,stand:x.stand??null,eind:x.eind??null})}}
+  return {datum:draft.datum,temperatuur:draft.temperatuur,luchtvochtigheid:draft.luchtvochtigheid,walsen:ws,bijzonderheden:draft.bijzonderheden||"",bijgewerkt:Date.now()};
+}
+async function save(){
+  if(!draft.datum){error="Vul een datum in.";renderSheet();return}
+  error=""; saving=true; refreshHead();
+  const rec=toRecord();
+  try{
+    if(db){
+      const ref=draft.id?db.collection("lakdagen").doc(draft.id):db.collection("lakdagen").doc();
+      await ref.set(rec);
+      draft.id=ref.id; selectedId=ref.id;
+      if(!dagen.find(r=>r.id===ref.id))dagen.push({id:ref.id,...rec}); else dagen=dagen.map(r=>r.id===ref.id?{id:ref.id,...rec}:r);
+    } else {
+      const id=draft.id||("local-"+Date.now());
+      draft.id=id; selectedId=id;
+      dagen=dagen.filter(r=>r.id!==id).concat([{id,...rec}]);
+    }
+    dirty=false; justSaved=true;
+  }catch(e){
+    error=e&&e.code==="quota_exceeded"?"De opslag is vol. Verwijder oude bladen en probeer opnieuw.":
+          e&&e.code==="invalid_argument"?"Je hebt geen rechten om hier op te slaan.":"Opslaan mislukt. Controleer de verbinding en probeer opnieuw.";
+  }
+  saving=false; render();
+}
+async function removeDay(){
+  if(!draft.id){draft=null;selectedId=null;dirty=false;confirmDel=false;const f=sorted()[0];if(f){select(f.id)}else render();return}
+  const id=draft.id;
+  try{ if(db) await db.collection("lakdagen").doc(id).delete(); }
+  catch(e){error="Verwijderen mislukt. Probeer het opnieuw.";confirmDel=false;renderSheet();return}
+  dagen=dagen.filter(r=>r.id!==id); dirty=false; confirmDel=false;
+  const f=sorted()[0]; if(f){selectedId=null;select(f.id)} else {draft=null;selectedId=null;render()}
+}
+
+// ---- walsen instellen
+function openSetup(){
+  if(dirty && mode==="dag"){ /* behoud concept: setup is een tussenscherm */ }
+  mode="setup"; setupDraft=walsen.length?walsen.map(w=>({...w})):[{id:uid(),naam:"Wals 1"},{id:uid(),naam:"Wals 2"},{id:uid(),naam:"Wals 3"},{id:uid(),naam:"Wals 4"}];
+  error=""; renderSheet();
+}
+function renderSetup(el){
+  el.innerHTML=`
+    <div class="sheet-head"><div><div class="title">Walsen instellen</div><div class="sub">Namen en volgorde van de walsen in de lakstraat. Oude bladen behouden hun waarden.</div></div></div>
+    <div class="section">
+      <div class="setup" id="setupRows">${setupDraft.map((w,i)=>`
+        <div class="setup-row">
+          <span class="n">${i+1}</span>
+          <input id="sn-${esc(w.id)}" data-i="${i}" value="${esc(w.naam)}" aria-label="Naam wals ${i+1}" placeholder="Bijv. Opdraagwals boven">
+          <span class="ctl">
+            <button type="button" data-a="up" data-i="${i}" ${i===0?"disabled":""} aria-label="Omhoog">↑</button>
+            <button type="button" data-a="down" data-i="${i}" ${i===setupDraft.length-1?"disabled":""} aria-label="Omlaag">↓</button>
+            <button type="button" data-a="rm" data-i="${i}" aria-label="Verwijderen">✕</button>
+          </span>
+        </div>`).join("")}
+      </div>
+      <div><button class="btn" type="button" id="addWals">+ Wals toevoegen</button></div>
+    </div>
+    <div class="foot">
+      <div class="grp"><button class="btn" type="button" id="setupCancel">Annuleren</button></div>
+      <div class="grp">${error?`<span class="err">${esc(error)}</span>`:""}<button class="btn primary" type="button" id="setupSave">Walsen opslaan</button></div>
+    </div>`;
+  el.querySelectorAll("#setupRows input").forEach(inp=>inp.oninput=()=>{setupDraft[+inp.dataset.i].naam=inp.value});
+  el.querySelectorAll("#setupRows button").forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.i,a=b.dataset.a;
+    if(a==="rm")setupDraft.splice(i,1);
+    if(a==="up"&&i>0)[setupDraft[i-1],setupDraft[i]]=[setupDraft[i],setupDraft[i-1]];
+    if(a==="down"&&i<setupDraft.length-1)[setupDraft[i+1],setupDraft[i]]=[setupDraft[i],setupDraft[i+1]];
+    renderSetup(el);
+  });
+  $("#addWals").onclick=()=>{setupDraft.push({id:uid(),naam:"Wals "+(setupDraft.length+1)});renderSetup(el);const l=el.querySelectorAll("#setupRows input");l[l.length-1].select()};
+  $("#setupCancel").onclick=()=>{mode="dag";error="";renderSheet()};
+  $("#setupSave").onclick=async()=>{
+    const clean=setupDraft.map(w=>({id:w.id,naam:(w.naam||"").trim()})).filter(w=>w.naam);
+    try{ if(db) await db.doc("instellingen/walsen").set({walsen:clean,bijgewerkt:Date.now()}); }
+    catch(e){error="Opslaan mislukt. Probeer het opnieuw.";renderSetup(el);return}
+    walsen=clean; mode="dag"; error="";
+    if(!draft)newDay(); else render();
+  };
+}
+
+// ---- gebruikers (alleen beheerder)
+let leden=[], ledenMsg="";
+function renderUsers(el){
+  el.innerHTML=`
+    <div class="sheet-head"><div><div class="title">Gebruikers</div><div class="sub">Alleen deze e-mailadressen kunnen het logboek openen en invullen.</div></div></div>
+    <div class="section">
+      <div class="setup">${leden.length?leden.map(e=>`
+        <div class="setup-row"><span class="n">•</span><span style="overflow-wrap:anywhere">${esc(e)}</span>
+          <span class="ctl"><button type="button" data-rm="${esc(e)}" aria-label="Verwijder ${esc(e)}">✕</button></span></div>`).join(""):'<p class="hint">Nog niemand toegevoegd. Jij hebt als beheerder altijd toegang.</p>'}
+      </div>
+      <form id="addUser" class="conds" style="grid-template-columns:minmax(0,1fr) auto">
+        <div class="inp"><input id="newUser" type="email" placeholder="collega@voorbeeld.nl" style="font-family:var(--f-body);font-size:16px" aria-label="E-mailadres collega"></div>
+        <button class="btn primary" type="submit">Toevoegen</button>
+      </form>
+      <p class="hint" style="font-family:var(--f-body)">Stuur je collega daarna de link van de app. Die maakt zelf een account aan met dit e-mailadres.</p>
+      ${ledenMsg?`<span class="err">${esc(ledenMsg)}</span>`:""}
+    </div>
+    <div class="foot"><div class="grp"></div><div class="grp"><button class="btn" type="button" id="usersClose">Terug naar logboek</button></div></div>`;
+  $("#addUser").onsubmit=async ev=>{ev.preventDefault();const e=$("#newUser").value.trim().toLowerCase();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)){ledenMsg="Vul een geldig e-mailadres in.";return renderUsers(el)}
+    try{await db.collection("leden").doc(e).set({toegevoegd:Date.now()});ledenMsg=""}catch(x){ledenMsg="Toevoegen mislukt."}
+    renderUsers(el)};
+  el.querySelectorAll("[data-rm]").forEach(b=>b.onclick=async()=>{try{await db.collection("leden").doc(b.dataset.rm).delete()}catch(x){ledenMsg="Verwijderen mislukt."}renderUsers(el)});
+  $("#usersClose").onclick=()=>{mode="dag";renderSheet()};
+}
+
+// ---- export naar Excel (CSV met ; voor Nederlandse Excel)
+function exportCsv(){
+  const rows=sorted().slice().reverse();
+  const ids=walsen.map(w=>w.id);
+  rows.forEach(r=>(r.walsen||[]).forEach(x=>{if(!ids.includes(x.id))ids.push(x.id)}));
+  const naam=id=>{const w=walsen.find(w=>w.id===id);if(w)return w.naam;for(const r of rows){const x=(r.walsen||[]).find(x=>x.id===id);if(x)return x.naam}return id};
+  const q=v=>{const s=String(v??"");return /[;"\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+  const head=["Datum","Temperatuur (°C)","Luchtvochtigheid (%)"];
+  ids.forEach(id=>{head.push(naam(id)+" begin",naam(id)+" eind")}); head.push("Bijzonderheden");
+  const lines=[head.map(q).join(";")];
+  rows.forEach(r=>{const l=[r.datum,fmt(r.temperatuur),fmt(r.luchtvochtigheid)];
+    ids.forEach(id=>{const x=(r.walsen||[]).find(x=>x.id===id);l.push(fmt(x?.stand),fmt(x?.eind))});
+    l.push(r.bijzonderheden||""); lines.push(l.map(q).join(";"))});
+  const blob=new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="lakstraat-logboek-"+today()+".csv";
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);
+}
+
+// ---- inloggen
+let authView="login", authMsg="", authOk="";
+function showOnly(which){
+  $("#authBox").hidden=which!=="auth"; $("#appLayout").hidden=which!=="app";
+  $("#topActions").hidden=which!=="app"; $("#who").hidden=which==="auth";
+}
+function renderAuth(){
+  const box=$("#authBox"); showOnly("auth");
+  const u=firebase.auth().currentUser;
+  if(authView==="verify"){
+    box.innerHTML=`<h2>Bevestig je e-mail</h2><p>We hebben een bevestigingslink gestuurd naar <b>${esc(u&&u.email)}</b>. Klik op de link in die mail (kijk ook bij spam) en kom dan hier terug.</p>
+      <div class="row"><button class="btn primary" id="aDone" type="button">Ik heb bevestigd</button><button class="btn" id="aResend" type="button">Opnieuw sturen</button></div>
+      ${authMsg?`<span class="err">${esc(authMsg)}</span>`:""}${authOk?`<span class="ok">${esc(authOk)}</span>`:""}
+      <button class="linkbtn" id="aOut" type="button">Ander account gebruiken</button>`;
+    $("#aDone").onclick=async()=>{await u.reload();await u.getIdToken(true);authMsg="";start(firebase.auth().currentUser)};
+    $("#aResend").onclick=async()=>{try{await u.sendEmailVerification();authOk="Nieuwe mail verstuurd.";authMsg=""}catch(e){authMsg="Even wachten en dan opnieuw proberen."}renderAuth()};
+    $("#aOut").onclick=()=>firebase.auth().signOut();
+    return;
+  }
+  if(authView==="noaccess"){
+    box.innerHTML=`<h2>Nog geen toegang</h2><p>Je bent ingelogd als <b>${esc(u&&u.email)}</b>, maar dit adres staat nog niet op de lijst. Vraag de beheerder om je toe te voegen en klik dan op opnieuw proberen.</p>
+      <div class="row"><button class="btn primary" id="aRetry" type="button">Opnieuw proberen</button><button class="btn" id="aOut" type="button">Uitloggen</button></div>`;
+    $("#aRetry").onclick=()=>start(u); $("#aOut").onclick=()=>firebase.auth().signOut();
+    return;
+  }
+  const reg=authView==="register", reset=authView==="reset";
+  box.innerHTML=`<h2>${reg?"Account aanmaken":reset?"Wachtwoord vergeten":"Inloggen"}</h2>
+    <p>${reg?"Gebruik het e-mailadres dat de beheerder heeft toegevoegd.":reset?"Je krijgt een mail met een link om een nieuw wachtwoord te kiezen.":"Log in om het logboek te openen."}</p>
+    <form id="aForm" style="display:flex;flex-direction:column;gap:12px">
+      <div class="field"><label for="aEmail">E-mailadres</label><div class="inp"><input id="aEmail" type="email" autocomplete="email" required></div></div>
+      ${reset?"":`<div class="field"><label for="aPw">Wachtwoord${reg?" (minimaal 6 tekens)":""}</label><div class="inp"><input id="aPw" type="password" autocomplete="${reg?"new-password":"current-password"}" required minlength="6"></div></div>`}
+      <button class="btn primary" type="submit">${reg?"Account aanmaken":reset?"Stuur link":"Inloggen"}</button>
+    </form>
+    ${authMsg?`<span class="err">${esc(authMsg)}</span>`:""}${authOk?`<span class="ok">${esc(authOk)}</span>`:""}
+    <div class="row">${reg||reset?'<button class="linkbtn" id="aLogin" type="button">Terug naar inloggen</button>':'<button class="linkbtn" id="aReg" type="button">Nog geen account? Aanmaken</button><button class="linkbtn" id="aReset" type="button">Wachtwoord vergeten</button>'}</div>`;
+  const go=v=>{authView=v;authMsg="";authOk="";renderAuth()};
+  const l=$("#aLogin");if(l)l.onclick=()=>go("login");
+  const r=$("#aReg");if(r)r.onclick=()=>go("register");
+  const rs=$("#aReset");if(rs)rs.onclick=()=>go("reset");
+  $("#aForm").onsubmit=async ev=>{ev.preventDefault();authMsg="";authOk="";
+    const email=$("#aEmail").value.trim(), pw=$("#aPw")?.value;
+    try{
+      if(reg){const c=await firebase.auth().createUserWithEmailAndPassword(email,pw);await c.user.sendEmailVerification();}
+      else if(reset){await firebase.auth().sendPasswordResetEmail(email);authOk="Mail verstuurd. Kijk ook bij spam.";renderAuth()}
+      else await firebase.auth().signInWithEmailAndPassword(email,pw);
+    }catch(e){
+      const m={"auth/invalid-credential":"E-mailadres of wachtwoord klopt niet.","auth/wrong-password":"E-mailadres of wachtwoord klopt niet.","auth/user-not-found":"Er is geen account met dit e-mailadres.",
+        "auth/email-already-in-use":"Er bestaat al een account met dit e-mailadres. Log in.","auth/weak-password":"Kies een wachtwoord van minimaal 6 tekens.","auth/invalid-email":"Dit e-mailadres is ongeldig.",
+        "auth/too-many-requests":"Te veel pogingen. Probeer het over een paar minuten opnieuw.","auth/network-request-failed":"Geen internetverbinding."};
+      authMsg=m[e.code]||"Er ging iets mis ("+(e.code||"onbekend")+").";renderAuth();
+    }};
+}
+
+// ---- boot
+let unsubs=[];
+function stopListeners(){unsubs.forEach(f=>{try{f()}catch(e){}});unsubs=[]}
+async function start(user){
+  stopListeners();
+  if(!user){authView=authView==="register"||authView==="reset"?authView:"login";$("#who").hidden=true;return renderAuth()}
+  $("#whoEmail").textContent=user.email;
+  if(!user.emailVerified){authView="verify";return renderAuth()}
+  const email=(user.email||"").toLowerCase();
+  const isAdmin=email===String(window.LAKSTRAAT_BEHEERDER||"").toLowerCase();
+  if(!isAdmin){
+    try{const m=await db.collection("leden").doc(email).get(); if(!m.exists){authView="noaccess";return renderAuth()}}
+    catch(e){authView="noaccess";return renderAuth()}
+  }
+  showOnly("app"); $("#btnUsers").hidden=!isAdmin;
+  render();
+  unsubs.push(db.doc("instellingen/walsen").onSnapshot(s=>{
+    walsen=(s.exists&&Array.isArray(s.data().walsen))?s.data().walsen.map(w=>({id:w.id,naam:w.naam})):[];
+    walsenLoaded=true; if(mode==="dag"&&!dirty)renderSheet();
+  },()=>{$("#offline").hidden=false}));
+  unsubs.push(db.collection("lakdagen").onSnapshot(s=>{
+    $("#offline").hidden=true;
+    dagen=s.docs.map(d=>({id:d.id,...d.data()}));
+    dagenLoaded=true;
+    if(!draft && !selectedId){const f=sorted()[0]; if(f){selectedId=f.id;draft=draftFrom(f)}}
+    else if(draft && draft.id && !dirty && !saving){const rec=dagen.find(r=>r.id===draft.id); if(rec)draft=draftFrom(rec); else if(!dagen.length){draft=null;selectedId=null}}
+    if(mode==="dag" && !dirty)render(); else renderList();
+  },e=>{$("#offline").hidden=false}));
+  if(isAdmin) unsubs.push(db.collection("leden").onSnapshot(s=>{leden=s.docs.map(d=>d.id).sort();if(mode==="users")renderUsers($("#sheet"))},()=>{}));
+}
+
+$("#btnNew").onclick=newDay;
+$("#btnSetup").onclick=openSetup;
+$("#btnExport").onclick=exportCsv;
+$("#btnUsers").onclick=()=>{mode="users";renderUsers($("#sheet"))};
+$("#btnLogout").onclick=()=>{dagen=[];walsen=[];draft=null;selectedId=null;dirty=false;mode="dag";firebase.auth().signOut()};
+
+if(!window.firebase||!window.LAKSTRAAT_FIREBASE){$("#authBox").hidden=false;$("#authBox").innerHTML="<h2>Niet ingesteld</h2><p>De koppeling met de database ontbreekt (config.js).</p>"}
+else{
+  firebase.initializeApp(window.LAKSTRAAT_FIREBASE);
+  db=firebase.firestore();
+  db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+  firebase.auth().onAuthStateChanged(u=>start(u));
+}
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+})();
+</script>
+</body>
+</html>

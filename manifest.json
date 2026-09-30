@@ -1,0 +1,15 @@
+{
+  "name": "Lakstraat Logboek",
+  "short_name": "Lakstraat",
+  "description": "Walsstanden, temperatuur, luchtvochtigheid en bijzonderheden per lakdag.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#EEF1EF",
+  "theme_color": "#1D6A50",
+  "lang": "nl",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}
