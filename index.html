@@ -519,7 +519,7 @@ function newDay(){
   if(dirty && !confirmLeave())return;
   mode="dag"; selectedId="__new"; confirmDel=false; error=""; justSaved=false;
   draft=blankDraft();
-  const mt=matRows.find(m=>m.datum===draft.datum&&m.charge);if(mt)draft.charge={primer:mt.charge.primer||"",grondlak:mt.charge.grondlak||"",deklak:mt.charge.deklak||""};
+  const mt=matRows.find(m=>m.datum===draft.datum&&m.charge&&(m.charge.primer||m.charge.grondlak||m.charge.deklak));if(mt)draft.charge={primer:mt.charge.primer||"",grondlak:mt.charge.grondlak||"",deklak:mt.charge.deklak||""};
   // standen van vorige lakdag voorinvullen
   const prev=sorted()[0];
   if(prev){(prev.walsen||[]).forEach(x=>{const o={naam:x.naam};if(x.stand!=null)o.stand=x.stand;if(x.hoogte!=null)o.hoogte=x.hoogte;if(o.stand!=null||o.hoogte!=null)draft.walsen[x.id]=o})}
@@ -677,7 +677,11 @@ ${BEOORDELINGEN.map(b=>beoordelingHtml(b)).join("")}
     const c=$("#"+b.id+"-clear");if(c)c.onclick=()=>{setV(null);renderSheet()};
     const t=$("#"+b.id+"-opm");if(t)t.oninput=()=>{draft[b.opm]=t.value;touch()};
   });
-  $("#f-datum").onchange=e=>{draft.datum=e.target.value;touch();renderSheetKeepFocus("f-datum")};
+  $("#f-datum").onchange=e=>{draft.datum=e.target.value;
+    const leeg=!draft.charge||["primer","grondlak","deklak"].every(k=>!(draft.charge[k]||"").trim());
+    const mt=matRows.find(m=>m.datum===draft.datum&&m.charge&&(m.charge.primer||m.charge.grondlak||m.charge.deklak));
+    if(leeg&&mt)draft.charge={primer:mt.charge.primer||"",grondlak:mt.charge.grondlak||"",deklak:mt.charge.deklak||""};
+    touch();renderSheetKeepFocus("f-datum")};
   $("#f-temp").oninput=e=>{draft.temperatuur=num(e.target.value);touch()};
   $("#f-rv").oninput=e=>{draft.luchtvochtigheid=num(e.target.value);touch()};
   $("#f-bijz").oninput=e=>{draft.bijzonderheden=e.target.value;touch()};
