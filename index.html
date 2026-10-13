@@ -189,6 +189,10 @@ table.lamp td.c-dat .dtxt{position:absolute;inset:0;display:flex;align-items:cen
 table.lamp td.c-dat .dtxt .ph{color:var(--paper-soft);opacity:.6;font-size:15px}
 table.lamp td.c-dat input{opacity:0;cursor:pointer}
 table.lamp td.c-dat:focus-within{background:var(--paper-hover)}
+table.lamp .l24{display:flex;align-items:center;height:36px}
+table.lamp .l24 input{flex:1;min-width:0}
+table.lamp .l24 .xbtn{width:34px;flex:0 0 34px;border-left:1px dashed var(--paper-soft)!important}
+table.lamp .xbtn[aria-pressed="false"]{color:var(--paper-soft);opacity:.45;font-size:16px}
 table.lamp .xbtn{width:100%;height:36px;border:0;background:transparent;font-size:22px;color:var(--ink);cursor:pointer;font-family:inherit}
 table.lamp .xbtn:hover{background:var(--paper-hover)}
 table.lamp .pct{display:flex;align-items:center;height:36px;padding-right:10px}
@@ -907,10 +911,10 @@ function saveErr(e){return e&&e.code==="permission-denied"?"Je hebt geen rechten
 
 // ===================== LAMPEN =====================
 let lampRows=[], lampEdits={}, lampNew=[], lampDirty=false, lampSaving=false, lampSaved=false, lampErr="", lampDel=null, lampLoaded=false;
-const LAMP_VELDEN=["datum","l12","l16","l24","l28","tijd","sterkte"];
-function blankLampRows(){return [0,1,2].map(()=>({_k:uid(),datum:"",l12:null,l16:null,l24:false,l28:null,tijd:"",sterkte:null}))}
+const LAMP_VELDEN=["datum","l12","l16","l24","l24w","l28","tijd","sterkte"];
+function blankLampRows(){return [0,1,2].map(()=>({_k:uid(),datum:"",l12:null,l16:null,l24:false,l24w:null,l28:null,tijd:"",sterkte:null}))}
 lampNew=blankLampRows();
-function lampHas(r){return !!(r.datum||r.l12!=null||r.l16!=null||r.l24||r.l28!=null||r.tijd||r.sterkte!=null)}
+function lampHas(r){return !!(r.datum||r.l12!=null||r.l16!=null||r.l24||r.l24w!=null||r.l28!=null||r.tijd||r.sterkte!=null)}
 function lampSorted(){return lampRows.slice().sort((a,b)=>(a.datum||"").localeCompare(b.datum||"")||(a.aangemaakt||0)-(b.aangemaakt||0))}
 function lampRowObj(k){
   if(k.startsWith("n:"))return lampNew.find(r=>r._k===k.slice(2));
@@ -926,7 +930,7 @@ function renderLampen(){
     <td class="c-dat"><span class="dtxt">${r.datum?esc(paperDate(r.datum)):'<span class="ph">datum kiezen</span>'}</span><input type="date" data-f="datum" value="${esc(r.datum||"")}" aria-label="Datum"></td>
     <td class="c-num"><input data-f="l12" inputmode="decimal" autocomplete="off" value="${esc(fmt(r.l12))}" aria-label="Lamp 12"></td>
     <td class="c-num"><input data-f="l16" inputmode="decimal" autocomplete="off" value="${esc(fmt(r.l16))}" aria-label="Lamp 16"></td>
-    <td class="c-num"><button type="button" class="xbtn" data-f="l24" aria-pressed="${!!r.l24}" aria-label="Lamp 24 aangekruist">${r.l24?"X":""}</button></td>
+    <td class="c-num"><span class="l24"><input data-f="l24w" inputmode="decimal" autocomplete="off" value="${esc(fmt(r.l24w))}" aria-label="Lamp 24"><button type="button" class="xbtn" data-f="l24" aria-pressed="${!!r.l24}" aria-label="Lamp 24 aangekruist" title="Kruisje aan/uit">${r.l24?"X":"x"}</button></span></td>
     <td class="c-num"><input data-f="l28" inputmode="decimal" autocomplete="off" value="${esc(fmt(r.l28))}" aria-label="Lamp 28 en 29"></td>
     <td class="c-num"><input type="time" data-f="tijd" value="${esc(r.tijd||"")}" aria-label="Tijd"></td>
     <td class="c-num"><span class="pct"><input data-f="sterkte" inputmode="decimal" autocomplete="off" value="${esc(fmt(r.sterkte))}" aria-label="Sterkte lamp 28"><span>%</span></span></td>
@@ -972,7 +976,7 @@ function renderLampen(){
         inp.onblur=()=>{const o=lampRowObj(k);if(o&&o[f]!=null)inp.value=fmt(o[f])};
       }
     });
-    const x=row.querySelector(".xbtn");x.onclick=()=>{const o=lampRowObj(k);o.l24=!o.l24;x.textContent=o.l24?"X":"";x.setAttribute("aria-pressed",String(o.l24));touch();grow()};
+    const x=row.querySelector(".xbtn");x.onclick=()=>{const o=lampRowObj(k);o.l24=!o.l24;x.textContent=o.l24?"X":"x";x.setAttribute("aria-pressed",String(o.l24));touch();grow()};
     const d=row.querySelector("[data-del]");if(d)d.onclick=()=>{lampDel=k;renderLampen()};
     const nee=row.querySelector("[data-nee]");if(nee)nee.onclick=()=>{lampDel=null;renderLampen()};
     const ja=row.querySelector("[data-ja]");if(ja)ja.onclick=async()=>{try{await db.collection("instellingen").doc(k).delete();delete lampEdits[k];lampRows=lampRows.filter(r=>r.id!==k)}catch(e){lampErr="Verwijderen mislukt."}lampDel=null;renderLampen()};
@@ -988,7 +992,7 @@ async function saveLampen(){
   try{
     for(const t of todo){
       const base=t.id?lampRows.find(r=>r.id===t.id):null;
-      const rec={datum:t.r.datum,l12:t.r.l12??null,l16:t.r.l16??null,l24:!!t.r.l24,l28:t.r.l28??null,tijd:t.r.tijd||"",sterkte:t.r.sterkte??null,aangemaakt:base?.aangemaakt||Date.now(),bijgewerkt:Date.now()};
+      const rec={datum:t.r.datum,l12:t.r.l12??null,l16:t.r.l16??null,l24:!!t.r.l24,l24w:t.r.l24w??null,l28:t.r.l28??null,tijd:t.r.tijd||"",sterkte:t.r.sterkte??null,aangemaakt:base?.aangemaakt||Date.now(),bijgewerkt:Date.now()};
       const id=t.id||DOC_ID("lamp_");
       await db.collection("instellingen").doc(id).set(rec);
       lampRows=lampRows.filter(r=>r.id!==id).concat([{id,...rec}]);
@@ -1176,7 +1180,7 @@ function buildWordBody(){
   const lr=lampSorted();
   if(!lr.length)B.push(wP("Nog geen lampregels opgeslagen."));
   else B.push(wTable([["Dag / datum","Lamp 12","Lamp 16","Lamp 24","Lamp 28 = variabel 28 + 29","Tijd","Sterkte lamp 28"],
-    ...lr.map(r=>[paperDate(r.datum),{t:fmt(r.l12),align:"right"},{t:fmt(r.l16),align:"right"},{t:r.l24?"X":"",align:"center"},{t:fmt(r.l28),align:"right"},{t:r.tijd||"",align:"center"},{t:r.sterkte!=null?fmt(r.sterkte)+" %":"",align:"right"}])],
+    ...lr.map(r=>[paperDate(r.datum),{t:fmt(r.l12),align:"right"},{t:fmt(r.l16),align:"right"},{t:[r.l24w!=null?fmt(r.l24w):"",r.l24?"X":""].filter(Boolean).join("  "),align:"center"},{t:fmt(r.l28),align:"right"},{t:r.tijd||"",align:"center"},{t:r.sterkte!=null?fmt(r.sterkte)+" %":"",align:"right"}])],
     [2600,1700,1700,1500,2900,1500,2000],{header:true,sz:20}));
 
   // --- Registratiebladen
