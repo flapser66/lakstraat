@@ -270,13 +270,13 @@ table.scale td.side-r{text-align:left}
       </nav>
       <div class="top-actions" id="topActions">
         <span class="top-actions" id="walsActions">
-          <button class="btn" id="btnExport" type="button">Exporteren naar Excel</button>
           <button class="btn" id="btnSetup" type="button">Walsen instellen</button>
           <button class="btn primary" id="btnNew" type="button">+ Nieuwe lakdag</button>
         </span>
         <span class="top-actions" id="regActions" hidden>
           <button class="btn primary" id="btnRegNew" type="button">+ Nieuw registratieblad</button>
         </span>
+        <button class="btn" id="btnExport" type="button">Downloaden als Word</button>
         <button class="btn" id="btnUsers" type="button" hidden>Gebruikers</button>
       </div>
     </div>
@@ -683,24 +683,6 @@ function renderUsers(el){
   $("#usersClose").onclick=()=>{mode="dag";renderSheet()};
 }
 
-// ---- export naar Excel (CSV met ; voor Nederlandse Excel)
-function exportCsv(){
-  const rows=sorted().slice().reverse();
-  const ids=walsen.map(w=>w.id);
-  rows.forEach(r=>(r.walsen||[]).forEach(x=>{if(!ids.includes(x.id))ids.push(x.id)}));
-  const naam=id=>{const w=walsen.find(w=>w.id===id);if(w)return w.naam;for(const r of rows){const x=(r.walsen||[]).find(x=>x.id===id);if(x)return x.naam}return id};
-  const q=v=>{const s=String(v??"");return /[;"\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
-  const head=["Datum","Temperatuur (°C)","Luchtvochtigheid (%)"];
-  ids.forEach(id=>{head.push(naam(id)+" stand begin",naam(id)+" stand eind",naam(id)+" hoogte begin",naam(id)+" hoogte eind")}); head.push("Bijzonderheden");
-  const lines=[head.map(q).join(";")];
-  rows.forEach(r=>{const l=[r.datum,fmt(r.temperatuur),fmt(r.luchtvochtigheid)];
-    ids.forEach(id=>{const x=(r.walsen||[]).find(x=>x.id===id);l.push(fmt(x?.stand),fmt(x?.eind),fmt(x?.hoogte),fmt(x?.hoogteEind))});
-    l.push(r.bijzonderheden||""); lines.push(l.map(q).join(";"))});
-  const blob=new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});
-  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="lakstraat-logboek-"+today()+".csv";
-  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);
-}
-
 // ---- inloggen
 let authView="login", authMsg="", authOk="";
 function showOnly(which){
@@ -982,6 +964,98 @@ async function saveReg(){
 }
 $("#btnRegNew").onclick=regNew;
 
+// ===================== WORD-EXPORT (.docx, zonder externe bibliotheek) =====================
+const CRC_T=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+function crc32(b){let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=CRC_T[(c^b[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0}
+function zipStore(files){ // files: [{name, text}] -> Uint8Array (zip zonder compressie)
+  const enc=new TextEncoder(), parts=[], central=[]; let off=0;
+  const u16=n=>[n&255,(n>>8)&255], u32=n=>[n&255,(n>>8)&255,(n>>16)&255,(n>>>24)&255];
+  for(const f of files){
+    const name=enc.encode(f.name), data=enc.encode(f.text), crc=crc32(data);
+    const head=new Uint8Array([...u32(0x04034b50),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(crc),...u32(data.length),...u32(data.length),...u16(name.length),...u16(0)]);
+    parts.push(head,name,data);
+    central.push(new Uint8Array([...u32(0x02014b50),...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(crc),...u32(data.length),...u32(data.length),...u16(name.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)]),name);
+    off+=head.length+name.length+data.length;
+  }
+  const cdSize=central.reduce((s,p)=>s+p.length,0);
+  const end=new Uint8Array([...u32(0x06054b50),...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(cdSize),...u32(off),...u16(0)]);
+  const all=[...parts,...central,end], out=new Uint8Array(all.reduce((s,p)=>s+p.length,0)); let p=0; for(const a of all){out.set(a,p);p+=a.length} return out;
+}
+const X=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function wRun(t,o={}){return `<w:r><w:rPr>${o.b?"<w:b/>":""}${o.i?"<w:i/>":""}${o.color?`<w:color w:val="${o.color}"/>`:""}${o.sz?`<w:sz w:val="${o.sz}"/>`:""}</w:rPr><w:t xml:space="preserve">${X(t)}</w:t></w:r>`}
+function wP(content,o={}){const runs=Array.isArray(content)?content.join(""):wRun(content,o);return `<w:p><w:pPr>${o.style?`<w:pStyle w:val="${o.style}"/>`:""}${o.align?`<w:jc w:val="${o.align}"/>`:""}${o.after!=null?`<w:spacing w:after="${o.after}"/>`:""}${o.pageBreak?'<w:pageBreakBefore/>':""}</w:pPr>${runs}</w:p>`}
+function wTable(rows,widths,o={}){ // rows: array of arrays of {t,b,color,align,fill} or string
+  const grid=widths.map(w=>`<w:gridCol w:w="${w}"/>`).join("");
+  const tr=(r,ri)=>`<w:tr>${ri===0&&o.header?'<w:trPr><w:tblHeader/></w:trPr>':""}${r.map((c,ci)=>{const cc=typeof c==="object"&&c?c:{t:c};const fill=cc.fill||(ri===0&&o.header?"E4EBF5":"");
+    return `<w:tc><w:tcPr><w:tcW w:w="${widths[ci]}" w:type="dxa"/>${fill?`<w:shd w:val="clear" w:color="auto" w:fill="${fill}"/>`:""}</w:tcPr>${wP([wRun(cc.t==null?"":cc.t,{b:cc.b||(ri===0&&o.header),color:cc.color,sz:o.sz||18})],{align:cc.align,after:0})}</w:tc>`}).join("")}</w:tr>`;
+  return `<w:tbl><w:tblPr><w:tblStyle w:val="Raster"/><w:tblW w:w="${widths.reduce((a,b)=>a+b,0)}" w:type="dxa"/><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>${grid}</w:tblGrid>${rows.map(tr).join("")}</w:tbl>${wP("",{after:120})}`;
+}
+function docxBlob(bodyXml){
+  const W='xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
+  const files=[
+    {name:"[Content_Types].xml",text:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>`},
+    {name:"_rels/.rels",text:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`},
+    {name:"word/_rels/document.xml.rels",text:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`},
+    {name:"word/styles.xml",text:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles ${W}>
+<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/><w:sz w:val="20"/><w:lang w:val="nl-NL"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="80"/></w:pPr></w:pPrDefault></w:docDefaults>
+<w:style w:type="paragraph" w:default="1" w:styleId="Standaard"><w:name w:val="Normal"/></w:style>
+<w:style w:type="paragraph" w:styleId="Titel"><w:name w:val="Title"/><w:basedOn w:val="Standaard"/><w:pPr><w:spacing w:after="120"/></w:pPr><w:rPr><w:b/><w:color w:val="0E4C92"/><w:sz w:val="40"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:styleId="Kop1"><w:name w:val="heading 1"/><w:basedOn w:val="Standaard"/><w:next w:val="Standaard"/><w:pPr><w:keepNext/><w:spacing w:before="240" w:after="120"/><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:color w:val="0E4C92"/><w:sz w:val="32"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:styleId="Kop2"><w:name w:val="heading 2"/><w:basedOn w:val="Standaard"/><w:next w:val="Standaard"/><w:pPr><w:keepNext/><w:spacing w:before="200" w:after="80"/><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:b/><w:sz w:val="24"/></w:rPr></w:style>
+<w:style w:type="table" w:styleId="Raster"><w:name w:val="Table Grid"/><w:tblPr><w:tblBorders><w:top w:val="single" w:sz="4" w:color="555555"/><w:left w:val="single" w:sz="4" w:color="555555"/><w:bottom w:val="single" w:sz="4" w:color="555555"/><w:right w:val="single" w:sz="4" w:color="555555"/><w:insideH w:val="single" w:sz="4" w:color="555555"/><w:insideV w:val="single" w:sz="4" w:color="555555"/></w:tblBorders><w:tblCellMar><w:left w:w="70" w:type="dxa"/><w:right w:w="70" w:type="dxa"/></w:tblCellMar></w:tblPr></w:style>
+</w:styles>`},
+    {name:"word/document.xml",text:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${W}><w:body>${bodyXml}<w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/><w:pgMar w:top="850" w:right="850" w:bottom="850" w:left="850" w:header="400" w:footer="400" w:gutter="0"/></w:sectPr></w:body></w:document>`}
+  ];
+  return new Blob([zipStore(files)],{type:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+}
+function buildWordBody(){
+  const B=[];
+  B.push(wP("Lakstraat logboek",{style:"Titel"}));
+  B.push(wP([wRun("Houtindustrie Ideaal · gemaakt op "+longDate(today()),{color:"56637A"})],{after:240}));
+
+  // --- Walsen
+  B.push(wP("Walsen (lakdagen)",{style:"Kop1"}));
+  const ld=sorted().slice().reverse();
+  if(!ld.length)B.push(wP("Nog geen lakdagen opgeslagen."));
+  for(const r of ld){
+    B.push(wP(longDate(r.datum).replace(/^./,c=>c.toUpperCase()),{style:"Kop2"}));
+    B.push(wP([wRun("Temperatuur: ",{b:true}),wRun(r.temperatuur!=null?fmt(r.temperatuur)+" °C":"–"),wRun("     Luchtvochtigheid: ",{b:true}),wRun(r.luchtvochtigheid!=null?fmt(r.luchtvochtigheid)+" %":"–")]));
+    const ws=r.walsen||[];
+    if(ws.length) B.push(wTable([["Wals","Stand begin","Stand eind","Hoogte begin","Hoogte eind"],...ws.map(x=>[x.naam,{t:fmt(x.stand),align:"right"},{t:fmt(x.eind),align:"right"},{t:fmt(x.hoogte),align:"right"},{t:fmt(x.hoogteEind),align:"right"}])],[4200,2300,2300,2300,2300],{header:true}));
+    if((r.bijzonderheden||"").trim()){B.push(wP([wRun("Bijzonderheden:",{b:true})],{after:40}));String(r.bijzonderheden).split(/\n/).forEach(l=>B.push(wP(l)))}
+  }
+
+  // --- Lampen
+  B.push(wP("Lampen",{style:"Kop1",pageBreak:true}));
+  const lr=lampSorted();
+  if(!lr.length)B.push(wP("Nog geen lampregels opgeslagen."));
+  else B.push(wTable([["Dag / datum","Lamp 12","Lamp 16","Lamp 24","Lamp 28 = variabel 28 + 29","Tijd","Sterkte lamp 28"],
+    ...lr.map(r=>[paperDate(r.datum),{t:fmt(r.l12),align:"right"},{t:fmt(r.l16),align:"right"},{t:r.l24?"X":"",align:"center"},{t:fmt(r.l28),align:"right"},{t:r.tijd||"",align:"center"},{t:r.sterkte!=null?fmt(r.sterkte)+" %":"",align:"right"}])],
+    [2600,1700,1700,1500,2900,1500,2000],{header:true,sz:20}));
+
+  // --- Registratiebladen
+  B.push(wP("Registratiebladen",{style:"Kop1",pageBreak:true}));
+  const rs=regSorted().slice().reverse();
+  if(!rs.length)B.push(wP("Nog geen registratiebladen opgeslagen."));
+  const schaal=k=>SCHALEN.find(s=>s.k===k);
+  const lab=(k,v)=>{if(v==null)return {t:""};const s=schaal(k);const uit=v<s.mid[0]-1e-9||v>s.mid[1]+1e-9;return {t:v.toFixed(1).replace(".",",")+(uit?" (buiten)":""),align:"right",color:uit?"C0262D":undefined,b:uit}};
+  for(const r of rs){
+    B.push(wP("Registratieblad "+longDate(r.datum),{style:"Kop2"}));
+    B.push(wP([wRun("Kleur RAL ",{b:true}),wRun(r.kleur||"–"),wRun("     Paraaf: ",{b:true}),wRun(r.paraaf||"–"),wRun("     Versienummer 21.1 · Document Nr. 21.17",{color:"56637A"})]));
+    const ms=(r.metingen||[]).map((m,i)=>({...m,nr:i+1})).filter(meetGevuld);
+    if(!ms.length){B.push(wP("Geen metingen ingevuld."));continue}
+    B.push(wTable([["Nr.","Tijdstip","Charge","L","A","B","Glansgraad 60°","Opbr. 10","Opbr. 13","Opbr. 22","Opbr. 25"],
+      ...ms.map(m=>[{t:String(m.nr),align:"center"},{t:m.tijd||"",align:"center"},m.charge||"",lab("L",m.L),lab("a",m.a),lab("b",m.b),{t:fmt(m.glans),align:"right"},{t:fmt(m.o10),align:"right"},{t:fmt(m.o13),align:"right"},{t:fmt(m.o22),align:"right"},{t:fmt(m.o25),align:"right"}])],
+      [700,1200,1800,1500,1500,1500,1700,1300,1300,1300,1300],{header:true}));
+  }
+  B.push(wP([wRun("Opbrengst in gr/m2. \"(buiten)\" betekent dat de waarde buiten het middengebied van het registratieblad valt.",{i:true,color:"56637A",sz:16})]));
+  return B.join("");
+}
+function exportWord(){
+  const blob=docxBlob(buildWordBody());
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="lakstraat-logboek-"+today()+".docx";
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);
+}
 // ---- boot
 let unsubs=[];
 function stopListeners(){unsubs.forEach(f=>{try{f()}catch(e){}});unsubs=[]}
@@ -1022,7 +1096,7 @@ async function start(user){
 
 $("#btnNew").onclick=newDay;
 $("#btnSetup").onclick=openSetup;
-$("#btnExport").onclick=exportCsv;
+$("#btnExport").onclick=exportWord;
 $("#btnUsers").onclick=()=>{if(tab!=="walsen"){setTab("walsen");if(tab!=="walsen")return}mode="users";renderUsers($("#sheet"))};
 $("#btnLogout").onclick=()=>{dagen=[];walsen=[];draft=null;selectedId=null;dirty=false;mode="dag";
   lampRows=[];lampEdits={};lampNew=blankLampRows();lampDirty=false;regSheets=[];regDraft=null;regSel=null;regDirty=false;tab="walsen";
