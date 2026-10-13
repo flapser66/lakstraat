@@ -332,8 +332,12 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .mat-nm b{font-family:var(--f-display);font-size:20px;font-weight:600;line-height:1.1}
 .mat-nm span{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
 .mat-card .hint{font-family:var(--f-body)}
+.maandkiezer{display:grid;grid-template-columns:34px minmax(0,1fr) 34px;gap:4px;padding:10px 8px;border-bottom:1px solid var(--line)}
+.maandkiezer button{border:1px solid var(--line);background:var(--panel);border-radius:6px;height:38px;color:var(--fg)}
+.maandkiezer button:disabled{opacity:.35}
+.maandkiezer select{height:38px;border:1px solid var(--line);border-radius:6px;background:var(--sunk);color:var(--fg);font:inherit;font-size:14px;font-weight:600;padding:0 4px;text-transform:capitalize;min-width:0}
 .mat-tot{padding:12px 14px;border-bottom:1px solid var(--line);background:var(--sunk)}
-.mat-tot-h{font-weight:600;font-size:13px;display:flex;justify-content:space-between;gap:8px;margin-bottom:6px;text-transform:capitalize}
+.mat-tot-h{font-weight:600;font-size:13px;display:flex;justify-content:space-between;gap:8px;margin-bottom:6px}
 .mat-tot-h span{font-weight:400;color:var(--muted);text-transform:none}
 .mat-tot dl{margin:0;display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:13px}
 .mat-tot dt{color:var(--muted)}
@@ -398,6 +402,7 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
   <div class="layout" id="matLayout" hidden>
     <aside class="list" aria-label="Materialen per lakdag">
       <h2><span>Materialen per lakdag</span><span id="matCount">–</span></h2>
+      <div class="maandkiezer" id="matMaandKiezer"></div>
       <div class="mat-tot" id="matTot"></div>
       <ul id="matList"><li class="empty">Laden…</li></ul>
     </aside>
@@ -1404,17 +1409,29 @@ function matOpen(id){if(!matGuard())return;const r=matRows.find(x=>x.id===id);ma
 function matNew(){if(!matGuard())return;matSel="__new";matDraft=matBlank();matDirty=true;matSaved=false;matErr="";matDel=false;renderMatList();renderMatSheet()}
 function matTotalen(maandKey){const t={};MATS.forEach(m=>t[m.k]=0);let n=0;
   matRows.filter(r=>(r.datum||"").slice(0,7)===maandKey).forEach(r=>{n++;MATS.forEach(m=>t[m.k]+=r[m.k]||0)});return {t,n}}
+let matMaand=today().slice(0,7);
+function maandStap(mk,n){const [y,m]=mk.split("-").map(Number);const d=new Date(y,m-1+n,1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")}
+function maandNaam(mk){const d=parseDate(mk+"-01");return MAANDEN[d.getMonth()]+" "+d.getFullYear()}
 function renderMatList(){
-  const ul=$("#matList");$("#matCount").textContent=matLoaded?String(matRows.length):"–";
-  const tot=$("#matTot");
-  if(!matLoaded){ul.innerHTML='<li class="empty">Laden…</li>';tot.innerHTML="";return}
-  const ref=(matDraft&&matDraft.datum)||today(),mk=ref.slice(0,7),d=parseDate(mk+"-01"),T=matTotalen(mk);
-  tot.innerHTML=`<div class="mat-tot-h">Totaal ${MAANDEN[d.getMonth()]} ${d.getFullYear()} <span>${T.n} dag${T.n===1?"":"en"}</span></div>
+  const ul=$("#matList"),tot=$("#matTot"),mkz=$("#matMaandKiezer");
+  if(!matLoaded){ul.innerHTML='<li class="empty">Laden…</li>';tot.innerHTML="";mkz.innerHTML="";$("#matCount").textContent="–";return}
+  const nu=today().slice(0,7);
+  const maanden=[...new Set(matRows.map(r=>(r.datum||"").slice(0,7)).filter(Boolean).concat([nu,matMaand]))].sort().reverse();
+  mkz.innerHTML=`<button type="button" id="mPrev" aria-label="Vorige maand">◀</button>
+    <select id="mSel" aria-label="Kies maand">${maanden.map(k=>`<option value="${k}"${k===matMaand?" selected":""}>${maandNaam(k)}${k===nu?" (nu)":""}</option>`).join("")}</select>
+    <button type="button" id="mNext" aria-label="Volgende maand" ${matMaand>=nu?"disabled":""}>▶</button>`;
+  const ga=k=>{matMaand=k;renderMatList()};
+  $("#mPrev").onclick=()=>ga(maandStap(matMaand,-1));
+  $("#mNext").onclick=()=>{if(matMaand<nu)ga(maandStap(matMaand,1))};
+  $("#mSel").onchange=e=>ga(e.target.value);
+  const T=matTotalen(matMaand);
+  tot.innerHTML=`<div class="mat-tot-h">Totaal ${maandNaam(matMaand)} <span>${T.n} dag${T.n===1?"":"en"}</span></div>
     <dl>${MATS.map(m=>`<dt>${esc(m.naam.replace("Schuurpapier ","Schuurp. "))}</dt><dd>${fmt(T.t[m.k])}</dd>`).join("")}</dl>`;
+  const rows=matSorted().filter(r=>(r.datum||"").slice(0,7)===matMaand);
+  $("#matCount").textContent=String(rows.length);
   let h="";
   if(matSel==="__new")h+=`<li><button type="button" aria-current="true"><span><span class="d">Nieuwe dag</span><br><span class="wd">nog niet opgeslagen</span></span><span class="cond"></span></button></li>`;
-  const rows=matSorted();
-  if(!rows.length&&matSel!=="__new")h+='<li class="empty">Nog niets ingevuld. Klik op <b>+ Materialen invullen</b>.</li>';
+  if(!rows.length&&matSel!=="__new")h+=`<li class="empty">${matMaand===nu?'Deze maand is nog niets ingevuld. Klik op <b>+ Materialen invullen</b>.':`Niets ingevuld in ${maandNaam(matMaand)}.`}</li>`;
   for(const r of rows){const dd=parseDate(r.datum);
     const lak=(r.primer||0)+(r.grondlak||0)+(r.deklak||0),sch=["p500","p220","p150","p100"].reduce((s,k)=>s+(r[k]||0),0);
     h+=`<li><button type="button" data-id="${esc(r.id)}" aria-current="${r.id===matSel}"><span><span class="d">${esc(shortDate(r.datum))}</span><br><span class="wd">${dd?DAGEN[dd.getDay()]:""}</span></span><span class="cond">${fmt(lak)} blik lak<br>${fmt(sch)} schuurpapier</span></button></li>`}
@@ -1466,7 +1483,7 @@ async function saveMat(){
   matSaving=true;matErr="";renderMatSheet();
   try{const rec={datum:r.datum,opmerking:(r.opmerking||"").trim(),bijgewerkt:Date.now()};MATS.forEach(m=>rec[m.k]=r[m.k]??null);
     const id=r.id||DOC_ID("mat_");await db.collection("instellingen").doc(id).set(rec);
-    r.id=id;matSel=id;matRows=matRows.filter(x=>x.id!==id).concat([{id,...rec}]);matDirty=false;matSaved=true}
+    r.id=id;matSel=id;matRows=matRows.filter(x=>x.id!==id).concat([{id,...rec}]);matDirty=false;matSaved=true;if(rec.datum)matMaand=rec.datum.slice(0,7)}
   catch(e){matErr=saveErr(e)}
   matSaving=false;renderMatList();renderMatSheet();
 }
