@@ -466,7 +466,7 @@ let setupDraft=null;
 // ---- beoordelingen (schuifjes 1-5)
 const BEOORDELINGEN=[
   {k:"tevredenheid",id:"f-tev",titel:"Tevredenheid: hoe is de lakdag verlopen?",lo:"slechte dag",hi:"perfecte dag",leeg:"Nog niet ingevuld. Schuif om de dag te beoordelen.",txt:["","Slechte dag","Matige dag","Gemiddelde dag","Goede dag","Perfecte dag"]},
-  {k:"slotgaten",id:"f-slot",titel:"Terugkoppeling kwaliteit afdeling slotgaten",lo:"slecht",hi:"perfect",leeg:"Nog niet ingevuld. Vul in zodra de afdeling slotgaten terugkoppeling heeft gegeven.",txt:["","Slecht","Matig","Gemiddeld","Goed","Perfect"]}];
+  {k:"slotgaten",id:"f-slot",titel:"Terugkoppeling kwaliteit afdeling slotgaten",lo:"slecht",hi:"perfect",leeg:"Nog niet ingevuld. Vul in zodra de afdeling slotgaten terugkoppeling heeft gegeven.",txt:["","Slecht","Matig","Gemiddeld","Goed","Perfect"],opm:"slotOpmerking"}];
 function beoordelingHtml(b){const v=draft[b.k];return `
     <div class="section">
       <h3><label for="${b.id}" style="all:inherit">${b.titel}</label>${v!=null?`<button class="link" type="button" id="${b.id}-clear">Wissen</button>`:""}</h3>
@@ -475,15 +475,16 @@ function beoordelingHtml(b){const v=draft[b.k];return `
         <input type="range" id="${b.id}" min="1" max="5" step="1" value="${v??3}" class="${v==null?"leeg":""}" aria-valuetext="${v!=null?v+" van 5":"niet ingevuld"}">
         <div class="tev-lbl"><span style="left:0;transform:none;text-align:left">1<br>${b.lo}</span><span style="left:25%">2</span><span style="left:50%">3</span><span style="left:75%">4</span><span style="right:0;left:auto;transform:none;text-align:right">5<br>${b.hi}</span></div>
       </div>
+      ${b.opm?`<div class="field" style="margin-top:6px"><label for="${b.id}-opm">Opmerkingen slotgaten</label><textarea id="${b.id}-opm" data-opm="${b.opm}" style="min-height:90px" placeholder="Wat was er goed of mis? Bijv. lak in de slotgaten, ruwe randen, kleurverschil…">${esc(draft[b.opm]||"")}</textarea></div>`:""}
     </div>
 `}
 // ---- draft handling
 function blankDraft(){
-  return {id:null,datum:today(),temperatuur:null,luchtvochtigheid:null,walsen:{},bijzonderheden:"",tevredenheid:null,slotgaten:null,charge:{primer:"",grondlak:"",deklak:""}};
+  return {id:null,datum:today(),temperatuur:null,luchtvochtigheid:null,walsen:{},bijzonderheden:"",tevredenheid:null,slotgaten:null,slotOpmerking:"",charge:{primer:"",grondlak:"",deklak:""}};
 }
 function draftFrom(rec){
   const w={};(rec.walsen||[]).forEach(x=>{const o={naam:x.naam};VELDEN.forEach(f=>{if(x[f]!=null)o[f]=x[f]});w[x.id]=o});
-  return {id:rec.id,datum:rec.datum||"",temperatuur:rec.temperatuur??null,luchtvochtigheid:rec.luchtvochtigheid??null,walsen:w,bijzonderheden:rec.bijzonderheden||"",tevredenheid:rec.tevredenheid??null,slotgaten:rec.slotgaten??null,charge:{primer:rec.charge?.primer||"",grondlak:rec.charge?.grondlak||"",deklak:rec.charge?.deklak||""}};
+  return {id:rec.id,datum:rec.datum||"",temperatuur:rec.temperatuur??null,luchtvochtigheid:rec.luchtvochtigheid??null,walsen:w,bijzonderheden:rec.bijzonderheden||"",tevredenheid:rec.tevredenheid??null,slotgaten:rec.slotgaten??null,slotOpmerking:rec.slotOpmerking||"",charge:{primer:rec.charge?.primer||"",grondlak:rec.charge?.grondlak||"",deklak:rec.charge?.deklak||""}};
 }
 function sorted(){return dagen.slice().sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||(b.bijgewerkt||0)-(a.bijgewerkt||0))}
 function previousOf(d){
@@ -668,6 +669,7 @@ ${BEOORDELINGEN.map(b=>beoordelingHtml(b)).join("")}
     inp.oninput=()=>setV(Number(inp.value));
     inp.onpointerdown=()=>{if(draft[b.k]==null)setTimeout(()=>setV(Number(inp.value)),0)};
     const c=$("#"+b.id+"-clear");if(c)c.onclick=()=>{setV(null);renderSheet()};
+    const t=$("#"+b.id+"-opm");if(t)t.oninput=()=>{draft[b.opm]=t.value;touch()};
   });
   $("#f-datum").onchange=e=>{draft.datum=e.target.value;touch();renderSheetKeepFocus("f-datum")};
   $("#f-temp").oninput=e=>{draft.temperatuur=num(e.target.value);touch()};
@@ -738,7 +740,7 @@ function toRecord(){
   const order=walsen.map(w=>w.id);
   const ids=Object.keys(draft.walsen).sort((a,b)=>{const ia=order.indexOf(a),ib=order.indexOf(b);return (ia<0?999:ia)-(ib<0?999:ib)});
   for(const id of ids){const x=draft.walsen[id];if(x&&VELDEN.some(f=>x[f]!=null)){const cfg=walsen.find(w=>w.id===id);const o={id,naam:cfg?cfg.naam:x.naam};VELDEN.forEach(f=>o[f]=x[f]??null);ws.push(o)}}
-  return {datum:draft.datum,temperatuur:draft.temperatuur,luchtvochtigheid:draft.luchtvochtigheid,walsen:ws,bijzonderheden:draft.bijzonderheden||"",tevredenheid:draft.tevredenheid??null,slotgaten:draft.slotgaten??null,charge:{primer:(draft.charge?.primer||"").trim(),grondlak:(draft.charge?.grondlak||"").trim(),deklak:(draft.charge?.deklak||"").trim()},bijgewerkt:Date.now()};
+  return {datum:draft.datum,temperatuur:draft.temperatuur,luchtvochtigheid:draft.luchtvochtigheid,walsen:ws,bijzonderheden:draft.bijzonderheden||"",tevredenheid:draft.tevredenheid??null,slotgaten:draft.slotgaten??null,slotOpmerking:(draft.slotOpmerking||"").trim(),charge:{primer:(draft.charge?.primer||"").trim(),grondlak:(draft.charge?.grondlak||"").trim(),deklak:(draft.charge?.deklak||"").trim()},bijgewerkt:Date.now()};
 }
 async function save(){
   if(!draft.datum){error="Vul een datum in.";renderSheet();return}
@@ -1197,6 +1199,7 @@ function buildWordBody(){
     const ws=r.walsen||[];
     if(ws.length) B.push(wTable([["Wals","Stand begin","Stand eind","Hoogte begin","Hoogte eind"],...ws.map(x=>[x.naam,{t:fmt(x.stand),align:"right"},{t:fmt(x.eind),align:"right"},{t:fmt(x.hoogte),align:"right"},{t:fmt(x.hoogteEind),align:"right"}])],[4200,2300,2300,2300,2300],{header:true}));
     if(r.charge&&(r.charge.primer||r.charge.grondlak||r.charge.deklak))B.push(wP([wRun("Charge lak: ",{b:true}),wRun(`Primer ${r.charge.primer||"–"} · Grondlak ${r.charge.grondlak||"–"} · Deklak ${r.charge.deklak||"–"}`)]));
+    if((r.slotOpmerking||"").trim()){B.push(wP([wRun("Opmerkingen slotgaten:",{b:true})],{after:40}));String(r.slotOpmerking).split(/\n/).forEach(l=>B.push(wP(l)))}
     if((r.bijzonderheden||"").trim()){B.push(wP([wRun("Bijzonderheden:",{b:true})],{after:40}));String(r.bijzonderheden).split(/\n/).forEach(l=>B.push(wP(l)))}
   }
 
