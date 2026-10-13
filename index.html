@@ -271,6 +271,13 @@ table.scale td.side-r{text-align:left}
 .charges{display:grid;grid-template-columns:repeat(3,minmax(0,200px));gap:12px}
 @media (max-width:560px){.charges{grid-template-columns:minmax(0,1fr)}}
 .charges .inp input{font-family:var(--f-mono);font-size:16px;padding:7px 10px}
+.modal{position:fixed;inset:0;background:rgba(10,20,35,.55);display:grid;place-items:center;padding:16px;z-index:50}
+.modal-box{background:var(--panel);color:var(--fg);border-radius:10px;max-width:460px;width:100%;padding:22px;box-shadow:0 10px 40px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:12px;border-top:5px solid var(--warn)}
+.modal-box h2{margin:0;font-family:var(--f-display);font-size:26px;text-transform:uppercase;line-height:1.1}
+.modal-box p{margin:0}
+.modal-box ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.modal-box .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.list .score.open{background:var(--warn-soft);color:var(--warn)}
 .advies{display:flex;flex-direction:column;gap:10px}
 .adv-scroll{overflow-x:auto}
 .adv-tbl{width:100%;border-collapse:collapse;font-size:14px}
@@ -393,6 +400,7 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
   <div class="notice" id="offline" hidden>Geen verbinding met de database. Controleer je internet en ververs de pagina.</div>
 
   <section class="auth" id="authBox" hidden></section>
+  <div class="modal" id="modal" hidden></div>
 
   <div class="layout" id="appLayout" hidden>
     <aside class="list" aria-label="Lakdagen">
@@ -455,13 +463,27 @@ let dirty=false, saving=false, justSaved=false, confirmDel=false, error="";
 let mode="dag";           // "dag" | "setup"
 let setupDraft=null;
 
+// ---- beoordelingen (schuifjes 1-5)
+const BEOORDELINGEN=[
+  {k:"tevredenheid",id:"f-tev",titel:"Tevredenheid: hoe is de lakdag verlopen?",lo:"slechte dag",hi:"perfecte dag",leeg:"Nog niet ingevuld. Schuif om de dag te beoordelen.",txt:["","Slechte dag","Matige dag","Gemiddelde dag","Goede dag","Perfecte dag"]},
+  {k:"slotgaten",id:"f-slot",titel:"Terugkoppeling kwaliteit afdeling slotgaten",lo:"slecht",hi:"perfect",leeg:"Nog niet ingevuld. Vul in zodra de afdeling slotgaten terugkoppeling heeft gegeven.",txt:["","Slecht","Matig","Gemiddeld","Goed","Perfect"]}];
+function beoordelingHtml(b){const v=draft[b.k];return `
+    <div class="section">
+      <h3><label for="${b.id}" style="all:inherit">${b.titel}</label>${v!=null?`<button class="link" type="button" id="${b.id}-clear">Wissen</button>`:""}</h3>
+      <div class="tev">
+        <span class="tev-out ${v!=null?"s"+v:""}" id="${b.id}-out">${v!=null?v+" van 5 · "+b.txt[v]:b.leeg}</span>
+        <input type="range" id="${b.id}" min="1" max="5" step="1" value="${v??3}" class="${v==null?"leeg":""}" aria-valuetext="${v!=null?v+" van 5":"niet ingevuld"}">
+        <div class="tev-lbl"><span style="left:0;transform:none;text-align:left">1<br>${b.lo}</span><span style="left:25%">2</span><span style="left:50%">3</span><span style="left:75%">4</span><span style="right:0;left:auto;transform:none;text-align:right">5<br>${b.hi}</span></div>
+      </div>
+    </div>
+`}
 // ---- draft handling
 function blankDraft(){
-  return {id:null,datum:today(),temperatuur:null,luchtvochtigheid:null,walsen:{},bijzonderheden:"",tevredenheid:null,charge:{primer:"",grondlak:"",deklak:""}};
+  return {id:null,datum:today(),temperatuur:null,luchtvochtigheid:null,walsen:{},bijzonderheden:"",tevredenheid:null,slotgaten:null,charge:{primer:"",grondlak:"",deklak:""}};
 }
 function draftFrom(rec){
   const w={};(rec.walsen||[]).forEach(x=>{const o={naam:x.naam};VELDEN.forEach(f=>{if(x[f]!=null)o[f]=x[f]});w[x.id]=o});
-  return {id:rec.id,datum:rec.datum||"",temperatuur:rec.temperatuur??null,luchtvochtigheid:rec.luchtvochtigheid??null,walsen:w,bijzonderheden:rec.bijzonderheden||"",tevredenheid:rec.tevredenheid??null,charge:{primer:rec.charge?.primer||"",grondlak:rec.charge?.grondlak||"",deklak:rec.charge?.deklak||""}};
+  return {id:rec.id,datum:rec.datum||"",temperatuur:rec.temperatuur??null,luchtvochtigheid:rec.luchtvochtigheid??null,walsen:w,bijzonderheden:rec.bijzonderheden||"",tevredenheid:rec.tevredenheid??null,slotgaten:rec.slotgaten??null,charge:{primer:rec.charge?.primer||"",grondlak:rec.charge?.grondlak||"",deklak:rec.charge?.deklak||""}};
 }
 function sorted(){return dagen.slice().sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||(b.bijgewerkt||0)-(a.bijgewerkt||0))}
 function previousOf(d){
@@ -514,7 +536,7 @@ function renderList(){
     html+=`<li><button type="button" data-id="${esc(r.id)}" aria-current="${r.id===selectedId}">
       <span><span class="d">${esc(shortDate(r.datum))}</span><br><span class="wd">${d?DAGEN[d.getDay()]:""}</span></span>
       <span class="cond">${esc(c)}</span>
-      ${r.tevredenheid!=null||(r.bijzonderheden&&r.bijzonderheden.trim())?`<span class="flag">${r.tevredenheid!=null?`<span class="score s${r.tevredenheid}">${r.tevredenheid}/5</span> `:""}${r.bijzonderheden&&r.bijzonderheden.trim()?"● bijzonderheden":""}</span>`:""}
+      ${r.tevredenheid!=null||slotOpen(r)||(r.bijzonderheden&&r.bijzonderheden.trim())?`<span class="flag">${r.tevredenheid!=null?`<span class="score s${r.tevredenheid}">${r.tevredenheid}/5</span> `:""}${slotOpen(r)?'<span class="score open">slotgaten open</span> ':""}${r.bijzonderheden&&r.bijzonderheden.trim()?"● bijzonderheden":""}</span>`:""}
     </button></li>`;
   }
   ul.innerHTML=html;
@@ -625,15 +647,7 @@ function renderSheet(){
       <textarea id="f-bijz" placeholder="Bijv. storing, andere laksoort, nieuwe rol geplaatst, afwijkende houtsoort, klachten over de afwerking…">${esc(draft.bijzonderheden)}</textarea>
     </div>
 
-    <div class="section">
-      <h3><label for="f-tev" style="all:inherit">Tevredenheid: hoe is de lakdag verlopen?</label>${draft.tevredenheid!=null?'<button class="link" type="button" id="tevClear">Wissen</button>':""}</h3>
-      <div class="tev">
-        <span class="tev-out ${draft.tevredenheid!=null?"s"+draft.tevredenheid:""}" id="tevOut">${draft.tevredenheid!=null?draft.tevredenheid+" van 5 · "+SCORE_TXT[draft.tevredenheid]:"Nog niet ingevuld. Schuif om de dag te beoordelen."}</span>
-        <input type="range" id="f-tev" min="1" max="5" step="1" value="${draft.tevredenheid??3}" class="${draft.tevredenheid==null?"leeg":""}" aria-valuetext="${draft.tevredenheid!=null?draft.tevredenheid+" van 5":"niet ingevuld"}">
-        <div class="tev-lbl"><span style="left:0;transform:none;text-align:left">1<br>slechte dag</span><span style="left:25%">2</span><span style="left:50%">3</span><span style="left:75%">4</span><span style="right:0;left:auto;transform:none;text-align:right">5<br>perfecte dag</span></div>
-      </div>
-    </div>
-
+${BEOORDELINGEN.map(b=>beoordelingHtml(b)).join("")}
     <div class="foot">
       <div class="grp">
         ${confirmDel
@@ -649,11 +663,12 @@ function renderSheet(){
 
   // wiring
   const touch=()=>{if(!dirty){dirty=true;justSaved=false;refreshHead()} else refreshHead();renderAdvies()};
-  const tev=$("#f-tev");
-  const setTev=v=>{draft.tevredenheid=v;tev.classList.toggle("leeg",v==null);const o=$("#tevOut");o.className="tev-out"+(v!=null?" s"+v:"");o.textContent=v!=null?v+" van 5 · "+SCORE_TXT[v]:"Nog niet ingevuld. Schuif om de dag te beoordelen.";tev.setAttribute("aria-valuetext",v!=null?v+" van 5":"niet ingevuld");touch()};
-  tev.oninput=()=>setTev(Number(tev.value));
-  tev.onpointerdown=()=>{if(draft.tevredenheid==null)setTimeout(()=>setTev(Number(tev.value)),0)};
-  const tc=$("#tevClear");if(tc)tc.onclick=()=>{setTev(null);renderSheet()};
+  BEOORDELINGEN.forEach(b=>{const inp=$("#"+b.id);
+    const setV=v=>{draft[b.k]=v;inp.classList.toggle("leeg",v==null);const o=$("#"+b.id+"-out");o.className="tev-out"+(v!=null?" s"+v:"");o.textContent=v!=null?v+" van 5 · "+b.txt[v]:b.leeg;inp.setAttribute("aria-valuetext",v!=null?v+" van 5":"niet ingevuld");touch()};
+    inp.oninput=()=>setV(Number(inp.value));
+    inp.onpointerdown=()=>{if(draft[b.k]==null)setTimeout(()=>setV(Number(inp.value)),0)};
+    const c=$("#"+b.id+"-clear");if(c)c.onclick=()=>{setV(null);renderSheet()};
+  });
   $("#f-datum").onchange=e=>{draft.datum=e.target.value;touch();renderSheetKeepFocus("f-datum")};
   $("#f-temp").oninput=e=>{draft.temperatuur=num(e.target.value);touch()};
   $("#f-rv").oninput=e=>{draft.luchtvochtigheid=num(e.target.value);touch()};
@@ -723,7 +738,7 @@ function toRecord(){
   const order=walsen.map(w=>w.id);
   const ids=Object.keys(draft.walsen).sort((a,b)=>{const ia=order.indexOf(a),ib=order.indexOf(b);return (ia<0?999:ia)-(ib<0?999:ib)});
   for(const id of ids){const x=draft.walsen[id];if(x&&VELDEN.some(f=>x[f]!=null)){const cfg=walsen.find(w=>w.id===id);const o={id,naam:cfg?cfg.naam:x.naam};VELDEN.forEach(f=>o[f]=x[f]??null);ws.push(o)}}
-  return {datum:draft.datum,temperatuur:draft.temperatuur,luchtvochtigheid:draft.luchtvochtigheid,walsen:ws,bijzonderheden:draft.bijzonderheden||"",tevredenheid:draft.tevredenheid??null,charge:{primer:(draft.charge?.primer||"").trim(),grondlak:(draft.charge?.grondlak||"").trim(),deklak:(draft.charge?.deklak||"").trim()},bijgewerkt:Date.now()};
+  return {datum:draft.datum,temperatuur:draft.temperatuur,luchtvochtigheid:draft.luchtvochtigheid,walsen:ws,bijzonderheden:draft.bijzonderheden||"",tevredenheid:draft.tevredenheid??null,slotgaten:draft.slotgaten??null,charge:{primer:(draft.charge?.primer||"").trim(),grondlak:(draft.charge?.grondlak||"").trim(),deklak:(draft.charge?.deklak||"").trim()},bijgewerkt:Date.now()};
 }
 async function save(){
   if(!draft.datum){error="Vul een datum in.";renderSheet();return}
@@ -1178,7 +1193,7 @@ function buildWordBody(){
   if(!ld.length)B.push(wP("Nog geen lakdagen opgeslagen."));
   for(const r of ld){
     B.push(wP(longDate(r.datum).replace(/^./,c=>c.toUpperCase()),{style:"Kop2"}));
-    B.push(wP([wRun("Temperatuur: ",{b:true}),wRun(r.temperatuur!=null?fmt(r.temperatuur)+" °C":"–"),wRun("     Luchtvochtigheid: ",{b:true}),wRun(r.luchtvochtigheid!=null?fmt(r.luchtvochtigheid)+" %":"–"),wRun("     Tevredenheid: ",{b:true}),wRun(r.tevredenheid!=null?r.tevredenheid+"/5 ("+SCORE_TXT[r.tevredenheid]+")":"–")]));
+    B.push(wP([wRun("Temperatuur: ",{b:true}),wRun(r.temperatuur!=null?fmt(r.temperatuur)+" °C":"–"),wRun("     Luchtvochtigheid: ",{b:true}),wRun(r.luchtvochtigheid!=null?fmt(r.luchtvochtigheid)+" %":"–"),wRun("     Tevredenheid: ",{b:true}),wRun(r.tevredenheid!=null?r.tevredenheid+"/5 ("+SCORE_TXT[r.tevredenheid]+")":"–"),wRun("     Slotgaten: ",{b:true}),wRun(r.slotgaten!=null?r.slotgaten+"/5 ("+BEOORDELINGEN[1].txt[r.slotgaten]+")":"–")]));
     const ws=r.walsen||[];
     if(ws.length) B.push(wTable([["Wals","Stand begin","Stand eind","Hoogte begin","Hoogte eind"],...ws.map(x=>[x.naam,{t:fmt(x.stand),align:"right"},{t:fmt(x.eind),align:"right"},{t:fmt(x.hoogte),align:"right"},{t:fmt(x.hoogteEind),align:"right"}])],[4200,2300,2300,2300,2300],{header:true}));
     if(r.charge&&(r.charge.primer||r.charge.grondlak||r.charge.deklak))B.push(wP([wRun("Charge lak: ",{b:true}),wRun(`Primer ${r.charge.primer||"–"} · Grondlak ${r.charge.grondlak||"–"} · Deklak ${r.charge.deklak||"–"}`)]));
@@ -1502,6 +1517,34 @@ async function saveMat(){
   matSaving=false;renderMatList();renderMatSheet();
 }
 $("#btnMatNew").onclick=matNew;
+// ===================== HERINNERING SLOTGATEN =====================
+const SLOT_START="2026-10-13";          // lakdagen vanaf deze datum tellen mee
+const SLOT_DAGEN=7;
+function dagenGeleden(s){const d=parseDate(s);if(!d)return 0;const t=parseDate(today());return Math.round((t-d)/864e5)}
+function slotOpen(r){return r.slotgaten==null&&!!r.datum&&r.datum>=SLOT_START&&dagenGeleden(r.datum)>=SLOT_DAGEN}
+let slotGetoond=false;
+function slotHerinnering(){
+  if(slotGetoond)return;
+  try{if(sessionStorage.getItem("slotHerinnerd")===today())return}catch(e){}
+  const open=dagen.filter(slotOpen).sort((a,b)=>(a.datum||"").localeCompare(b.datum||""));
+  if(!open.length)return;
+  slotGetoond=true;
+  const m=$("#modal");
+  m.innerHTML=`<div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modalT">
+    <h2 id="modalT">Terugkoppeling slotgaten invullen</h2>
+    <p>Bij ${open.length===1?"deze lakdag":"deze "+open.length+" lakdagen"} is na een week nog geen terugkoppeling van de afdeling slotgaten ingevuld:</p>
+    <ul>${open.slice(0,6).map(r=>`<li><button type="button" class="linkbtn" data-open="${esc(r.id)}">${esc(longDate(r.datum))}</button> <span class="hint">(${dagenGeleden(r.datum)} dagen geleden)</span></li>`).join("")}${open.length>6?`<li class="hint">en nog ${open.length-6} andere</li>`:""}</ul>
+    <div class="row"><button class="btn primary" type="button" id="modalGo">Nu invullen</button><button class="btn" type="button" id="modalLater">Later</button></div>
+  </div>`;
+  m.hidden=false;
+  const sluit=()=>{m.hidden=true;m.innerHTML="";try{sessionStorage.setItem("slotHerinnerd",today())}catch(e){}};
+  const ga=id=>{sluit();if(tab!=="walsen"){setTab("walsen");if(tab!=="walsen")return}select(id);setTimeout(()=>{const el=$("#f-slot");if(el)el.scrollIntoView({block:"center"})},50)};
+  $("#modalGo").onclick=()=>ga(open[0].id);
+  $("#modalLater").onclick=sluit;
+  m.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>ga(b.dataset.open));
+  m.onclick=e=>{if(e.target===m)sluit()};
+  $("#modalGo").focus();
+}
 // ---- boot
 let unsubs=[];
 function stopListeners(){unsubs.forEach(f=>{try{f()}catch(e){}});unsubs=[]}
@@ -1528,6 +1571,7 @@ async function start(user){
     dagenLoaded=true;
     if(draft && draft.id && !dirty && !saving){const rec=dagen.find(r=>r.id===draft.id); if(rec)draft=draftFrom(rec); else if(!dagen.length){draft=null;selectedId=null}}
     if(mode==="dag" && !dirty)render(); else renderList();
+    if(!s.metadata||!s.metadata.fromCache)slotHerinnering();
   },e=>{$("#offline").hidden=false}));
   unsubs.push(db.collection("instellingen").onSnapshot(s=>{
     const docs=s.docs.map(d=>({id:d.id,...d.data()}));
