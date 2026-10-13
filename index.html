@@ -338,8 +338,9 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .mat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
 .mat-grid.drie{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media (max-width:700px){.mat-grid.drie{grid-template-columns:minmax(0,1fr)}}
-.mat-grid.vier{grid-template-columns:repeat(4,minmax(0,1fr))}
-@media (max-width:1000px){.mat-grid.vier{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.mat-grid.vier{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media (max-width:1100px){.mat-grid.vier{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:760px){.mat-grid.vier{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:480px){.mat-grid.vier{grid-template-columns:minmax(0,1fr)}}
 .mat-card{border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px}
 .mat-nm{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
@@ -1230,10 +1231,10 @@ function buildWordBody(){
   const mr=matSorted().slice().reverse();
   if(!mr.length)B.push(wP("Nog geen materialen ingevuld."));
   else{
-    B.push(wTable([["Datum","Primer (blik 25 kg)","Grondlak (blik 30 kg)","Deklak (blik 30 kg)","P500","P220","P150","P100","Opmerking"],...mr.map(r=>[paperDate(r.datum),...MATS.map(m=>({t:fmt(r[m.k]),align:"right"})),r.opmerking||""])],[1400,1700,1800,1800,950,950,950,950,4600],{header:true}));
+    B.push(wTable([["Datum","Primer (blik 25 kg)","Grondlak (blik 30 kg)","Deklak (blik 30 kg)","P500","P360","P220","P150","P100","Opmerking"],...mr.map(r=>[paperDate(r.datum),...MATS.map(m=>({t:fmt(r[m.k]),align:"right"})),r.opmerking||""])],[1400,1700,1800,1800,900,900,900,900,900,4000],{header:true}));
     const maanden=[...new Set(mr.map(r=>(r.datum||"").slice(0,7)).filter(Boolean))];
     B.push(wP("Totaal per maand",{style:"Kop2"}));
-    B.push(wTable([["Maand","Dagen","Primer","Grondlak","Deklak","P500","P220","P150","P100"],...maanden.map(k=>{const T=matTotalen(k),d=parseDate(k+"-01");return [MAANDEN[d.getMonth()]+" "+d.getFullYear(),{t:String(T.n),align:"right"},...MATS.map(m=>({t:fmt(T.t[m.k]),align:"right"}))]})],[2300,900,1500,1500,1500,1250,1250,1250,1250],{header:true}));
+    B.push(wTable([["Maand","Dagen","Primer","Grondlak","Deklak","P500","P360","P220","P150","P100"],...maanden.map(k=>{const T=matTotalen(k),d=parseDate(k+"-01");return [MAANDEN[d.getMonth()]+" "+d.getFullYear(),{t:String(T.n),align:"right"},...MATS.map(m=>({t:fmt(T.t[m.k]),align:"right"}))]})],[2300,900,1500,1500,1500,1050,1050,1050,1050,1050],{header:true}));
   }
   B.push(wP("Storingen",{style:"Kop1",pageBreak:true}));
   const st=stSorted();
@@ -1428,6 +1429,7 @@ const MATS=[
   {k:"grondlak",naam:"Grondlak",sub:"blik 30 kg",eenheid:"blik",meer:"blikken",stap:0.5,groep:"lak"},
   {k:"deklak",naam:"Deklak",sub:"blik 30 kg",eenheid:"blik",meer:"blikken",stap:0.5,groep:"lak"},
   {k:"p500",naam:"Schuurpapier P500",sub:"",eenheid:"",meer:"",stap:1,groep:"schuur"},
+  {k:"p360",naam:"Schuurpapier P360",sub:"",eenheid:"",meer:"",stap:1,groep:"schuur"},
   {k:"p220",naam:"Schuurpapier P220",sub:"",eenheid:"",meer:"",stap:1,groep:"schuur"},
   {k:"p150",naam:"Schuurpapier P150",sub:"",eenheid:"",meer:"",stap:1,groep:"schuur"},
   {k:"p100",naam:"Schuurpapier P100",sub:"",eenheid:"",meer:"",stap:1,groep:"schuur"}];
@@ -1465,7 +1467,7 @@ function renderMatList(){
   if(matSel==="__new")h+=`<li><button type="button" aria-current="true"><span><span class="d">Nieuwe dag</span><br><span class="wd">nog niet opgeslagen</span></span><span class="cond"></span></button></li>`;
   if(!rows.length&&matSel!=="__new")h+=`<li class="empty">${matMaand===nu?'Deze maand is nog niets ingevuld. Klik op <b>+ Materialen invullen</b>.':`Niets ingevuld in ${maandNaam(matMaand)}.`}</li>`;
   for(const r of rows){const dd=parseDate(r.datum);
-    const lak=(r.primer||0)+(r.grondlak||0)+(r.deklak||0),sch=["p500","p220","p150","p100"].reduce((s,k)=>s+(r[k]||0),0);
+    const lak=(r.primer||0)+(r.grondlak||0)+(r.deklak||0),sch=MATS.filter(m=>m.groep==="schuur").map(m=>m.k).reduce((s,k)=>s+(r[k]||0),0);
     h+=`<li><button type="button" data-id="${esc(r.id)}" aria-current="${r.id===matSel}"><span><span class="d">${esc(shortDate(r.datum))}</span><br><span class="wd">${dd?DAGEN[dd.getDay()]:""}</span></span><span class="cond">${fmt(lak)} blik lak<br>${fmt(sch)} schuurpapier</span></button></li>`}
   ul.innerHTML=h;ul.querySelectorAll("button[data-id]").forEach(b=>b.onclick=()=>matOpen(b.dataset.id));
 }
