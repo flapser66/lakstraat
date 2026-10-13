@@ -161,6 +161,92 @@ textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 1px var(
 .setup-row .ctl{display:flex;gap:2px}
 .setup-row .ctl button{border:1px solid transparent;background:none;border-radius:4px;padding:4px 8px;color:var(--muted)}
 .setup-row .ctl button:hover{border-color:var(--line);color:var(--fg)}
+/* ---- tabbladen ---- */
+:root{--paper:#FFFFFF;--paper-fg:#111111;--paper-line:#1A1A1A;--paper-soft:#8A8F98;--paper-hover:#EEF2F8;--ink:#1F3C9A;--ink-bad:#C0262D}
+.toolbar{flex-direction:column;align-items:stretch}
+.toolrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;background:var(--sunk);padding:4px;border-radius:8px;border:1px solid var(--line)}
+.tabs button{border:0;background:transparent;padding:8px 16px;border-radius:6px;font-weight:500;color:var(--muted)}
+.tabs button:hover{color:var(--fg)}
+.tabs button[aria-selected="true"]{background:var(--panel);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.sheet.solo{max-width:100%}
+.paper-wrap{padding:18px;overflow-x:auto;background:var(--sunk)}
+.paper{background:var(--paper);color:var(--paper-fg);font-family:Arial,Helvetica,sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.2);padding:28px 26px;width:max-content;margin:0 auto}
+.paper input{font-family:inherit;color:var(--ink);background:transparent;border:0;outline:none}
+.paper input:focus{background:var(--paper-hover)}
+.paper input::placeholder{color:var(--paper-soft);opacity:.6}
+.paper .ink{color:var(--ink)}
+
+/* lampenlijst */
+table.lamp{border-collapse:collapse;font-size:15px}
+table.lamp th{border:2px solid var(--paper-line);font-weight:400;padding:6px 8px;vertical-align:top;height:72px;text-align:center;line-height:1.35}
+table.lamp th.c-dat{text-align:left;width:190px}
+table.lamp th .n{display:block;margin-top:14px}
+table.lamp td{border-top:1px solid var(--paper-line);border-bottom:1px solid var(--paper-line);border-left:2px solid var(--paper-line);border-right:2px solid var(--paper-line);height:36px;padding:0;position:relative}
+table.lamp td.c-num{width:130px}
+table.lamp td input{width:100%;height:36px;padding:0 10px;font-size:20px;font-variant-numeric:tabular-nums}
+table.lamp td.c-dat .dtxt{position:absolute;inset:0;display:flex;align-items:center;padding:0 10px;font-size:20px;color:var(--ink);pointer-events:none;white-space:nowrap}
+table.lamp td.c-dat .dtxt .ph{color:var(--paper-soft);opacity:.6;font-size:15px}
+table.lamp td.c-dat input{opacity:0;cursor:pointer}
+table.lamp td.c-dat:focus-within{background:var(--paper-hover)}
+table.lamp .xbtn{width:100%;height:36px;border:0;background:transparent;font-size:22px;color:var(--ink);cursor:pointer;font-family:inherit}
+table.lamp .xbtn:hover{background:var(--paper-hover)}
+table.lamp .pct{display:flex;align-items:center;height:36px;padding-right:10px}
+table.lamp .pct span{font-size:20px;color:var(--ink)}
+table.lamp .pct input{text-align:right;padding-right:2px}
+table.lamp tr.leeg td{border-top-color:var(--paper-line)}
+table.lamp td.act{border:0;padding-left:6px;white-space:nowrap;width:1%}
+table.lamp td.act button{border:0;background:none;color:var(--paper-soft);font-size:18px;cursor:pointer;padding:4px 6px;border-radius:4px;font-family:inherit}
+table.lamp td.act button:hover{color:var(--ink-bad);background:var(--paper-hover)}
+table.lamp td.act .cf{font-size:13px;color:var(--paper-fg)}
+table.lamp td.act .cf button{font-size:13px;color:var(--ink-bad);font-weight:700}
+
+/* registratieblad */
+.reg{font-size:15px}
+#regLayout{grid-template-columns:210px minmax(0,1fr)}
+@media (max-width:760px){#regLayout{grid-template-columns:minmax(0,1fr)}}
+#regLayout .paper-wrap{padding:12px}
+.paper.reg{padding:22px 18px}
+.reg-head{display:grid;grid-template-columns:96px 300px 240px;gap:24px;align-items:start}
+.reg-logo .emb{width:86px;height:86px;background:#111;display:grid;place-items:center}
+.reg-logo .emb img{width:44px;height:auto}
+.reg-logo span{display:block;width:86px;text-align:center;font-size:14px;margin-top:4px;letter-spacing:.02em}
+.reg-title b{display:block;font-size:17px}
+.reg-title .kl{margin-top:30px;display:flex;align-items:baseline;gap:6px;font-weight:700;font-size:17px}
+.reg-title .kl input{font-weight:700;font-size:18px;width:90px;border-bottom:1px solid var(--paper-soft)}
+.reg-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;font-size:16px;color:#333}
+.reg-meta .gap{grid-column:1/-1;height:22px}
+.reg-meta .full{grid-column:1/-1}
+.reg-sub{display:flex;gap:40px;margin-top:10px;font-size:16px;color:#333;align-items:baseline;flex-wrap:wrap}
+.reg-sub label{display:flex;gap:8px;align-items:baseline}
+.reg-sub input{font-size:18px;border-bottom:1px solid var(--paper-soft);padding:2px 4px}
+.reg-sub input[type=date]{font-size:16px}
+.meet{margin-top:26px;display:grid;grid-template-columns:auto 215px;align-items:end}
+.meet-tijd{font-style:italic;font-size:16px;display:flex;align-items:baseline;gap:10px;padding:0 0 6px 4px}
+.meet-tijd input{font-style:normal;font-size:17px;border-bottom:1px solid var(--paper-soft)}
+.meet-charge{display:flex;align-items:center;gap:14px;justify-content:flex-end;font-size:16px;padding-bottom:6px}
+.meet-charge input{border:1.5px solid var(--paper-line);width:150px;height:28px;padding:0 6px;font-size:17px}
+table.scale{border-collapse:collapse;border:2px solid var(--paper-line);align-self:start}
+table.scale td{padding:0;text-align:center;width:37px;height:30px;font-size:16px;white-space:nowrap}
+table.scale td.side{width:46px}
+table.scale td.nm{text-align:left;padding-left:6px}
+table.scale td.nm.r{text-align:right;padding-right:10px}
+table.scale tr.top td{border-top:2px solid var(--paper-line);vertical-align:bottom}
+table.scale td.g{border-left:2px solid var(--paper-line)}
+table.scale td.side-l{text-align:right}
+table.scale td.side-r{text-align:left}
+.dg{width:32px;height:26px;border:2px solid transparent;border-radius:50%;background:none;font:inherit;color:inherit;cursor:pointer;padding:0}
+.dg:hover{background:var(--paper-hover)}
+.dg.on{border-color:var(--ink);color:var(--ink);font-weight:700}
+.dg.on.uit{border-color:var(--ink-bad);color:var(--ink-bad)}
+.meet-side{align-self:stretch;display:flex;flex-direction:column;padding-left:6px}
+.meet-side .gl{font-size:16px;padding:0 4px}
+.meet-side .gl input{display:block;width:100%;font-size:18px;height:30px;border-bottom:1.5px solid var(--paper-line);padding:0 6px;margin-bottom:6px}
+.meet-side .opb-h{text-align:center;font-size:16px;padding:2px 0 2px}
+.meet-side .opr{display:grid;grid-template-columns:36px minmax(0,1fr) auto;align-items:center;gap:4px;border-bottom:1.5px solid var(--paper-line);height:30px;font-size:16px;padding:0 2px}
+.meet-side .opr:first-of-type{border-top:1.5px solid var(--paper-line)}
+.meet-side .opr input{width:100%;font-size:17px;text-align:right;padding:0 4px}
+.reg-hint{font-size:12px;color:var(--muted);padding:8px 18px 0}
 .err{color:var(--danger);font-size:14px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
@@ -176,13 +262,26 @@ textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 1px var(
   </header>
   <div class="toolbar">
     <div class="who" id="who" hidden><span id="whoEmail"></span><button class="linkbtn" id="btnLogout" type="button">Uitloggen</button></div>
-    <div class="top-actions" id="topActions" hidden>
-      <button class="btn" id="btnExport" type="button">Exporteren naar Excel</button>
-      <button class="btn" id="btnUsers" type="button" hidden>Gebruikers</button>
-      <button class="btn" id="btnSetup" type="button">Walsen instellen</button>
-      <button class="btn primary" id="btnNew" type="button">+ Nieuwe lakdag</button>
+    <div class="toolrow" id="toolRow" hidden>
+      <nav class="tabs" id="tabs" aria-label="Tabbladen">
+        <button type="button" data-tab="walsen" aria-selected="true">Walsen</button>
+        <button type="button" data-tab="lampen" aria-selected="false">Lampen</button>
+        <button type="button" data-tab="registratie" aria-selected="false">Registratieblad</button>
+      </nav>
+      <div class="top-actions" id="topActions">
+        <span class="top-actions" id="walsActions">
+          <button class="btn" id="btnExport" type="button">Exporteren naar Excel</button>
+          <button class="btn" id="btnSetup" type="button">Walsen instellen</button>
+          <button class="btn primary" id="btnNew" type="button">+ Nieuwe lakdag</button>
+        </span>
+        <span class="top-actions" id="regActions" hidden>
+          <button class="btn primary" id="btnRegNew" type="button">+ Nieuw registratieblad</button>
+        </span>
+        <button class="btn" id="btnUsers" type="button" hidden>Gebruikers</button>
+      </div>
     </div>
   </div>
+  <div class="notice" id="leaveWarn" hidden></div>
 
   <div class="notice" id="offline" hidden>Geen verbinding met de database. Controleer je internet en ververs de pagina.</div>
 
@@ -194,6 +293,16 @@ textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 1px var(
       <ul id="list"><li class="empty">Laden…</li></ul>
     </aside>
     <main class="sheet" id="sheet"></main>
+  </div>
+
+  <section id="lampenView" hidden></section>
+
+  <div class="layout" id="regLayout" hidden>
+    <aside class="list" aria-label="Registratiebladen">
+      <h2><span>Registratiebladen</span><span id="regCount">–</span></h2>
+      <ul id="regList"><li class="empty">Laden…</li></ul>
+    </aside>
+    <main class="sheet" id="regSheet"></main>
   </div>
 </div>
 
@@ -595,8 +704,9 @@ function exportCsv(){
 // ---- inloggen
 let authView="login", authMsg="", authOk="";
 function showOnly(which){
-  $("#authBox").hidden=which!=="auth"; $("#appLayout").hidden=which!=="app";
-  $("#topActions").hidden=which!=="app"; $("#who").hidden=which==="auth";
+  $("#authBox").hidden=which!=="auth"; $("#toolRow").hidden=which!=="app"; $("#who").hidden=which==="auth";
+  if(which==="app") renderTabs();
+  else {$("#appLayout").hidden=true;$("#lampenView").hidden=true;$("#regLayout").hidden=true;warn("")}
 }
 function renderAuth(){
   const box=$("#authBox"); showOnly("auth");
@@ -645,6 +755,233 @@ function renderAuth(){
     }};
 }
 
+// ===================== TABBLADEN =====================
+let tab="walsen", tabArmed=false;
+function warn(msg){const n=$("#leaveWarn");if(msg){n.textContent=msg;n.hidden=false}else n.hidden=true}
+function tabDirty(t){return t==="walsen"?dirty:t==="lampen"?lampDirty:regDirty}
+function discardTab(t){
+  if(t==="walsen"){dirty=false;mode="dag";if(draft&&!draft.id){draft=null;selectedId=null}else if(draft){const r=dagen.find(x=>x.id===draft.id);draft=r?draftFrom(r):null}}
+  if(t==="lampen"){lampEdits={};lampNew=blankLampRows();lampDirty=false;lampDel=null}
+  if(t==="registratie"){regDirty=false;regDel=false;if(regDraft&&!regDraft.id){regDraft=null;regSel=null}else if(regDraft){const r=regSheets.find(x=>x.id===regDraft.id);regDraft=r?regFrom(r):null}}
+}
+function setTab(t){
+  if(t===tab)return;
+  if(tabDirty(tab)){
+    if(!tabArmed){tabArmed=true;warn("Je hebt niet-opgeslagen wijzigingen op dit tabblad. Klik nog een keer om ze weg te gooien, of sla eerst op.");setTimeout(()=>{tabArmed=false;warn("")},6000);return}
+    discardTab(tab);
+  }
+  tabArmed=false;warn("");tab=t;renderTabs();
+}
+function renderTabs(){
+  document.querySelectorAll("#tabs [data-tab]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===tab)));
+  $("#appLayout").hidden=tab!=="walsen"; $("#lampenView").hidden=tab!=="lampen"; $("#regLayout").hidden=tab!=="registratie";
+  $("#walsActions").hidden=tab!=="walsen"; $("#regActions").hidden=tab!=="registratie";
+  if(tab==="walsen")render();
+  if(tab==="lampen")renderLampen();
+  if(tab==="registratie"){renderRegList();renderRegSheet()}
+}
+document.querySelectorAll("#tabs [data-tab]").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+const DOC_ID=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const KORT=["Zo","Ma","Di","Wo","Do","Vrij","Za"];
+function paperDate(s){const d=parseDate(s);return d?`${KORT[d.getDay()]} ${d.getDate()}-${d.getMonth()+1}-${String(d.getFullYear()).slice(2)}`:""}
+function statusHtml(saving,dirtyF,saved){return saving?'<span class="status">Opslaan…</span>':dirtyF?'<span class="status dirty">Niet opgeslagen</span>':saved?'<span class="status saved">Opgeslagen</span>':""}
+function saveErr(e){return e&&e.code==="permission-denied"?"Je hebt geen rechten om dit op te slaan.":"Opslaan mislukt. Controleer de verbinding en probeer opnieuw."}
+
+// ===================== LAMPEN =====================
+let lampRows=[], lampEdits={}, lampNew=[], lampDirty=false, lampSaving=false, lampSaved=false, lampErr="", lampDel=null, lampLoaded=false;
+const LAMP_VELDEN=["datum","l12","l16","l24","l28","tijd","sterkte"];
+function blankLampRows(){return [0,1,2].map(()=>({_k:uid(),datum:"",l12:null,l16:null,l24:false,l28:null,tijd:"",sterkte:null}))}
+lampNew=blankLampRows();
+function lampHas(r){return !!(r.datum||r.l12!=null||r.l16!=null||r.l24||r.l28!=null||r.tijd||r.sterkte!=null)}
+function lampSorted(){return lampRows.slice().sort((a,b)=>(a.datum||"").localeCompare(b.datum||"")||(a.aangemaakt||0)-(b.aangemaakt||0))}
+function lampRowObj(k){
+  if(k.startsWith("n:"))return lampNew.find(r=>r._k===k.slice(2));
+  if(!lampEdits[k]){const b=lampRows.find(r=>r.id===k);if(!b)return null;lampEdits[k]={};LAMP_VELDEN.forEach(f=>lampEdits[k][f]=b[f]??(f==="l24"?false:f==="datum"||f==="tijd"?"":null))}
+  return lampEdits[k];
+}
+function renderLampen(){
+  const el=$("#lampenView");
+  const act=document.activeElement, keep=act&&act.dataset&&act.dataset.f?{k:act.closest("tr")?.dataset.k,f:act.dataset.f}:null;
+  const saved=lampSorted().map(r=>({key:r.id,r:{...r,...(lampEdits[r.id]||{})},nieuw:false}));
+  const rows=saved.concat(lampNew.map(r=>({key:"n:"+r._k,r,nieuw:true})));
+  const tr=({key,r,nieuw})=>`<tr data-k="${esc(key)}"${nieuw&&!lampHas(r)?' class="leeg"':""}>
+    <td class="c-dat"><span class="dtxt">${r.datum?esc(paperDate(r.datum)):'<span class="ph">datum kiezen</span>'}</span><input type="date" data-f="datum" value="${esc(r.datum||"")}" aria-label="Datum"></td>
+    <td class="c-num"><input data-f="l12" inputmode="decimal" autocomplete="off" value="${esc(fmt(r.l12))}" aria-label="Lamp 12"></td>
+    <td class="c-num"><input data-f="l16" inputmode="decimal" autocomplete="off" value="${esc(fmt(r.l16))}" aria-label="Lamp 16"></td>
+    <td class="c-num"><button type="button" class="xbtn" data-f="l24" aria-pressed="${!!r.l24}" aria-label="Lamp 24 aangekruist">${r.l24?"X":""}</button></td>
+    <td class="c-num"><input data-f="l28" inputmode="decimal" autocomplete="off" value="${esc(fmt(r.l28))}" aria-label="Lamp 28 en 29"></td>
+    <td class="c-num"><input type="time" data-f="tijd" value="${esc(r.tijd||"")}" aria-label="Tijd"></td>
+    <td class="c-num"><span class="pct"><input data-f="sterkte" inputmode="decimal" autocomplete="off" value="${esc(fmt(r.sterkte))}" aria-label="Sterkte lamp 28"><span>%</span></span></td>
+    <td class="act">${nieuw?"":lampDel===key?`<span class="cf">Regel wissen? <button type="button" data-ja>Ja</button><button type="button" data-nee style="color:var(--paper-fg);font-weight:400">Nee</button></span>`:`<button type="button" data-del aria-label="Regel verwijderen">×</button>`}</td>
+  </tr>`;
+  el.innerHTML=`<main class="sheet solo">
+    <div class="sheet-head"><div><div class="title">Lampen</div><div class="sub">${lampLoaded?`${lampRows.length} regels`:"Laden…"} ${statusHtml(lampSaving,lampDirty,lampSaved)}</div></div></div>
+    <div class="paper-wrap"><div class="paper">
+      <table class="lamp">
+        <thead><tr>
+          <th class="c-dat">Dag / datum</th>
+          <th>lamp<span class="n">12</span></th>
+          <th>lamp<span class="n">16</span></th>
+          <th>lamp<span class="n">24</span></th>
+          <th>Lamp 28 =<br>variabel<br>28 + 29</th>
+          <th>Tijd</th>
+          <th>Sterkte lamp<span class="n">28</span></th>
+          <th style="border:0"></th>
+        </tr></thead>
+        <tbody>${rows.map(tr).join("")}</tbody>
+      </table>
+    </div></div>
+    <div class="foot"><div class="grp">${lampDirty?'<button class="btn" type="button" id="lampUndo">Wijzigingen ongedaan maken</button>':""}</div>
+      <div class="grp">${lampErr?`<span class="err">${esc(lampErr)}</span>`:""}<button class="btn primary" type="button" id="lampSave" ${lampSaving||!lampDirty?"disabled":""}>Opslaan</button></div></div>
+  </main>`;
+  const touch=()=>{lampDirty=true;lampSaved=false;lampErr="";
+    const sub=el.querySelector(".sheet-head .sub");sub.innerHTML=sub.innerHTML.replace(/<span class="status[^"]*">[^<]*<\/span>/,"")+statusHtml(lampSaving,lampDirty,lampSaved);
+    const s=$("#lampSave");if(s)s.disabled=lampSaving||!lampDirty;
+    if(!$("#lampUndo")){const b=document.createElement("button");b.className="btn";b.type="button";b.id="lampUndo";b.textContent="Wijzigingen ongedaan maken";b.onclick=undo;el.querySelector(".foot .grp").appendChild(b)}};
+  const grow=()=>{if(lampNew.every(lampHas)){lampNew.push(...blankLampRows().slice(0,1));renderLampen()}};
+  const undo=()=>{lampEdits={};lampNew=blankLampRows();lampDirty=false;lampErr="";lampDel=null;renderLampen()};
+  el.querySelectorAll("tbody tr").forEach(row=>{
+    const k=row.dataset.k;
+    row.querySelectorAll("input").forEach(inp=>{
+      const f=inp.dataset.f;
+      if(f==="datum"){
+        inp.onclick=()=>{try{inp.showPicker()}catch(e){}};
+        inp.onchange=()=>{const o=lampRowObj(k);o.datum=inp.value;row.querySelector(".dtxt").innerHTML=inp.value?esc(paperDate(inp.value)):'<span class="ph">datum kiezen</span>';row.classList.remove("leeg");touch();grow()};
+      } else if(f==="tijd"){
+        inp.oninput=()=>{const o=lampRowObj(k);o.tijd=inp.value;touch();grow()};
+      } else {
+        inp.oninput=()=>{const o=lampRowObj(k);o[f]=num(inp.value);touch();grow()};
+        inp.onblur=()=>{const o=lampRowObj(k);if(o&&o[f]!=null)inp.value=fmt(o[f])};
+      }
+    });
+    const x=row.querySelector(".xbtn");x.onclick=()=>{const o=lampRowObj(k);o.l24=!o.l24;x.textContent=o.l24?"X":"";x.setAttribute("aria-pressed",String(o.l24));touch();grow()};
+    const d=row.querySelector("[data-del]");if(d)d.onclick=()=>{lampDel=k;renderLampen()};
+    const nee=row.querySelector("[data-nee]");if(nee)nee.onclick=()=>{lampDel=null;renderLampen()};
+    const ja=row.querySelector("[data-ja]");if(ja)ja.onclick=async()=>{try{await db.collection("instellingen").doc(k).delete();delete lampEdits[k];lampRows=lampRows.filter(r=>r.id!==k)}catch(e){lampErr="Verwijderen mislukt."}lampDel=null;renderLampen()};
+  });
+  const u=$("#lampUndo");if(u)u.onclick=undo;
+  $("#lampSave").onclick=saveLampen;
+  if(keep&&keep.k){const t=el.querySelector(`tr[data-k="${CSS.escape(keep.k)}"] [data-f="${keep.f}"]`);if(t)t.focus()}
+}
+async function saveLampen(){
+  const todo=[...Object.entries(lampEdits).map(([id,r])=>({id,r})),...lampNew.filter(lampHas).map(r=>({id:null,r}))];
+  if(todo.some(t=>!t.r.datum)){lampErr="Vul bij elke regel een datum in.";return renderLampen()}
+  lampSaving=true;lampErr="";renderLampen();
+  try{
+    for(const t of todo){
+      const base=t.id?lampRows.find(r=>r.id===t.id):null;
+      const rec={datum:t.r.datum,l12:t.r.l12??null,l16:t.r.l16??null,l24:!!t.r.l24,l28:t.r.l28??null,tijd:t.r.tijd||"",sterkte:t.r.sterkte??null,aangemaakt:base?.aangemaakt||Date.now(),bijgewerkt:Date.now()};
+      const id=t.id||DOC_ID("lamp_");
+      await db.collection("instellingen").doc(id).set(rec);
+      lampRows=lampRows.filter(r=>r.id!==id).concat([{id,...rec}]);
+    }
+    lampEdits={};lampNew=blankLampRows();lampDirty=false;lampSaved=true;
+  }catch(e){lampErr=saveErr(e)}
+  lampSaving=false;renderLampen();
+}
+
+// ===================== REGISTRATIEBLAD =====================
+let regSheets=[], regSel=null, regDraft=null, regDirty=false, regSaving=false, regSaved=false, regErr="", regDel=false, regArmed=false, regLoaded=false;
+const SCHALEN=[
+  {k:"L",links:"L. Zwart",rechts:"Wit",lo:[92.6,92.7],mid:[92.8,93.8],hi:[93.9,94.0]},
+  {k:"a",links:"A. Groen",rechts:"Rood",lo:[-1.4,-1.3],mid:[-1.2,-0.2],hi:[-0.1,0.0]},
+  {k:"b",links:"B. Blauw",rechts:"Geel",lo:[5.3,5.4],mid:[5.5,6.5],hi:[6.6,6.7]}];
+function reeks(a,b){const o=[];for(let i=Math.round(a*10);i<=Math.round(b*10);i++)o.push(i/10);return o}
+const cijfer=v=>String(Math.abs(Math.round(v*10))%10);
+const MEET_LEEG=()=>({tijd:"",charge:"",glans:null,L:null,a:null,b:null,o10:null,o13:null,o22:null,o25:null});
+function regBlank(){return {id:null,datum:today(),kleur:"9010",paraaf:"",metingen:[0,1,2,3,4].map(MEET_LEEG)}}
+function regFrom(r){return {id:r.id,datum:r.datum||"",kleur:r.kleur||"9010",paraaf:r.paraaf||"",metingen:[0,1,2,3,4].map(i=>({...MEET_LEEG(),...((r.metingen||[])[i]||{})}))}}
+function regSorted(){return regSheets.slice().sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||(b.bijgewerkt||0)-(a.bijgewerkt||0))}
+function meetGevuld(m){return !!(m.tijd||m.charge||m.glans!=null||m.L!=null||m.a!=null||m.b!=null||m.o10!=null||m.o13!=null||m.o22!=null||m.o25!=null)}
+function regGuard(){
+  if(!regDirty)return true;
+  if(regArmed){regArmed=false;return true}
+  regArmed=true;regErr="Je hebt niet-opgeslagen wijzigingen. Klik nog eens om ze weg te gooien, of sla eerst op.";renderRegSheet();setTimeout(()=>{regArmed=false},6000);return false;
+}
+function regOpen(id){if(!regGuard())return;const r=regSheets.find(x=>x.id===id);regSel=id;regDraft=r?regFrom(r):null;regDirty=false;regSaved=false;regErr="";regDel=false;renderRegList();renderRegSheet()}
+function regNew(){if(!regGuard())return;regSel="__new";regDraft=regBlank();regDirty=true;regSaved=false;regErr="";regDel=false;renderRegList();renderRegSheet()}
+function renderRegList(){
+  const ul=$("#regList");$("#regCount").textContent=regLoaded?String(regSheets.length):"–";
+  if(!regLoaded){ul.innerHTML='<li class="empty">Laden…</li>';return}
+  let h="";
+  if(regSel==="__new")h+=`<li><button type="button" aria-current="true"><span><span class="d">Nieuw blad</span><br><span class="wd">nog niet opgeslagen</span></span><span class="cond"></span></button></li>`;
+  const rows=regSorted();
+  if(!rows.length&&regSel!=="__new")h+='<li class="empty">Nog geen registratiebladen. Klik op <b>+ Nieuw registratieblad</b>.</li>';
+  for(const r of rows){const d=parseDate(r.datum);const n=(r.metingen||[]).filter(meetGevuld).length;
+    h+=`<li><button type="button" data-id="${esc(r.id)}" aria-current="${r.id===regSel}"><span><span class="d">${esc(shortDate(r.datum))}</span><br><span class="wd">${d?DAGEN[d.getDay()]:""}</span></span><span class="cond">RAL ${esc(r.kleur||"")}<br>${n} meting${n===1?"":"en"}</span></button></li>`}
+  ul.innerHTML=h;ul.querySelectorAll("button[data-id]").forEach(b=>b.onclick=()=>regOpen(b.dataset.id));
+}
+function schaalHtml(i,m){
+  return `<table class="scale">${SCHALEN.map(s=>{
+    const lo=reeks(...s.lo),mid=reeks(...s.mid),hi=reeks(...s.hi);
+    const btn=(v,uit)=>`<button type="button" class="dg${m[s.k]!=null&&Math.abs(m[s.k]-v)<1e-9?" on":""}${uit?" uit":""}" data-m="${i}" data-s="${s.k}" data-v="${v}" aria-pressed="${m[s.k]!=null&&Math.abs(m[s.k]-v)<1e-9}" aria-label="${s.links.split(" ")[0]} ${fmt(v)}">${cijfer(v)}</button>`;
+    const maj=[0,5,10];
+    return `<tr class="top"><td class="nm side" colspan="2">${esc(s.links)}</td>${mid.map((v,j)=>`<td class="${j===0?"g":""}">${maj.includes(j)?v.toFixed(1).replace(".",","):""}</td>`).join("")}<td class="nm r side g" colspan="2">${esc(s.rechts)}</td></tr>
+      <tr>${lo.map(v=>`<td class="side side-l">${btn(v,true)}</td>`).join("")}${mid.map((v,j)=>`<td class="${j===0?"g":""}">${btn(v,false)}</td>`).join("")}${hi.map((v,j)=>`<td class="side side-r${j===0?" g":""}">${btn(v,true)}</td>`).join("")}</tr>`}).join("")}</table>`;
+}
+function renderRegSheet(){
+  const el=$("#regSheet");
+  if(!regDraft){
+    el.innerHTML=`<div class="blank"><strong>${regLoaded?"Kies een registratieblad":"Laden…"}</strong><span>Selecteer links een blad, of begin een nieuw registratieblad.</span><button class="btn primary" type="button" id="regBlankNew">+ Nieuw registratieblad</button></div>`;
+    $("#regBlankNew").onclick=regNew;return;
+  }
+  const r=regDraft,isNew=!r.id;
+  el.innerHTML=`<div class="sheet-head"><div><div class="title">Registratieblad ${esc(r.datum?shortDate(r.datum):"")}</div><div class="sub">${isNew?"Nieuw blad":"RAL "+esc(r.kleur)} ${statusHtml(regSaving,regDirty,regSaved)}</div></div></div>
+  <div class="paper-wrap"><div class="paper reg">
+    <div class="reg-head">
+      <div class="reg-logo"><div class="emb"><img src="logo-embleem.png" alt=""></div><span>IDEAAL</span></div>
+      <div class="reg-title"><b>REGISTRATIEBLAD LAKSTRAAT</b><div class="kl">Kleur RAL <input id="reg-kleur" data-h="kleur" value="${esc(r.kleur)}" aria-label="Kleur RAL"></div></div>
+      <div class="reg-meta"><div>Versienummer</div><div>Document</div><div>21.1</div><div>Nr. 21.17</div><div class="gap"></div><div class="full">Blad 1 van 1</div><div class="full">Datum 19-03-2021</div></div>
+    </div>
+    <div class="reg-sub"><label>Paraaf <input id="reg-paraaf" data-h="paraaf" value="${esc(r.paraaf)}" style="width:120px" aria-label="Paraaf"></label><label>Lakdatum <input id="reg-datum" type="date" data-h="datum" value="${esc(r.datum)}" aria-label="Lakdatum"></label></div>
+    ${r.metingen.map((m,i)=>`<div class="meet">
+      <div class="meet-tijd">tijdstip meting <input type="time" id="m${i}-tijd" data-m="${i}" data-f="tijd" value="${esc(m.tijd)}" aria-label="Tijdstip meting ${i+1}"></div>
+      <div class="meet-charge">Charge <input id="m${i}-charge" data-m="${i}" data-f="charge" value="${esc(m.charge)}" aria-label="Charge meting ${i+1}"></div>
+      ${schaalHtml(i,m)}
+      <div class="meet-side">
+        <div class="gl">Glansgraad bij 60*<input id="m${i}-glans" data-m="${i}" data-f="glans" data-n="1" inputmode="decimal" value="${esc(fmt(m.glans))}" aria-label="Glansgraad meting ${i+1}"></div>
+        <div class="opb-h">opbrengst</div>
+        ${[10,13,22,25].map(n=>`<label class="opr"><span>${n} =</span><input id="m${i}-o${n}" data-m="${i}" data-f="o${n}" data-n="1" inputmode="decimal" value="${esc(fmt(m["o"+n]))}" aria-label="Opbrengst ${n} meting ${i+1}"><span>gr/m2</span></label>`).join("")}
+      </div>
+    </div>`).join("")}
+  </div></div>
+  <div class="reg-hint">Klik op een cijfer om het te omcirkelen. Klik nog eens om het weg te halen. Een rode cirkel valt buiten het middengebied.</div>
+  <div class="foot">
+    <div class="grp">${regDel?`<span class="confirm">Dit blad ${isNew?"weggooien":"verwijderen"}? <button class="btn danger-solid" type="button" id="regDelYes">Ja</button><button class="btn" type="button" id="regDelNo">Annuleren</button></span>`:`<button class="btn danger" type="button" id="regDel">${isNew?"Weggooien":"Verwijderen"}</button>`}</div>
+    <div class="grp">${regErr?`<span class="err">${esc(regErr)}</span>`:""}<button class="btn primary" type="button" id="regSave" ${regSaving||!regDirty?"disabled":""}>Opslaan</button></div>
+  </div>`;
+  const touch=()=>{regDirty=true;regSaved=false;regErr="";const sub=el.querySelector(".sheet-head .sub");sub.innerHTML=sub.innerHTML.replace(/<span class="status[^"]*">[^<]*<\/span>/,"")+statusHtml(regSaving,regDirty,regSaved);const s=$("#regSave");if(s)s.disabled=regSaving||!regDirty};
+  el.querySelectorAll("[data-h]").forEach(inp=>{const f=inp.dataset.h;
+    if(inp.type==="date"){inp.onclick=()=>{try{inp.showPicker()}catch(e){}};inp.onchange=()=>{r.datum=inp.value;touch();el.querySelector(".sheet-head .title").textContent="Registratieblad "+(r.datum?shortDate(r.datum):"")}}
+    else inp.oninput=()=>{r[f]=inp.value;touch()}});
+  el.querySelectorAll("input[data-m]").forEach(inp=>{const m=r.metingen[+inp.dataset.m],f=inp.dataset.f;
+    if(inp.dataset.n){inp.oninput=()=>{m[f]=num(inp.value);touch()};inp.onblur=()=>{if(m[f]!=null)inp.value=fmt(m[f])}}
+    else inp.oninput=()=>{m[f]=inp.value;touch()}});
+  el.querySelectorAll(".dg").forEach(b=>b.onclick=()=>{const m=r.metingen[+b.dataset.m],k=b.dataset.s,v=Number(b.dataset.v);
+    m[k]=(m[k]!=null&&Math.abs(m[k]-v)<1e-9)?null:v;
+    el.querySelectorAll(`.dg[data-m="${b.dataset.m}"][data-s="${k}"]`).forEach(x=>{const on=m[k]!=null&&Math.abs(m[k]-Number(x.dataset.v))<1e-9;x.classList.toggle("on",on);x.setAttribute("aria-pressed",String(on))});
+    touch()});
+  $("#regSave").onclick=saveReg;
+  const d=$("#regDel");if(d)d.onclick=()=>{regDel=true;renderRegSheet()};
+  const dn=$("#regDelNo");if(dn)dn.onclick=()=>{regDel=false;renderRegSheet()};
+  const dy=$("#regDelYes");if(dy)dy.onclick=async()=>{
+    if(r.id){try{await db.collection("instellingen").doc(r.id).delete();regSheets=regSheets.filter(x=>x.id!==r.id)}catch(e){regErr="Verwijderen mislukt.";regDel=false;return renderRegSheet()}}
+    regDraft=null;regSel=null;regDirty=false;regDel=false;renderRegList();renderRegSheet()};
+}
+async function saveReg(){
+  const r=regDraft; if(!r.datum){regErr="Vul een lakdatum in.";return renderRegSheet()}
+  regSaving=true;regErr="";renderRegSheet();
+  try{
+    const rec={datum:r.datum,kleur:(r.kleur||"").trim(),paraaf:(r.paraaf||"").trim(),metingen:r.metingen.map(m=>({...m})),bijgewerkt:Date.now()};
+    const id=r.id||DOC_ID("reg_");
+    await db.collection("instellingen").doc(id).set(rec);
+    r.id=id;regSel=id;regSheets=regSheets.filter(x=>x.id!==id).concat([{id,...rec}]);
+    regDirty=false;regSaved=true;
+  }catch(e){regErr=saveErr(e)}
+  regSaving=false;renderRegList();renderRegSheet();
+}
+$("#btnRegNew").onclick=regNew;
+
 // ---- boot
 let unsubs=[];
 function stopListeners(){unsubs.forEach(f=>{try{f()}catch(e){}});unsubs=[]}
@@ -669,18 +1006,27 @@ async function start(user){
     $("#offline").hidden=true;
     dagen=s.docs.map(d=>({id:d.id,...d.data()}));
     dagenLoaded=true;
-    if(!draft && !selectedId){const f=sorted()[0]; if(f){selectedId=f.id;draft=draftFrom(f)}}
-    else if(draft && draft.id && !dirty && !saving){const rec=dagen.find(r=>r.id===draft.id); if(rec)draft=draftFrom(rec); else if(!dagen.length){draft=null;selectedId=null}}
+    if(draft && draft.id && !dirty && !saving){const rec=dagen.find(r=>r.id===draft.id); if(rec)draft=draftFrom(rec); else if(!dagen.length){draft=null;selectedId=null}}
     if(mode==="dag" && !dirty)render(); else renderList();
   },e=>{$("#offline").hidden=false}));
+  unsubs.push(db.collection("instellingen").onSnapshot(s=>{
+    const docs=s.docs.map(d=>({id:d.id,...d.data()}));
+    lampRows=docs.filter(d=>d.id.startsWith("lamp_")); regSheets=docs.filter(d=>d.id.startsWith("reg_"));
+    lampLoaded=true; regLoaded=true;
+    if(tab==="lampen"&&!lampDirty&&!lampSaving&&!lampDel)renderLampen();
+    if(tab==="registratie"){renderRegList();
+      if(!regDirty&&!regSaving){if(regDraft&&regDraft.id){const r=regSheets.find(x=>x.id===regDraft.id);regDraft=r?regFrom(r):null;if(!r)regSel=null}renderRegSheet()}}
+  },()=>{}));
   if(isAdmin) unsubs.push(db.collection("leden").onSnapshot(s=>{leden=s.docs.map(d=>d.id).sort();if(mode==="users")renderUsers($("#sheet"))},()=>{}));
 }
 
 $("#btnNew").onclick=newDay;
 $("#btnSetup").onclick=openSetup;
 $("#btnExport").onclick=exportCsv;
-$("#btnUsers").onclick=()=>{mode="users";renderUsers($("#sheet"))};
-$("#btnLogout").onclick=()=>{dagen=[];walsen=[];draft=null;selectedId=null;dirty=false;mode="dag";firebase.auth().signOut()};
+$("#btnUsers").onclick=()=>{if(tab!=="walsen"){setTab("walsen");if(tab!=="walsen")return}mode="users";renderUsers($("#sheet"))};
+$("#btnLogout").onclick=()=>{dagen=[];walsen=[];draft=null;selectedId=null;dirty=false;mode="dag";
+  lampRows=[];lampEdits={};lampNew=blankLampRows();lampDirty=false;regSheets=[];regDraft=null;regSel=null;regDirty=false;tab="walsen";
+  firebase.auth().signOut()};
 
 if(!window.firebase||!window.LAKSTRAAT_FIREBASE){$("#authBox").hidden=false;$("#authBox").innerHTML="<h2>Niet ingesteld</h2><p>De koppeling met de database ontbreekt (config.js).</p>"}
 else{
