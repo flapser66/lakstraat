@@ -207,7 +207,7 @@ table.lamp td.act .cf button{font-size:13px;color:var(--ink-bad);font-weight:700
 @media (max-width:760px){#regLayout{grid-template-columns:minmax(0,1fr)}}
 #regLayout .paper-wrap{padding:12px}
 .paper.reg{padding:22px 18px}
-.reg-head{display:grid;grid-template-columns:96px 300px 240px;gap:24px;align-items:start}
+.reg-head{display:grid;grid-template-columns:96px minmax(0,1fr);gap:24px;align-items:start}
 .reg-logo .emb{width:86px;height:86px;background:#111;display:grid;place-items:center}
 .reg-logo .emb img{width:44px;height:auto}
 .reg-logo span{display:block;width:86px;text-align:center;font-size:14px;margin-top:4px;letter-spacing:.02em}
@@ -227,8 +227,25 @@ table.lamp td.act .cf button{font-size:13px;color:var(--ink-bad);font-weight:700
 .meet-charge{display:flex;align-items:center;gap:14px;justify-content:flex-end;font-size:16px;padding-bottom:6px}
 .meet-charge input{border:1.5px solid var(--paper-line);width:150px;height:28px;padding:0 6px;font-size:17px}
 table.scale{border-collapse:collapse;border:2px solid var(--paper-line);align-self:start}
-table.scale td{padding:0;text-align:center;width:37px;height:30px;font-size:16px;white-space:nowrap}
-table.scale td.side{width:46px}
+table.scale td{padding:0;text-align:center;width:40px;height:30px;font-size:16px;white-space:nowrap}
+table.scale td.side{width:40px}
+table.scale tr.sl td{height:46px;vertical-align:top;padding-top:2px}
+.slw{position:relative;height:42px;margin:0 20px}
+.sld{-webkit-appearance:none;appearance:none;position:absolute;left:-10px;width:calc(100% + 20px);top:2px;height:20px;margin:0;background:transparent;cursor:pointer}
+.sld::-webkit-slider-runnable-track{height:4px;background:#C9CED6;border-radius:2px}
+.sld::-moz-range-track{height:4px;background:#C9CED6;border-radius:2px}
+.sld::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--ink);border:2px solid #fff;box-shadow:0 0 0 1px var(--ink);margin-top:-8px}
+.sld::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--ink);border:2px solid #fff;box-shadow:0 0 0 1px var(--ink)}
+.sld.leeg::-webkit-slider-thumb{background:#fff;box-shadow:0 0 0 1px var(--paper-soft)}
+.sld.leeg::-moz-range-thumb{background:#fff;box-shadow:0 0 0 1px var(--paper-soft)}
+.sld.uit::-webkit-slider-thumb{background:var(--ink-bad);box-shadow:0 0 0 1px var(--ink-bad)}
+.sld.uit::-moz-range-thumb{background:var(--ink-bad);box-shadow:0 0 0 1px var(--ink-bad)}
+.bub{position:absolute;top:23px;transform:translateX(-50%);font-size:14px;font-weight:700;color:var(--ink);white-space:nowrap;display:flex;align-items:center;gap:2px}
+.bub.uit{color:var(--ink-bad)}
+.bub button{border:0;background:none;color:var(--paper-soft);font-size:14px;cursor:pointer;padding:0 3px;font-family:inherit}
+.bub button:hover{color:var(--ink-bad)}
+.bub .ph{font-weight:400;color:var(--paper-soft);font-size:12px}
+.meet-side .gl .hoek{display:inline;width:38px;font-size:16px;border-bottom:1px solid var(--paper-soft);height:auto;padding:0 2px;margin:0;text-align:center}
 table.scale td.nm{text-align:left;padding-left:6px}
 table.scale td.nm.r{text-align:right;padding-right:10px}
 table.scale tr.top td{border-top:2px solid var(--paper-line);vertical-align:bottom}
@@ -870,7 +887,7 @@ const SCHALEN=[
   {k:"b",links:"B. Blauw",rechts:"Geel",lo:[5.3,5.4],mid:[5.5,6.5],hi:[6.6,6.7]}];
 function reeks(a,b){const o=[];for(let i=Math.round(a*10);i<=Math.round(b*10);i++)o.push(i/10);return o}
 const cijfer=v=>String(Math.abs(Math.round(v*10))%10);
-const MEET_LEEG=()=>({tijd:"",charge:"",glans:null,L:null,a:null,b:null,o10:null,o13:null,o22:null,o25:null});
+const MEET_LEEG=()=>({tijd:"",charge:"",hoek:60,glans:null,L:null,a:null,b:null,o10:null,o13:null,o22:null,o25:null});
 function regBlank(){return {id:null,datum:today(),kleur:"9010",paraaf:"",metingen:[0,1,2,3,4].map(MEET_LEEG)}}
 function regFrom(r){return {id:r.id,datum:r.datum||"",kleur:r.kleur||"9010",paraaf:r.paraaf||"",metingen:[0,1,2,3,4].map(i=>({...MEET_LEEG(),...((r.metingen||[])[i]||{})}))}}
 function regSorted(){return regSheets.slice().sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||(b.bijgewerkt||0)-(a.bijgewerkt||0))}
@@ -899,7 +916,8 @@ function schaalHtml(i,m){
     const btn=(v,uit)=>`<button type="button" class="dg${m[s.k]!=null&&Math.abs(m[s.k]-v)<1e-9?" on":""}${uit?" uit":""}" data-m="${i}" data-s="${s.k}" data-v="${v}" aria-pressed="${m[s.k]!=null&&Math.abs(m[s.k]-v)<1e-9}" aria-label="${s.links.split(" ")[0]} ${fmt(v)}">${cijfer(v)}</button>`;
     const maj=[0,5,10];
     return `<tr class="top"><td class="nm side" colspan="2">${esc(s.links)}</td>${mid.map((v,j)=>`<td class="${j===0?"g":""}">${maj.includes(j)?v.toFixed(1).replace(".",","):""}</td>`).join("")}<td class="nm r side g" colspan="2">${esc(s.rechts)}</td></tr>
-      <tr>${lo.map(v=>`<td class="side side-l">${btn(v,true)}</td>`).join("")}${mid.map((v,j)=>`<td class="${j===0?"g":""}">${btn(v,false)}</td>`).join("")}${hi.map((v,j)=>`<td class="side side-r${j===0?" g":""}">${btn(v,true)}</td>`).join("")}</tr>`}).join("")}</table>`;
+      <tr>${lo.map(v=>`<td class="side side-l">${btn(v,true)}</td>`).join("")}${mid.map((v,j)=>`<td class="${j===0?"g":""}">${btn(v,false)}</td>`).join("")}${hi.map((v,j)=>`<td class="side side-r${j===0?" g":""}">${btn(v,true)}</td>`).join("")}</tr>
+      <tr class="sl"><td colspan="15"><div class="slw" data-m="${i}" data-s="${s.k}"><input type="range" class="sld" min="${s.lo[0]}" max="${s.hi[1]}" step="0.01" value="${m[s.k]!=null?m[s.k]:(s.mid[0]+s.mid[1])/2}" aria-label="${esc(s.links)} tot ${esc(s.rechts)}, fijn instellen"><span class="bub"></span></div></td></tr>`}).join("")}</table>`;
 }
 function renderRegSheet(){
   const el=$("#regSheet");
@@ -913,7 +931,6 @@ function renderRegSheet(){
     <div class="reg-head">
       <div class="reg-logo"><div class="emb"><img src="logo-embleem.png" alt=""></div><span>IDEAAL</span></div>
       <div class="reg-title"><b>REGISTRATIEBLAD LAKSTRAAT</b><div class="kl">Kleur RAL <input id="reg-kleur" data-h="kleur" value="${esc(r.kleur)}" aria-label="Kleur RAL"></div></div>
-      <div class="reg-meta"><div>Versienummer</div><div>Document</div><div>21.1</div><div>Nr. 21.17</div><div class="gap"></div><div class="full">Blad 1 van 1</div><div class="full">Datum 19-03-2021</div></div>
     </div>
     <div class="reg-sub"><label>Paraaf <input id="reg-paraaf" data-h="paraaf" value="${esc(r.paraaf)}" style="width:120px" aria-label="Paraaf"></label><label>Lakdatum <input id="reg-datum" type="date" data-h="datum" value="${esc(r.datum)}" aria-label="Lakdatum"></label></div>
     ${r.metingen.map((m,i)=>`<div class="meet">
@@ -921,7 +938,7 @@ function renderRegSheet(){
       <div class="meet-charge">Charge <input id="m${i}-charge" data-m="${i}" data-f="charge" value="${esc(m.charge)}" aria-label="Charge meting ${i+1}"></div>
       ${schaalHtml(i,m)}
       <div class="meet-side">
-        <div class="gl">Glansgraad bij 60*<input id="m${i}-glans" data-m="${i}" data-f="glans" data-n="1" inputmode="decimal" value="${esc(fmt(m.glans))}" aria-label="Glansgraad meting ${i+1}"></div>
+        <div class="gl">Glansgraad bij <input class="hoek" id="m${i}-hoek" data-m="${i}" data-f="hoek" data-n="1" inputmode="decimal" value="${esc(fmt(m.hoek))}" aria-label="Hoek glansmeting ${i+1}">*<input id="m${i}-glans" data-m="${i}" data-f="glans" data-n="1" inputmode="decimal" value="${esc(fmt(m.glans))}" aria-label="Glansgraad meting ${i+1}"></div>
         <div class="opb-h">opbrengst</div>
         ${[10,13,22,25].map(n=>`<label class="opr"><span>${n} =</span><input id="m${i}-o${n}" data-m="${i}" data-f="o${n}" data-n="1" inputmode="decimal" value="${esc(fmt(m["o"+n]))}" aria-label="Opbrengst ${n} meting ${i+1}"><span>gr/m2</span></label>`).join("")}
       </div>
@@ -937,12 +954,22 @@ function renderRegSheet(){
     if(inp.type==="date"){inp.onclick=()=>{try{inp.showPicker()}catch(e){}};inp.onchange=()=>{r.datum=inp.value;touch();el.querySelector(".sheet-head .title").textContent="Registratieblad "+(r.datum?shortDate(r.datum):"")}}
     else inp.oninput=()=>{r[f]=inp.value;touch()}});
   el.querySelectorAll("input[data-m]").forEach(inp=>{const m=r.metingen[+inp.dataset.m],f=inp.dataset.f;
-    if(inp.dataset.n){inp.oninput=()=>{m[f]=num(inp.value);touch()};inp.onblur=()=>{if(m[f]!=null)inp.value=fmt(m[f])}}
+    if(inp.dataset.n){inp.oninput=()=>{m[f]=num(inp.value);touch()};inp.onblur=()=>{if(f==="hoek"&&m[f]==null){m[f]=60;touch()}if(m[f]!=null)inp.value=fmt(m[f])}}
     else inp.oninput=()=>{m[f]=inp.value;touch()}});
-  el.querySelectorAll(".dg").forEach(b=>b.onclick=()=>{const m=r.metingen[+b.dataset.m],k=b.dataset.s,v=Number(b.dataset.v);
-    m[k]=(m[k]!=null&&Math.abs(m[k]-v)<1e-9)?null:v;
-    el.querySelectorAll(`.dg[data-m="${b.dataset.m}"][data-s="${k}"]`).forEach(x=>{const on=m[k]!=null&&Math.abs(m[k]-Number(x.dataset.v))<1e-9;x.classList.toggle("on",on);x.setAttribute("aria-pressed",String(on))});
-    touch()});
+  const upd=(i,k)=>{const m=r.metingen[i],v=m[k],s=SCHALEN.find(x=>x.k===k);
+    el.querySelectorAll(`.dg[data-m="${i}"][data-s="${k}"]`).forEach(x=>{const on=v!=null&&Math.abs(v-Number(x.dataset.v))<1e-9;x.classList.toggle("on",on);x.setAttribute("aria-pressed",String(on))});
+    const w=el.querySelector(`.slw[data-m="${i}"][data-s="${k}"]`),sl=w.querySelector(".sld"),bub=w.querySelector(".bub");
+    const uit=v!=null&&(v<s.mid[0]-1e-9||v>s.mid[1]+1e-9);
+    sl.classList.toggle("leeg",v==null);sl.classList.toggle("uit",uit);
+    if(v!=null&&Math.abs(Number(sl.value)-v)>1e-9)sl.value=v;
+    const pos=v!=null?v:Number(sl.value);bub.style.left=((pos-s.lo[0])/(s.hi[1]-s.lo[0])*100)+"%";
+    bub.classList.toggle("uit",uit);
+    bub.innerHTML=v!=null?`${fmt(v)}<button type="button" aria-label="Waarde wissen">×</button>`:'<span class="ph">schuif voor tussenwaarde</span>';
+    const x=bub.querySelector("button");if(x)x.onclick=()=>{m[k]=null;upd(i,k);touch()};};
+  el.querySelectorAll(".dg").forEach(b=>b.onclick=()=>{const i=+b.dataset.m,m=r.metingen[i],k=b.dataset.s,v=Number(b.dataset.v);
+    m[k]=(m[k]!=null&&Math.abs(m[k]-v)<1e-9)?null:v;upd(i,k);touch()});
+  el.querySelectorAll(".slw").forEach(w=>{const i=+w.dataset.m,k=w.dataset.s,sl=w.querySelector(".sld");
+    sl.oninput=()=>{r.metingen[i][k]=Math.round(Number(sl.value)*100)/100;upd(i,k);touch()};upd(i,k)});
   $("#regSave").onclick=saveReg;
   const d=$("#regDel");if(d)d.onclick=()=>{regDel=true;renderRegSheet()};
   const dn=$("#regDelNo");if(dn)dn.onclick=()=>{regDel=false;renderRegSheet()};
@@ -1038,14 +1065,14 @@ function buildWordBody(){
   const rs=regSorted().slice().reverse();
   if(!rs.length)B.push(wP("Nog geen registratiebladen opgeslagen."));
   const schaal=k=>SCHALEN.find(s=>s.k===k);
-  const lab=(k,v)=>{if(v==null)return {t:""};const s=schaal(k);const uit=v<s.mid[0]-1e-9||v>s.mid[1]+1e-9;return {t:v.toFixed(1).replace(".",",")+(uit?" (buiten)":""),align:"right",color:uit?"C0262D":undefined,b:uit}};
+  const lab=(k,v)=>{if(v==null)return {t:""};const s=schaal(k);const uit=v<s.mid[0]-1e-9||v>s.mid[1]+1e-9;return {t:fmt(v)+(uit?" (buiten)":""),align:"right",color:uit?"C0262D":undefined,b:uit}};
   for(const r of rs){
     B.push(wP("Registratieblad "+longDate(r.datum),{style:"Kop2"}));
-    B.push(wP([wRun("Kleur RAL ",{b:true}),wRun(r.kleur||"–"),wRun("     Paraaf: ",{b:true}),wRun(r.paraaf||"–"),wRun("     Versienummer 21.1 · Document Nr. 21.17",{color:"56637A"})]));
+    B.push(wP([wRun("Kleur RAL ",{b:true}),wRun(r.kleur||"–"),wRun("     Paraaf: ",{b:true}),wRun(r.paraaf||"–")]));
     const ms=(r.metingen||[]).map((m,i)=>({...m,nr:i+1})).filter(meetGevuld);
     if(!ms.length){B.push(wP("Geen metingen ingevuld."));continue}
-    B.push(wTable([["Nr.","Tijdstip","Charge","L","A","B","Glansgraad 60°","Opbr. 10","Opbr. 13","Opbr. 22","Opbr. 25"],
-      ...ms.map(m=>[{t:String(m.nr),align:"center"},{t:m.tijd||"",align:"center"},m.charge||"",lab("L",m.L),lab("a",m.a),lab("b",m.b),{t:fmt(m.glans),align:"right"},{t:fmt(m.o10),align:"right"},{t:fmt(m.o13),align:"right"},{t:fmt(m.o22),align:"right"},{t:fmt(m.o25),align:"right"}])],
+    B.push(wTable([["Nr.","Tijdstip","Charge","L","A","B","Glansgraad","Opbr. 10","Opbr. 13","Opbr. 22","Opbr. 25"],
+      ...ms.map(m=>[{t:String(m.nr),align:"center"},{t:m.tijd||"",align:"center"},m.charge||"",lab("L",m.L),lab("a",m.a),lab("b",m.b),{t:m.glans!=null?fmt(m.glans)+" (bij "+fmt(m.hoek??60)+"°)":"",align:"right"},{t:fmt(m.o10),align:"right"},{t:fmt(m.o13),align:"right"},{t:fmt(m.o22),align:"right"},{t:fmt(m.o25),align:"right"}])],
       [700,1200,1800,1500,1500,1500,1700,1300,1300,1300,1300],{header:true}));
   }
   B.push(wP([wRun("Opbrengst in gr/m2. \"(buiten)\" betekent dat de waarde buiten het middengebied van het registratieblad valt.",{i:true,color:"56637A",sz:16})]));
