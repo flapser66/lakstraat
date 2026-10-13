@@ -288,6 +288,38 @@ table.scale td.side-r{text-align:left}
 .list .score{font-family:var(--f-mono);font-size:11px;font-weight:700;padding:1px 6px;border-radius:99px;background:var(--sunk);color:var(--muted)}
 .list .score.s4,.list .score.s5{background:var(--accent-soft);color:var(--accent)}
 .list .score.s1,.list .score.s2{background:var(--danger-soft);color:var(--danger)}
+/* storingen */
+:root{--mark:#FFE58F}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--mark:#7A5E12}}
+:root[data-theme="dark"]{--mark:#7A5E12}
+mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
+.st-zoek{position:sticky;top:env(safe-area-inset-top,0px);z-index:2;background:var(--panel);padding:14px 18px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.st-zoek .inp input{font-family:var(--f-body);font-size:17px}
+.st-zoek .unit{padding:0 0 0 12px;font-family:var(--f-mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em}
+.st-lijst{padding:14px 18px 18px;display:flex;flex-direction:column;gap:8px}
+.st-item{border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+.st-item.open{border-color:var(--accent)}
+.st-kop{width:100%;text-align:left;background:none;border:0;padding:12px 14px;display:flex;justify-content:space-between;gap:6px 14px;flex-wrap:wrap;align-items:baseline;border-radius:8px}
+.st-kop:hover{background:var(--sunk)}
+.st-t{font-weight:600;font-size:16px}
+.st-meta{font-size:12px;color:var(--muted);font-family:var(--f-mono)}
+.st-body{padding:0 14px 14px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+@media (max-width:640px){.st-body{grid-template-columns:minmax(0,1fr)}}
+.st-blk h4{margin:0 0 4px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-family:var(--f-mono);font-weight:600}
+.st-blk p{margin:0;line-height:1.55;overflow-wrap:anywhere}
+.st-blk.oorz{border-left:3px solid var(--warn);padding-left:10px}
+.st-blk.opl{border-left:3px solid var(--accent);padding-left:10px}
+.st-tags{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+.st-tags span{font-size:12px;background:var(--sunk);border-radius:99px;padding:2px 9px;color:var(--muted)}
+.st-acties{grid-column:1/-1}
+.st-leeg{margin:0;color:var(--muted);padding:8px 2px}
+.st-form{margin:14px 18px 0;border:1px solid var(--accent);border-radius:8px;overflow:hidden;background:var(--panel)}
+.st-form-h{padding:10px 14px;background:var(--accent-soft);font-weight:600}
+.st-form .fgrid{padding:14px;display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr);gap:12px}
+.st-form .full{grid-column:1/-1}
+@media (max-width:640px){.st-form .fgrid{grid-template-columns:minmax(0,1fr)}}
+.st-form .inp input{font-family:var(--f-body);font-size:16px}
+.st-form textarea{min-height:90px}
 .err{color:var(--danger);font-size:14px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
@@ -308,6 +340,7 @@ table.scale td.side-r{text-align:left}
         <button type="button" data-tab="walsen" aria-selected="true">Walsen</button>
         <button type="button" data-tab="lampen" aria-selected="false">Lampen</button>
         <button type="button" data-tab="registratie" aria-selected="false">Registratieblad</button>
+        <button type="button" data-tab="storingen" aria-selected="false">Storingen</button>
       </nav>
       <div class="top-actions" id="topActions">
         <span class="top-actions" id="walsActions">
@@ -337,6 +370,8 @@ table.scale td.side-r{text-align:left}
   </div>
 
   <section id="lampenView" hidden></section>
+
+  <section id="storView" hidden></section>
 
   <div class="layout" id="regLayout" hidden>
     <aside class="list" aria-label="Registratiebladen">
@@ -749,7 +784,7 @@ let authView="login", authMsg="", authOk="";
 function showOnly(which){
   $("#authBox").hidden=which!=="auth"; $("#toolRow").hidden=which!=="app"; $("#who").hidden=which==="auth";
   if(which==="app") renderTabs();
-  else {$("#appLayout").hidden=true;$("#lampenView").hidden=true;$("#regLayout").hidden=true;warn("")}
+  else {$("#appLayout").hidden=true;$("#lampenView").hidden=true;$("#regLayout").hidden=true;$("#storView").hidden=true;warn("")}
 }
 function renderAuth(){
   const box=$("#authBox"); showOnly("auth");
@@ -801,10 +836,11 @@ function renderAuth(){
 // ===================== TABBLADEN =====================
 let tab="walsen", tabArmed=false;
 function warn(msg){const n=$("#leaveWarn");if(msg){n.textContent=msg;n.hidden=false}else n.hidden=true}
-function tabDirty(t){return t==="walsen"?dirty:t==="lampen"?lampDirty:regDirty}
+function tabDirty(t){return t==="walsen"?dirty:t==="lampen"?lampDirty:t==="storingen"?stDirty:regDirty}
 function discardTab(t){
   if(t==="walsen"){dirty=false;mode="dag";if(draft&&!draft.id){draft=null;selectedId=null}else if(draft){const r=dagen.find(x=>x.id===draft.id);draft=r?draftFrom(r):null}}
   if(t==="lampen"){lampEdits={};lampNew=blankLampRows();lampDirty=false;lampDel=null}
+  if(t==="storingen"){stEdit=null;stDirty=false;stDel=false;stErr=""}
   if(t==="registratie"){regDirty=false;regDel=false;if(regDraft&&!regDraft.id){regDraft=null;regSel=null}else if(regDraft){const r=regSheets.find(x=>x.id===regDraft.id);regDraft=r?regFrom(r):null}}
 }
 function setTab(t){
@@ -817,11 +853,12 @@ function setTab(t){
 }
 function renderTabs(){
   document.querySelectorAll("#tabs [data-tab]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===tab)));
-  $("#appLayout").hidden=tab!=="walsen"; $("#lampenView").hidden=tab!=="lampen"; $("#regLayout").hidden=tab!=="registratie";
+  $("#appLayout").hidden=tab!=="walsen"; $("#lampenView").hidden=tab!=="lampen"; $("#regLayout").hidden=tab!=="registratie"; $("#storView").hidden=tab!=="storingen";
   $("#walsActions").hidden=tab!=="walsen"; $("#regActions").hidden=tab!=="registratie";
   if(tab==="walsen")render();
   if(tab==="lampen")renderLampen();
   if(tab==="registratie"){renderRegList();renderRegSheet()}
+  if(tab==="storingen")renderStoringen();
 }
 document.querySelectorAll("#tabs [data-tab]").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 const DOC_ID=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -1119,6 +1156,10 @@ function buildWordBody(){
       ...ms.map(m=>[{t:String(m.nr),align:"center"},{t:m.tijd||"",align:"center"},m.charge||"",lab("L",m.L),lab("a",m.a),lab("b",m.b),{t:m.glans!=null?fmt(m.glans)+" (bij "+fmt(m.hoek??60)+"°)":"",align:"right"},{t:fmt(m.o10),align:"right"},{t:fmt(m.o13),align:"right"},{t:fmt(m.o22),align:"right"},{t:fmt(m.o25),align:"right"}])],
       [700,1200,1800,1500,1500,1500,1700,1300,1300,1300,1300],{header:true}));
   }
+  B.push(wP("Storingen",{style:"Kop1",pageBreak:true}));
+  const st=stSorted();
+  if(!st.length)B.push(wP("Nog geen storingen vastgelegd."));
+  else B.push(wTable([["Datum","Storing","Wals / onderdeel","Oorzaak","Oplossing","Trefwoorden"],...st.map(s=>[s.datum?paperDate(s.datum):"",{t:s.titel,b:true},s.onderdeel||"",s.oorzaak||"",s.oplossing||"",s.trefwoorden||""])],[1500,2600,1900,3700,3700,1700],{header:true}));
   B.push(wP([wRun("Opbrengst in gr/m2. \"(buiten)\" betekent dat de waarde buiten het middengebied van het registratieblad valt.",{i:true,color:"56637A",sz:16})]));
   return B.join("");
 }
@@ -1140,16 +1181,18 @@ function gelijkenis(d,T,H){let s=0;
 function analyse(cur){
   const rated=dagen.filter(d=>d.id!==cur.id&&d.tevredenheid!=null);
   const goed=rated.filter(d=>d.tevredenheid>=4), slecht=rated.filter(d=>d.tevredenheid<=2);
-  const T=cur.temperatuur,H=cur.luchtvochtigheid;
+  const T=cur.temperatuur,H=cur.luchtvochtigheid,metWeer=T!=null||H!=null;
+  const kand=goed.map(d=>({d,s:gelijkenis(d,T,H)})).sort((a,b)=>metWeer?(b.s-a.s||b.d.tevredenheid-a.d.tevredenheid):(b.d.datum||"").localeCompare(a.d.datum||""));
+  const basis=kand.slice(0,5).map(x=>x.d);
   const adv={};
   for(const w of walsen){adv[w.id]={};
     for(const f of ["stand","hoogte"]){
       let sw=0,sv=0,sv2=0,n=0;
-      for(const d of goed){const x=(d.walsen||[]).find(x=>x.id===w.id);if(!x)continue;const v=gebruikt(x,f);if(v==null)continue;
-        const wt=gelijkenis(d,T,H)*(d.tevredenheid-3);if(wt<=0)continue;sw+=wt;sv+=wt*v;sv2+=wt*v*v;n++}
+      for(const d of basis){const x=(d.walsen||[]).find(x=>x.id===w.id);if(!x)continue;const v=gebruikt(x,f);if(v==null)continue;
+        const wt=d.tevredenheid-3;if(wt<=0)continue;sw+=wt;sv+=wt*v;sv2+=wt*v*v;n++}
       if(sw>1e-6&&n){const m=sv/sw;adv[w.id][f]={v:r2(m),sd:Math.sqrt(Math.max(0,sv2/sw-m*m)),n}}
     }}
-  const vergelijkbaar=goed.map(d=>({d,s:gelijkenis(d,T,H)})).sort((a,b)=>b.s-a.s||b.d.tevredenheid-a.d.tevredenheid).slice(0,3);
+  const vergelijkbaar=kand.slice(0,5);
   const tips=[];
   if(rated.length>=3){
     tips.push(`Gemiddelde tevredenheid over ${rated.length} beoordeelde lakdagen: ${fmt1(avg(rated.map(d=>d.tevredenheid)))} van 5.`);
@@ -1171,7 +1214,7 @@ function analyse(cur){
       if(l-p>=0.7)tips.push(`De laatste 3 lakdagen gingen beter (${fmt1(l)}) dan de 3 daarvoor (${fmt1(p)}).`);
       if(p-l>=0.7)tips.push(`De laatste 3 lakdagen gingen minder goed (${fmt1(l)}) dan de 3 daarvoor (${fmt1(p)}).`)}
   }
-  return {rated,goed,adv,vergelijkbaar,tips};
+  return {rated,goed,adv,vergelijkbaar,tips,metWeer};
 }
 function afwijking(a,v){if(!a||v==null)return false;const grens=Math.max(2*a.sd,Math.abs(a.v)*0.05,0.05);return Math.abs(v-a.v)>grens}
 function renderAdvies(){
@@ -1189,10 +1232,10 @@ function renderAdvies(){
         <td class="num">${a.stand?fmt(a.stand.v):"–"}</td><td class="num">${a.hoogte?fmt(a.hoogte.v):"–"}</td>
         <td>${x.stand!=null?fmt(x.stand):"–"} / ${x.hoogte!=null?fmt(x.hoogte):"–"}${ws||wh?`<div class="adv-warn">Wijkt af van het advies${ws&&wh?" (stand en hoogte)":ws?" (stand)":" (hoogte)"}</div>`:""}</td></tr>`}).join("");
     h+=`<div class="adv-scroll"><table class="adv-tbl"><thead><tr><th>Wals</th><th>Advies beginstand</th><th>Advies beginhoogte</th><th>Jouw begin (stand / hoogte)</th></tr></thead><tbody>${rijen}</tbody></table></div>
-      <p class="adv-basis">Gebaseerd op ${A.goed.length} lakdag${A.goed.length===1?"":"en"} met een 4 of 5. Daarbij is gekeken waar de walsen aan het eind van die dag op stonden. ${T!=null||H!=null?`Dagen met een temperatuur en luchtvochtigheid die op vandaag lijken${T!=null?` (${fmt(T)} °C`:" ("}${H!=null?`${T!=null?", ":""}${fmt(H)} %`:""}) tellen zwaarder mee.`:"Vul temperatuur en luchtvochtigheid in voor een advies dat op vandaag is afgestemd."}</p>
+      <p class="adv-basis">${A.metWeer?`Gebaseerd op de ${A.vergelijkbaar.length} lakdag${A.vergelijkbaar.length===1?"":"en"} met een 4 of 5 waarvan de temperatuur en luchtvochtigheid het meest lijken op die van deze lakdag${T!=null?` (${fmt(T)} °C`:" ("}${H!=null?`${T!=null?", ":""}${fmt(H)} %`:""}).`:`Gebaseerd op de ${A.vergelijkbaar.length} meest recente lakdag${A.vergelijkbaar.length===1?"":"en"} met een 4 of 5. Vul temperatuur en luchtvochtigheid in om te vergelijken met dagen met hetzelfde weer.`} Er is gekeken waar de walsen aan het eind van die dagen stonden. Een 5 telt twee keer zo zwaar als een 4.</p>
       <div><button class="btn" type="button" id="advNeem">Advies overnemen als beginwaarden</button></div>`;
-    if(A.vergelijkbaar.length&&(T!=null||H!=null)){
-      h+=`<div class="adv-sub">Meest vergelijkbare goede lakdagen</div><div class="adv-dagen">${A.vergelijkbaar.map(({d})=>`<button type="button" data-open="${esc(d.id)}">${esc(shortDate(d.datum))} · ${d.temperatuur!=null?fmt(d.temperatuur)+" °C":"–"} · ${d.luchtvochtigheid!=null?fmt(d.luchtvochtigheid)+" %":"–"} · ${d.tevredenheid}/5</button>`).join("")}</div>`}
+    if(A.vergelijkbaar.length){
+      h+=`<div class="adv-sub">Gebruikt voor dit advies</div><div class="adv-dagen">${A.vergelijkbaar.map(({d})=>`<button type="button" data-open="${esc(d.id)}">${esc(shortDate(d.datum))} · ${d.temperatuur!=null?fmt(d.temperatuur)+" °C":"–"} · ${d.luchtvochtigheid!=null?fmt(d.luchtvochtigheid)+" %":"–"} · ${d.tevredenheid}/5</button>`).join("")}</div>`}
   }
   if(A.tips.length)h+=`<div class="adv-sub">Inzichten</div><ul class="adv-tips">${A.tips.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>`;
   box.innerHTML=h;
@@ -1201,6 +1244,104 @@ function renderAdvies(){
       if(a.stand)cur.stand=a.stand.v;if(a.hoogte)cur.hoogte=a.hoogte.v;cur.naam=w.naam;draft.walsen[w.id]=cur}
     dirty=true;justSaved=false;renderSheet()};
   box.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>select(b.dataset.open));
+}
+// ===================== STORINGEN =====================
+let storingen=[], stLoaded=false, stQ="", stOpen=null, stEdit=null, stDirty=false, stSaving=false, stErr="", stDel=false;
+const ST_LEEG=()=>({id:null,titel:"",onderdeel:"",datum:today(),oorzaak:"",oplossing:"",trefwoorden:""});
+const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+const zoekWoorden=()=>norm(stQ).split(/[\s,]+/).filter(Boolean);
+function stSorted(){return storingen.slice().sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||(b.bijgewerkt||0)-(a.bijgewerkt||0))}
+function stFilter(){const w=zoekWoorden();const all=stSorted();if(!w.length)return all;
+  return all.filter(s=>{const t=norm([s.titel,s.onderdeel,s.oorzaak,s.oplossing,s.trefwoorden].join(" "));return w.every(x=>t.includes(x))})}
+function hl(text){ // escapen en zoekwoorden markeren
+  const t=String(text||""),w=zoekWoorden();if(!w.length)return esc(t).replace(/\n/g,"<br>");
+  const n=norm(t);if(n.length!==t.length)return esc(t).replace(/\n/g,"<br>");
+  const on=new Array(t.length).fill(false);
+  for(const x of w){let i=n.indexOf(x);while(i>=0){for(let k=i;k<i+x.length;k++)on[k]=true;i=n.indexOf(x,i+x.length)}}
+  let out="",open=false;for(let i=0;i<t.length;i++){if(on[i]&&!open){out+="<mark>";open=true}if(!on[i]&&open){out+="</mark>";open=false}out+=t[i]==="\n"?"<br>":esc(t[i])}
+  return out+(open?"</mark>":"");
+}
+function stItemHtml(s,open){
+  const tags=String(s.trefwoorden||"").split(",").map(x=>x.trim()).filter(Boolean);
+  return `<article class="st-item${open?" open":""}">
+    <button type="button" class="st-kop" data-open="${esc(s.id)}" aria-expanded="${open}">
+      <span class="st-t">${hl(s.titel)||"(zonder titel)"}</span>
+      <span class="st-meta">${s.onderdeel?hl(s.onderdeel)+" · ":""}${esc(s.datum?shortDate(s.datum):"")}</span>
+    </button>
+    ${open?`<div class="st-body">
+      <div class="st-blk oorz"><h4>Oorzaak</h4><p>${hl(s.oorzaak)||"<span class='hint'>Niet ingevuld</span>"}</p></div>
+      <div class="st-blk opl"><h4>Oplossing</h4><p>${hl(s.oplossing)||"<span class='hint'>Niet ingevuld</span>"}</p></div>
+      ${tags.length?`<div class="st-tags">${tags.map(x=>`<span>${hl(x)}</span>`).join("")}</div>`:""}
+      <div class="st-acties"><button class="btn" type="button" data-edit="${esc(s.id)}">Bewerken</button></div>
+    </div>`:""}
+  </article>`;
+}
+function renderStLijst(){
+  const box=$("#stLijst");if(!box)return;
+  const lijst=stFilter(),q=zoekWoorden().length;
+  $("#stCount").textContent=!stLoaded?"Laden…":q?`${lijst.length} van ${storingen.length} storingen gevonden`:`${storingen.length} storingen`;
+  if(!stLoaded){box.innerHTML="";return}
+  if(!storingen.length){box.innerHTML='<p class="st-leeg">Nog geen storingen vastgelegd. Klik op <b>+ Nieuwe storing</b> om de eerste toe te voegen.</p>';}
+  else if(!lijst.length){box.innerHTML=`<p class="st-leeg">Niets gevonden voor "${esc(stQ)}". Probeer een ander of korter woord.</p>`}
+  else box.innerHTML=lijst.map(s=>stItemHtml(s,q>0||stOpen===s.id)).join("");
+  box.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{if(zoekWoorden().length)return;stOpen=stOpen===b.dataset.open?null:b.dataset.open;renderStLijst()});
+  box.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{if(stDirty&&!stGuard())return;const s=storingen.find(x=>x.id===b.dataset.edit);stEdit={...ST_LEEG(),...s};stDirty=false;stErr="";stDel=false;renderStoringen();$("#st-titel")?.focus()});
+}
+let stArmed=false;
+function stGuard(){if(!stDirty)return true;if(stArmed){stArmed=false;return true}stArmed=true;stErr="Je hebt niet-opgeslagen wijzigingen. Klik nog eens om ze weg te gooien, of sla eerst op.";renderStForm();setTimeout(()=>{stArmed=false},6000);return false}
+function stFormHtml(){
+  if(!stEdit)return "";
+  const e=stEdit,isNew=!e.id;
+  return `<div class="st-form" id="stForm">
+    <div class="st-form-h">${isNew?"Nieuwe storing":"Storing bewerken"}</div>
+    <div class="fgrid">
+      <div class="field"><label for="st-titel">Storing</label><div class="inp"><input id="st-titel" data-f="titel" value="${esc(e.titel)}" placeholder="Bijv. strepen in de lak"></div></div>
+      <div class="field"><label for="st-onderdeel">Wals / onderdeel</label><div class="inp"><input id="st-onderdeel" data-f="onderdeel" list="st-onderdelen" value="${esc(e.onderdeel)}" placeholder="Bijv. Wals 2"></div>
+        <datalist id="st-onderdelen">${walsen.map(w=>`<option value="${esc(w.naam)}"></option>`).join("")}<option value="Lampen"></option><option value="Lakstraat algemeen"></option></datalist></div>
+      <div class="field"><label for="st-datum">Datum</label><div class="inp"><input id="st-datum" type="date" data-f="datum" value="${esc(e.datum)}"></div></div>
+      <div class="field full"><label for="st-oorzaak">Oorzaak</label><textarea id="st-oorzaak" data-f="oorzaak" placeholder="Wat was de oorzaak?">${esc(e.oorzaak)}</textarea></div>
+      <div class="field full"><label for="st-oplossing">Oplossing</label><textarea id="st-oplossing" data-f="oplossing" placeholder="Hoe is het opgelost?">${esc(e.oplossing)}</textarea></div>
+      <div class="field full"><label for="st-tref">Trefwoorden</label><div class="inp"><input id="st-tref" data-f="trefwoorden" value="${esc(e.trefwoorden)}" placeholder="Gescheiden door komma's, bijv. strepen, rakel, vuil"></div><span class="hint" style="font-family:var(--f-body)">Woorden waarop je deze storing later wilt terugvinden.</span></div>
+    </div>
+    <div class="foot">
+      <div class="grp">${isNew?"":stDel?`<span class="confirm">Deze storing verwijderen? <button class="btn danger-solid" type="button" id="stDelYes">Ja, verwijderen</button><button class="btn" type="button" id="stDelNo">Annuleren</button></span>`:`<button class="btn danger" type="button" id="stDelBtn">Verwijderen</button>`}</div>
+      <div class="grp">${stErr?`<span class="err">${esc(stErr)}</span>`:""}<button class="btn" type="button" id="stCancel">Annuleren</button><button class="btn primary" type="button" id="stSave" ${stSaving||!stDirty?"disabled":""}>Opslaan</button></div>
+    </div>
+  </div>`;
+}
+function renderStForm(){
+  const holder=$("#stFormHolder");if(!holder)return;holder.innerHTML=stFormHtml();if(!stEdit)return;
+  holder.querySelectorAll("[data-f]").forEach(inp=>{const ev=inp.type==="date"?"onchange":"oninput";inp[ev]=()=>{stEdit[inp.dataset.f]=inp.value;if(!stDirty){stDirty=true;stErr="";const s=$("#stSave");if(s)s.disabled=false}}});
+  $("#stCancel").onclick=()=>{stEdit=null;stDirty=false;stErr="";stDel=false;renderStForm()};
+  $("#stSave").onclick=saveStoring;
+  const d=$("#stDelBtn");if(d)d.onclick=()=>{stDel=true;renderStForm()};
+  const dn=$("#stDelNo");if(dn)dn.onclick=()=>{stDel=false;renderStForm()};
+  const dy=$("#stDelYes");if(dy)dy.onclick=async()=>{try{await db.collection("instellingen").doc(stEdit.id).delete();storingen=storingen.filter(x=>x.id!==stEdit.id)}catch(e){stErr="Verwijderen mislukt.";stDel=false;return renderStForm()}
+    stEdit=null;stDirty=false;stDel=false;renderStoringen()};
+}
+async function saveStoring(){
+  const e=stEdit;if(!e.titel.trim()){stErr="Vul in wat de storing is.";return renderStForm()}
+  stSaving=true;stErr="";renderStForm();
+  try{
+    const rec={titel:e.titel.trim(),onderdeel:(e.onderdeel||"").trim(),datum:e.datum||"",oorzaak:(e.oorzaak||"").trim(),oplossing:(e.oplossing||"").trim(),trefwoorden:(e.trefwoorden||"").trim(),bijgewerkt:Date.now()};
+    const id=e.id||DOC_ID("stor_");
+    await db.collection("instellingen").doc(id).set(rec);
+    storingen=storingen.filter(x=>x.id!==id).concat([{id,...rec}]);
+    stEdit=null;stDirty=false;stOpen=id;
+  }catch(err){stErr=saveErr(err)}
+  stSaving=false;renderStoringen();
+}
+function renderStoringen(){
+  const el=$("#storView");
+  el.innerHTML=`<main class="sheet solo">
+    <div class="sheet-head"><div><div class="title">Storingen</div><div class="sub">Storingen, oorzaken en oplossingen</div></div><button class="btn primary" type="button" id="stNew">+ Nieuwe storing</button></div>
+    <div class="st-zoek"><div class="inp"><span class="unit" aria-hidden="true">Zoek</span><input id="stQ" type="search" placeholder="Trefwoorden, bijv. strepen wals 2" value="${esc(stQ)}" autocomplete="off" aria-label="Zoeken in storingen"></div><span class="hint" id="stCount"></span></div>
+    <div id="stFormHolder"></div>
+    <div class="st-lijst" id="stLijst"></div>
+  </main>`;
+  renderStForm();renderStLijst();
+  const q=$("#stQ");q.oninput=()=>{stQ=q.value;renderStLijst()};
+  $("#stNew").onclick=()=>{if(stEdit&&!stGuard())return;stEdit=ST_LEEG();stDirty=false;stErr="";stDel=false;renderStForm();$("#st-titel").focus()};
 }
 // ---- boot
 let unsubs=[];
@@ -1232,7 +1373,9 @@ async function start(user){
   unsubs.push(db.collection("instellingen").onSnapshot(s=>{
     const docs=s.docs.map(d=>({id:d.id,...d.data()}));
     lampRows=docs.filter(d=>d.id.startsWith("lamp_")); regSheets=docs.filter(d=>d.id.startsWith("reg_"));
-    lampLoaded=true; regLoaded=true;
+    storingen=docs.filter(d=>d.id.startsWith("stor_"));
+    lampLoaded=true; regLoaded=true; stLoaded=true;
+    if(tab==="storingen"){if(!$("#stLijst"))renderStoringen();else renderStLijst()}
     if(tab==="lampen"&&!lampDirty&&!lampSaving&&!lampDel)renderLampen();
     if(tab==="registratie"){renderRegList();
       if(!regDirty&&!regSaving){if(regDraft&&regDraft.id){const r=regSheets.find(x=>x.id===regDraft.id);regDraft=r?regFrom(r):null;if(!r)regSel=null}renderRegSheet()}}
@@ -1245,7 +1388,7 @@ $("#btnSetup").onclick=openSetup;
 $("#btnExport").onclick=exportWord;
 $("#btnUsers").onclick=()=>{if(tab!=="walsen"){setTab("walsen");if(tab!=="walsen")return}mode="users";renderUsers($("#sheet"))};
 $("#btnLogout").onclick=()=>{dagen=[];walsen=[];draft=null;selectedId=null;dirty=false;mode="dag";
-  lampRows=[];lampEdits={};lampNew=blankLampRows();lampDirty=false;regSheets=[];regDraft=null;regSel=null;regDirty=false;tab="walsen";
+  lampRows=[];lampEdits={};lampNew=blankLampRows();lampDirty=false;storingen=[];stEdit=null;stDirty=false;stQ="";regSheets=[];regDraft=null;regSel=null;regDirty=false;tab="walsen";
   firebase.auth().signOut()};
 
 if(!window.firebase||!window.LAKSTRAAT_FIREBASE){$("#authBox").hidden=false;$("#authBox").innerHTML="<h2>Niet ingesteld</h2><p>De koppeling met de database ontbreekt (config.js).</p>"}
