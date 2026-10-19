@@ -370,6 +370,15 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .maandkiezer select{height:38px;border:1px solid var(--line);border-radius:6px;background:var(--sunk);color:var(--fg);font:inherit;font-size:14px;font-weight:600;padding:0 4px;text-transform:capitalize;min-width:0}
 .mat-ch{display:flex;flex-direction:column;gap:3px;border-top:1px dashed var(--line);padding-top:8px}
 .mat-ch label{font-size:12px;color:var(--muted)}
+.mat-grid.een{grid-template-columns:minmax(0,1fr)}
+.mat-card.lak{gap:10px}
+.mc-head{display:grid;grid-template-columns:80px minmax(0,1fr) minmax(0,1fr);gap:10px;font-size:11px;font-family:var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.mc-head span:first-child{grid-column:2}
+.mc-row{display:grid;grid-template-columns:80px minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:center}
+.mc-lbl{font-weight:600;font-size:14px}
+.mc-row .inp input{font-family:var(--f-mono);font-size:16px;padding:9px 10px}
+.mc-tot{font-family:var(--f-body)}
+@media (max-width:520px){.mc-row,.mc-head{grid-template-columns:64px minmax(0,1fr) minmax(0,1fr);gap:6px}}
 .mat-c2{display:flex;flex-direction:column;gap:6px;border-top:1px dashed var(--line);padding-top:8px}
 .mat-ch .ch2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .mat-ch .inp input{font-family:var(--f-mono);font-size:15px;padding:6px 10px}
@@ -1542,7 +1551,7 @@ function chargesVoor(r){const o={};CH_K.forEach(k=>o[k]=chargeVoor(r,k));return 
 function perCharge(rows){const map={};
   const tel=(r,m,c,v)=>{const key=m.k+"|"+c;const o=map[key]||(map[key]={soort:m.naam,k:m.k,charge:c,blik:0,dagen:0,van:r.datum,tot:r.datum});o.blik+=v;o.dagen++;if(r.datum<o.van)o.van=r.datum;if(r.datum>o.tot)o.tot=r.datum};
   for(const r of rows)for(const m of MATS.filter(m=>m.groep==="lak")){const c1=chargeVoor(r,m.k),c2=chargeVoor(r,m.k+"2");
-    if(c2&&r[m.k+"B"]!=null){if(r[m.k])tel(r,m,c1||"onbekend",r[m.k]);if(r[m.k+"B"])tel(r,m,c2,r[m.k+"B"])}
+    if(r[m.k+"B"]!=null){if(r[m.k])tel(r,m,c1||"onbekend",r[m.k]);if(r[m.k+"B"])tel(r,m,c2||"charge 2 onbekend",r[m.k+"B"])}
     else{const v=r[m.k];if(!v)continue;tel(r,m,[c1,c2].filter(Boolean).join(" + ")||"onbekend",v)}}
   return Object.values(map).sort((a,b)=>LAK_K.indexOf(a.k)-LAK_K.indexOf(b.k)||(a.van||"").localeCompare(b.van||""))}
 function matTot(r,k){return (r[k]||0)+(LAK_K.includes(k)?(r[k+"B"]||0):0)}
@@ -1592,7 +1601,18 @@ function renderMatSheet(){
     $("#matBlankNew").onclick=matNew;return}
   const r=matDraft,isNew=!r.id;
   const dubbel=matRows.some(x=>x.id!==r.id&&x.datum===r.datum);
-  const kaart=m=>`<div class="mat-card">
+  const stp=(k,naam,cls)=>`<div class="stepper ${cls}">
+          <button type="button" data-step="-1" data-k="${k}" aria-label="${naam} minder">−</button>
+          <input id="mat-${k}" data-k="${k}" inputmode="decimal" autocomplete="off" value="${esc(fmt(r[k]))}" placeholder="0" aria-label="${naam}">
+          <button type="button" data-step="1" data-k="${k}" aria-label="${naam} meer">+</button></div>`;
+  const lakKaart=m=>`<div class="mat-card lak">
+      <div class="mat-nm"><b>${esc(m.naam)}</b><span>${esc(m.sub)}</span></div>
+      <div class="mc-head"><span>Chargenummer</span><span>Blikken gebruikt</span></div>
+      <div class="mc-row"><span class="mc-lbl">Charge 1</span><div class="inp"><input id="mch-${m.k}" data-ch="${m.k}" autocomplete="off" value="${esc(r.charge?.[m.k]||"")}" placeholder="chargenummer" aria-label="${esc(m.naam)} charge 1"></div>${stp(m.k,esc(m.naam)+" blikken van charge 1","")}</div>
+      <div class="mc-row"><span class="mc-lbl">Charge 2</span><div class="inp"><input id="mch-${m.k}2" data-ch="${m.k}2" autocomplete="off" value="${esc(r.charge?.[m.k+"2"]||"")}" placeholder="nieuwe charge" aria-label="${esc(m.naam)} charge 2"></div>${stp(m.k+"B",esc(m.naam)+" blikken van charge 2","eind")}</div>
+      <span class="hint mc-tot">Totaal ${esc(m.naam.toLowerCase())}: <b id="mtot-${m.k}">${fmt(matTot(r,m.k))}</b> ${m.meer} · halve blikken mag (0,5)</span>
+    </div>`;
+  const kaart=m=>LAK_K.includes(m.k)?lakKaart(m):`<div class="mat-card">
       <div class="mat-nm"><b>${esc(m.naam)}</b>${m.sub?`<span>${esc(m.sub)}</span>`:""}</div>
       <div class="stepper">
         <button type="button" data-step="-1" data-k="${m.k}" aria-label="${esc(m.naam)} minder">−</button>
@@ -1615,7 +1635,7 @@ function renderMatSheet(){
       <div class="conds" style="grid-template-columns:minmax(0,260px)"><div class="field"><label for="mat-datum">Datum</label><div class="inp"><input id="mat-datum" type="date" value="${esc(r.datum)}" style="font-size:16px"></div>
       ${dubbel?'<span class="hint" style="color:var(--warn);font-family:var(--f-body)">Er is al een materialenblad voor deze datum.</span>':""}
       <span class="hint" style="font-family:var(--f-body)">${lakdagOp(r.datum)?"Charges komen uit de lakdag van deze datum. Pas je ze hier aan, dan wordt de lakdag ook bijgewerkt.":"Er is nog geen lakdag op deze datum. De charges worden bij dit materialenblad bewaard en komen mee als je de lakdag later aanmaakt."}</span></div></div></div>
-    <div class="section"><h3>Lak</h3><div class="mat-grid drie">${MATS.filter(m=>m.groep==="lak").map(kaart).join("")}</div></div>
+    <div class="section"><h3>Lak</h3><div class="mat-grid een">${MATS.filter(m=>m.groep==="lak").map(kaart).join("")}</div></div>
     <div class="section"><h3>Verdunner</h3><div class="mat-grid drie">${MATS.filter(m=>m.groep==="verdunner").map(kaart).join("")}</div></div>
     <div class="section"><h3>Schuurpapier</h3><div class="mat-grid vier">${MATS.filter(m=>m.groep==="schuur").map(kaart).join("")}</div></div>
     <div class="section"><h3><label for="mat-opm" style="all:inherit">Opmerking</label></h3><textarea id="mat-opm" placeholder="Bijv. nieuwe batch lak geopend, blik deels gebruikt…" style="min-height:80px">${esc(r.opmerking)}</textarea></div>
@@ -1633,8 +1653,7 @@ function renderMatSheet(){
   el.querySelectorAll(".mat-card [data-step]").forEach(b=>b.onclick=()=>{const k=b.dataset.k,m=MATS.find(x=>x.k===k.replace(/B$/,""));
     const v=Math.max(0,Math.round(((r[k]||0)+Number(b.dataset.step)*m.stap)*100)/100);r[k]=v;$("#mat-"+k).value=fmt(v);updTot(k);touch()});
   el.querySelectorAll(".mat-card input[data-k]").forEach(inp=>inp.addEventListener("input",()=>updTot(inp.dataset.k)));
-  el.querySelectorAll('.mat-ch [data-ch$="2"]').forEach(inp=>inp.addEventListener("input",()=>{const k=inp.dataset.ch.slice(0,-1),vol=!!inp.value.trim();
-    const box=$("#mc2-"+k);if(box)box.hidden=!vol;const h=$("#mhint-"+k);if(h)h.textContent=vol?"blikken van charge 1 (halve mag: 0,5)":"aantal blikken (halve mag: 0,5)"}));
+
   $("#matSave").onclick=saveMat;
   const d=$("#matDelBtn");if(d)d.onclick=()=>{matDel=true;renderMatSheet()};
   const dn=$("#matDelNo");if(dn)dn.onclick=()=>{matDel=false;renderMatSheet()};
@@ -1646,7 +1665,7 @@ async function saveMat(){
   const r=matDraft;if(!r.datum){matErr="Vul een datum in.";return renderMatSheet()}
   matSaving=true;matErr="";renderMatSheet();
   try{const ch=chObj(r.charge,true);
-    const rec={datum:r.datum,opmerking:(r.opmerking||"").trim(),charge:ch,bijgewerkt:Date.now()};MATS.forEach(m=>rec[m.k]=r[m.k]??null);LAK_K.forEach(k=>rec[k+"B"]=ch[k+"2"]?(r[k+"B"]??null):null);
+    const rec={datum:r.datum,opmerking:(r.opmerking||"").trim(),charge:ch,bijgewerkt:Date.now()};MATS.forEach(m=>rec[m.k]=r[m.k]??null);LAK_K.forEach(k=>rec[k+"B"]=r[k+"B"]??null);
     const id=r.id||DOC_ID("mat_");await db.collection("instellingen").doc(id).set(rec);
     const ld=lakdagOp(r.datum);
     if(ld&&CH_K.some(k=>((ld.charge&&ld.charge[k])||"")!==ch[k])){await db.collection("lakdagen").doc(ld.id).update({charge:ch});ld.charge=ch;
