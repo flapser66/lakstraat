@@ -339,6 +339,7 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .st-fx{position:absolute;top:4px;right:4px;width:28px;height:28px;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:16px;line-height:1}
 .st-add{width:110px;height:110px;border:2px dashed var(--accent);border-radius:6px;display:grid;place-items:center;text-align:center;font-size:13px;color:var(--accent);font-weight:600;cursor:pointer;line-height:1.3}
 .st-add:hover{background:var(--accent-soft)}
+.st-add span{font-weight:400;font-size:12px;color:var(--muted)}
 .lightbox{display:flex;flex-direction:column;align-items:center;gap:12px;max-width:100%;max-height:100%}
 .lightbox img{max-width:min(96vw,1400px);max-height:82vh;object-fit:contain;border-radius:6px;background:#000}
 .st-leeg{margin:0;color:var(--muted);padding:8px 2px}
@@ -1429,7 +1430,8 @@ function stFormHtml(){
       <div class="field full"><label>Foto's <span class="hint" style="font-family:var(--f-body)">(maximaal ${MAX_FOTOS})</span></label>
         <div class="st-fotos">${(e.fotos||[]).map((f,i)=>`<div class="st-thumb edit"><img src="${f.data}" alt="Foto ${i+1}" data-groot="${i}"><button type="button" class="st-fx" data-weg="${i}" aria-label="Foto ${i+1} verwijderen">×</button></div>`).join("")}
           ${e.fotosLaden?'<span class="hint">Foto\'s laden…</span>':""}${e.fotoBezig?'<span class="hint">Foto verwerken…</span>':""}
-          ${(e.fotos||[]).length<MAX_FOTOS&&!e.fotosLaden?`<label class="st-add" for="st-file">+ Foto maken<br>of kiezen</label>`:""}</div>
+          ${(e.fotos||[]).length<MAX_FOTOS&&!e.fotosLaden?`<label class="st-add" for="st-cam">Foto maken<br><span>camera</span></label><label class="st-add" for="st-file">Foto kiezen<br><span>uit galerij</span></label>`:""}</div>
+        <input type="file" id="st-cam" accept="image/*" capture="environment" hidden>
         <input type="file" id="st-file" accept="image/*" multiple hidden></div>
     </div>
     <div class="foot">
@@ -1442,10 +1444,11 @@ function renderStForm(){
   const holder=$("#stFormHolder");if(!holder)return;holder.innerHTML=stFormHtml();if(!stEdit)return;
   holder.querySelectorAll("[data-f]").forEach(inp=>{const ev=inp.type==="date"?"onchange":"oninput";inp[ev]=()=>{stEdit[inp.dataset.f]=inp.value;if(!stDirty){stDirty=true;stErr="";const s=$("#stSave");if(s)s.disabled=false}}});
   const markeer=()=>{stDirty=true;stErr=""};
-  const fi=$("#st-file");if(fi)fi.onchange=async()=>{const files=[...fi.files].slice(0,MAX_FOTOS-(stEdit.fotos||[]).length);fi.value="";if(!files.length)return;
+  const fotoInvoer=async fi=>{const files=[...fi.files].slice(0,MAX_FOTOS-(stEdit.fotos||[]).length);fi.value="";if(!files.length)return;
     stEdit.fotoBezig=true;renderStForm();
     for(const f of files){try{const data=await verklein(f);if(!stEdit)return;stEdit.fotos.push({id:null,data});markeer()}catch(err){stErr=err.message||"Foto kon niet worden gelezen."}}
     if(stEdit){stEdit.fotoBezig=false;renderStForm()}};
+  ["#st-cam","#st-file"].forEach(sel=>{const fi=$(sel);if(fi)fi.onchange=()=>fotoInvoer(fi)});
   holder.querySelectorAll("[data-weg]").forEach(b=>b.onclick=()=>{stEdit.fotos.splice(+b.dataset.weg,1);markeer();renderStForm()});
   holder.querySelectorAll("[data-groot]").forEach(im=>im.onclick=()=>toonFoto(im.src));
   $("#stCancel").onclick=()=>{stEdit=null;stDirty=false;stErr="";stDel=false;renderStForm()};
