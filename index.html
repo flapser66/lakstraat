@@ -431,6 +431,13 @@ input,textarea,select,.inp{transition:border-color .18s,box-shadow .18s,backgrou
 .anim-in .list li:nth-child(4),.anim-in .st-item:nth-child(4),.anim-in .mat-card:nth-child(4),.anim-in .section:nth-child(4),.anim-in .wals:nth-child(4){animation-delay:.12s}
 .anim-in .list li:nth-child(5),.anim-in .st-item:nth-child(5),.anim-in .mat-card:nth-child(5),.anim-in .section:nth-child(5),.anim-in .wals:nth-child(5){animation-delay:.16s}
 .anim-in .list li:nth-child(n+6),.anim-in .st-item:nth-child(n+6),.anim-in .mat-card:nth-child(n+6),.anim-in .section:nth-child(n+6),.anim-in .wals:nth-child(n+6){animation-delay:.2s}
+.modal-box.check{border-top-color:var(--accent)}
+.ck-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.ck-list label{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:16px;transition:background-color .18s,border-color .18s}
+.ck-list input{width:22px;height:22px;accent-color:var(--accent);flex:none}
+.ck-list label:has(input:checked){background:var(--accent-soft);border-color:var(--accent)}
+.ck-list li{animation:fadeUp .35s ease-out both}.ck-list li:nth-child(2){animation-delay:.06s}.ck-list li:nth-child(3){animation-delay:.12s}.ck-list li:nth-child(4){animation-delay:.18s}
+.ck-tel{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -599,6 +606,26 @@ function confirmLeave(){
   renderSheet(); setTimeout(()=>{leaveArmed=false},6000);
   return false;
 }
+// ===================== CHECKLIST NIEUWE LAKDAG =====================
+const CHECKLIST=["Zijn alle schuurbanden vervangen?","Zitten er alle nieuwe schuurzolen in?","Is alle lak bijgevuld?","Staan de walsen in de correcte stand?"];
+function startChecklist(){
+  if(dirty && !confirmLeave())return;
+  const m=$("#modal");
+  m.innerHTML=`<div class="modal-box check" role="dialog" aria-modal="true" aria-labelledby="ckT">
+    <h2 id="ckT">Checklist voor de start</h2>
+    <p>Vink alles af voordat je de nieuwe lakdag begint.</p>
+    <ul class="ck-list">${CHECKLIST.map((t,i)=>`<li><label><input type="checkbox" data-ck="${i}"><span>${esc(t)}</span></label></li>`).join("")}</ul>
+    <span class="ck-tel" id="ckTel">0 van ${CHECKLIST.length} afgevinkt</span>
+    <div class="row"><button class="btn primary" type="button" id="ckGo" disabled>Lakdag starten</button><button class="btn" type="button" id="ckNee">Annuleren</button></div>
+  </div>`;
+  m.hidden=false;
+  const sluit=()=>{m.hidden=true;m.innerHTML=""};
+  const boxes=[...m.querySelectorAll("[data-ck]")];
+  boxes.forEach(b=>b.onchange=()=>{const n=boxes.filter(x=>x.checked).length;$("#ckTel").textContent=`${n} van ${CHECKLIST.length} afgevinkt`;$("#ckGo").disabled=n<CHECKLIST.length});
+  $("#ckNee").onclick=sluit;m.onclick=e=>{if(e.target===m)sluit()};
+  $("#ckGo").onclick=()=>{sluit();dirty=false;newDay()};
+  boxes[0].focus();
+}
 function newDay(){
   if(dirty && !confirmLeave())return;
   mode="dag"; selectedId="__new"; confirmDel=false; error=""; justSaved=false;
@@ -650,7 +677,7 @@ function renderSheet(){
     el.innerHTML=first
       ? `<div class="blank"><strong>Welkom bij het logboek</strong><span>Stel eerst de walsen van de lakstraat in (namen en volgorde). Daarna vul je per lakdag de standen en hoogtes, temperatuur, luchtvochtigheid en bijzonderheden in.</span><div class="top-actions"><button class="btn" type="button" id="blankSetup">Walsen instellen</button><button class="btn primary" type="button" id="blankNew">+ Nieuwe lakdag</button></div></div>`
       : `<div class="blank"><strong>${dagenLoaded?"Kies een lakdag":"Laden…"}</strong><span>Selecteer links een dag, of begin een nieuw blad.</span><button class="btn primary" type="button" id="blankNew">+ Nieuwe lakdag</button></div>`;
-    $("#blankNew").onclick=newDay; const bs=$("#blankSetup"); if(bs)bs.onclick=openSetup; return;
+    $("#blankNew").onclick=startChecklist; const bs=$("#blankSetup"); if(bs)bs.onclick=openSetup; return;
   }
   const rows=sorted();
   const idx=rows.findIndex(r=>r.id===draft.id);
@@ -1957,7 +1984,7 @@ async function start(user){
   if(isAdmin) unsubs.push(db.collection("leden").onSnapshot(s=>{leden=s.docs.map(d=>d.id).sort();if(mode==="users")renderUsers($("#sheet"))},()=>{}));
 }
 
-$("#btnNew").onclick=newDay;
+$("#btnNew").onclick=startChecklist;
 $("#btnSetup").onclick=openSetup;
 $("#btnExport").onclick=exportWord;
 $("#btnUsers").onclick=()=>{if(tab!=="walsen"){setTab("walsen");if(tab!=="walsen")return}mode="users";renderUsers($("#sheet"))};
