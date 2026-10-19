@@ -1479,7 +1479,78 @@ function storingTekst(s){return [`Storing: ${s.titel||""}`,s.onderdeel?`Wals / o
   "Oorzaak:",s.oorzaak||"Niet ingevuld.","","Oplossing:",s.oplossing||"Niet ingevuld.",s.trefwoorden?`\nTrefwoorden: ${s.trefwoorden}`:"",
   (s.fotos&&s.fotos.length)?`\nIn de bijgevoegde PDF staan ${s.fotos.length} foto${s.fotos.length===1?"":"'s"}.`:"","","Verstuurd vanuit het Lakstraat Logboek."].filter(x=>x!=="").join("\n").replace(/\n{3,}/g,"\n\n")}
 function bestandsnaam(s){return ("Storing "+(s.datum||"")+" "+(s.titel||"")).replace(/[\\/:*?"<>|]+/g,"").replace(/\s+/g," ").trim().slice(0,80)+".pdf"}
-async function verstuurStoring(id,knop){
+// ===================== MICROSOFT (automatisch mailen via Outlook) =====================
+const MS={client:"81a83bb6-905f-4c56-8337-80bffa9b134c",base:"https://login.microsoftonline.com/consumers/oauth2/v2.0",
+  redirect:"https://flapser66.github.io/lakstraat/",scope:"openid offline_access https://graph.microsoft.com/Mail.Send"};
+const lsG=k=>{try{return localStorage.getItem(k)}catch(e){return null}},lsS=(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}};
+const b64url=buf=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+function msTok(){try{return JSON.parse(lsG("ms_tok")||"null")}catch(e){return null}}
+async function msLogin(pendingId){
+  const ver=b64url(crypto.getRandomValues(new Uint8Array(48))),state=b64url(crypto.getRandomValues(new Uint8Array(16)));
+  const ch=b64url(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(ver)));
+  lsS("ms_ver",ver);lsS("ms_state",state);if(pendingId)lsS("ms_pending",pendingId);
+  location.href=MS.base+"/authorize?"+new URLSearchParams({client_id:MS.client,response_type:"code",redirect_uri:MS.redirect,scope:MS.scope,
+    state,code_challenge:ch,code_challenge_method:"S256",response_mode:"query",prompt:"select_account"});
+}
+async function msTokenPost(params){
+  const r=await fetch(MS.base+"/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},
+    body:new URLSearchParams({client_id:MS.client,scope:MS.scope,...params})});
+  const j=await r.json();if(!r.ok||!j.access_token)throw new Error(j.error_description||j.error||"token");
+  lsS("ms_tok",JSON.stringify({a:j.access_token,exp:Date.now()+(j.expires_in||3600)*1000,r:j.refresh_token||(msTok()||{}).r||null}));
+}
+async function msToken(){const t=msTok();if(!t)return null;
+  if(t.a&&t.exp-120000>Date.now())return t.a;
+  if(t.r){try{await msTokenPost({grant_type:"refresh_token",refresh_token:t.r});return msTok().a}catch(e){lsS("ms_tok",null)}}
+  return null}
+let msFout="",msTerug=/[?&](code|error)=/.test(location.search);
+const msKlaar=(async()=>{ // terugkomst van de Microsoft-aanmelding
+  const q=new URLSearchParams(location.search);if(!q.has("code")&&!q.has("error"))return;
+  history.replaceState(null,"",location.pathname+location.hash);
+  if(q.get("error")){msFout=q.get("error_description")||q.get("error");lsS("ms_pending",null);return}
+  if(q.get("state")!==lsG("ms_state")){msFout="Aanmelding ongeldig, probeer opnieuw.";return}
+  try{await msTokenPost({grant_type:"authorization_code",code:q.get("code"),redirect_uri:MS.redirect,code_verifier:lsG("ms_ver")})}
+  catch(e){msFout=String(e.message||e);lsS("ms_pending",null)}
+  lsS("ms_ver",null);lsS("ms_state",null);
+})();
+function naarB64(bytes){let s="";for(let i=0;i<bytes.length;i+=0x8000)s+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000));return btoa(s)}
+async function msVerstuur(s,bytes,naam,onderwerp,tekst,token){
+  const r=await fetch("https://graph.microsoft.com/v1.0/me/sendMail",{method:"POST",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
+    body:JSON.stringify({saveToSentItems:true,message:{subject:onderwerp,body:{contentType:"Text",content:tekst},toRecipients:[{emailAddress:{address:tdMail}}],
+      attachments:[{"@odata.type":"#microsoft.graph.fileAttachment",name:naam,contentType:"application/pdf",contentBytes:naarB64(bytes)}]}})});
+  if(r.status===401){lsS("ms_tok",null);return "login"}
+  if(!r.ok){let m="";try{m=(await r.json()).error.message}catch(e){}throw new Error(m||("fout "+r.status))}
+  return "ok";
+}
+async function verstuurStoring(id,knop,bevestigd){
+  const s=storingen.find(x=>x.id===id);if(!s)return;
+  if(!tdMail||!navigator.onLine)return deelStoring(id,knop);
+  const oud="Versturen";
+  if(!bevestigd){knop.textContent="Tik nog eens: mail naar "+tdMail;knop.onclick=()=>verstuurStoring(id,knop,true);
+    setTimeout(()=>{if(knop.isConnected&&!knop.disabled){knop.textContent=oud;knop.onclick=()=>verstuurStoring(id,knop)}},6000);return}
+  knop.disabled=true;knop.onclick=()=>verstuurStoring(id,knop);
+  try{
+    let token=await msToken();
+    if(!token){knop.textContent="Aanmelden bij Microsoft…";return msLogin(id)}
+    knop.textContent="PDF maken…";
+    const fotos=await laadFotos(s.fotos||[]),bytes=await maakStoringPdf(s,fotos);
+    if(bytes.length>3000000){knop.disabled=false;knop.textContent=oud;return deelStoring(id,knop)} // te groot voor automatisch
+    knop.textContent="Verzenden…";
+    const res=await msVerstuur(s,bytes,bestandsnaam(s),"Storing lakstraat: "+(s.titel||""),storingTekst(s),token);
+    if(res==="login"){knop.textContent="Aanmelden bij Microsoft…";return msLogin(id)}
+    knop.textContent="Verstuurd ✓";renderTdMail();setTimeout(()=>{if(knop.isConnected){knop.textContent=oud;knop.disabled=false}},4000);
+  }catch(e){
+    knop.disabled=false;knop.textContent="Automatisch mislukt: tik om te delen";knop.title=String(e.message||e);
+    knop.onclick=()=>{knop.textContent=oud;knop.onclick=()=>verstuurStoring(id,knop);deelStoring(id,knop)};
+  }
+}
+async function msHervat(){ // na aanmelding de storing alsnog versturen
+  await msKlaar;msTerug=false;const id=lsG("ms_pending");
+  if(msFout){if(tab!=="storingen")setTab("storingen");const el=$("#tdMail");if(el)el.insertAdjacentHTML("beforeend",`<span class="err" style="flex-basis:100%">Microsoft-aanmelding mislukt: ${esc(msFout)}</span>`);msFout="";return}
+  if(!id||!stLoaded)return;const s=storingen.find(x=>x.id===id);lsS("ms_pending",null);if(!s)return;
+  if(tab!=="storingen")setTab("storingen");stOpen=id;renderStLijst();
+  const b=document.querySelector(`[data-send="${CSS.escape(id)}"]`);if(b)verstuurStoring(id,b,true);
+}
+async function deelStoring(id,knop){
   const s=storingen.find(x=>x.id===id);if(!s)return;
   const oud=knop.textContent;knop.disabled=true;knop.textContent="PDF maken…";
   try{
@@ -1501,7 +1572,9 @@ async function verstuurStoring(id,knop){
   knop.disabled=false;
 }
 function renderTdMail(){const el=$("#tdMail");if(!el)return;
-  el.innerHTML=`<span>Technische dienst: <b>${tdMail?esc(tdMail):"nog geen e-mailadres"}</b></span><button type="button" class="linkbtn" id="tdEdit">${tdMail?"Wijzigen":"Instellen"}</button>`;
+  el.innerHTML=`<span>Technische dienst: <b>${tdMail?esc(tdMail):"nog geen e-mailadres"}</b></span><button type="button" class="linkbtn" id="tdEdit">${tdMail?"Wijzigen":"Instellen"}</button>`
+  if(tdMail)el.insertAdjacentHTML("beforeend",msTok()?`<span class="hint" style="font-family:var(--f-body)">Wordt automatisch verstuurd via jouw Outlook.</span><button type="button" class="linkbtn" id="msUit">Afmelden Microsoft</button>`:`<span class="hint" style="font-family:var(--f-body)">Bij de eerste keer versturen meld je je één keer aan bij Microsoft.</span>`);
+  const mu=$("#msUit");if(mu)mu.onclick=()=>{lsS("ms_tok",null);renderTdMail()};
   $("#tdEdit").onclick=()=>{el.innerHTML=`<div class="inp" style="max-width:320px"><input id="tdInp" type="email" value="${esc(tdMail)}" placeholder="td@ideaal.nl" style="font-family:var(--f-body);font-size:15px;padding:6px 10px" aria-label="E-mailadres technische dienst"></div><button type="button" class="btn primary" id="tdOk">Opslaan</button><button type="button" class="btn" id="tdNee">Annuleren</button>`;
     $("#tdInp").focus();$("#tdNee").onclick=renderTdMail;
     $("#tdOk").onclick=async()=>{const v=$("#tdInp").value.trim();if(v&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){$("#tdInp").style.outline="2px solid var(--danger)";return}
@@ -1836,6 +1909,7 @@ async function start(user){
     if(tab==="materialen"){renderMatList();if(!matDirty&&!matSaving){if(matDraft&&matDraft.id){const r=matRows.find(x=>x.id===matDraft.id);matDraft=r?matFrom(r):null;if(!r)matSel=null}renderMatSheet()}}
     lampLoaded=true; regLoaded=true; stLoaded=true;
     if(tab==="storingen"){if(!$("#stLijst"))renderStoringen();else renderStLijst()}
+    if(lsG("ms_pending")||msTerug)msHervat();
     if(tab==="lampen"&&!lampDirty&&!lampSaving&&!lampDel)renderLampen();
     if(tab==="registratie"){renderRegList();
       if(!regDirty&&!regSaving){if(regDraft&&regDraft.id){const r=regSheets.find(x=>x.id===regDraft.id);regDraft=r?regFrom(r):null;if(!r)regSel=null}renderRegSheet()}}
