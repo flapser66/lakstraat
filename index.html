@@ -1244,13 +1244,13 @@ function buildWordBody(){
   const mr=matSorted().slice().reverse();
   if(!mr.length)B.push(wP("Nog geen materialen ingevuld."));
   else{
-    B.push(wTable([["Datum","Primer (blik 25 kg)","Grondlak (blik 30 kg)","Deklak (blik 30 kg)","P500","P360","P220","P150","P100","Opmerking"],...mr.map(r=>[paperDate(r.datum),...MATS.map(m=>({t:fmt(r[m.k]),align:"right"})),r.opmerking||""])],[1400,1700,1800,1800,900,900,900,900,900,4000],{header:true}));
+    B.push(wTable([["Datum",...MATS.map(m=>m.groep==="schuur"?m.naam.replace("Schuurpapier ",""):m.naam+" ("+m.sub+")"),"Opmerking"],...mr.map(r=>[paperDate(r.datum),...MATS.map(m=>({t:fmt(r[m.k]),align:"right"})),r.opmerking||""])],[1300,...MATS.map(m=>m.groep==="schuur"?820:1450),3350],{header:true}));
     const maanden=[...new Set(mr.map(r=>(r.datum||"").slice(0,7)).filter(Boolean))];
     B.push(wP("Totaal per maand",{style:"Kop2"}));
     const pcAll=perCharge(mr);
     if(pcAll.length){B.push(wP("Verbruik per charge",{style:"Kop2"}));
       B.push(wTable([["Soort","Charge","Blikken","Dagen","Van","Tot en met"],...pcAll.map(o=>[o.soort,{t:o.charge,b:true},{t:fmt(o.blik),align:"right"},{t:String(o.dagen),align:"right"},paperDate(o.van),paperDate(o.tot)])],[2600,3000,1500,1200,2200,2200],{header:true}))}
-    B.push(wTable([["Maand","Dagen","Primer","Grondlak","Deklak","P500","P360","P220","P150","P100"],...maanden.map(k=>{const T=matTotalen(k),d=parseDate(k+"-01");return [MAANDEN[d.getMonth()]+" "+d.getFullYear(),{t:String(T.n),align:"right"},...MATS.map(m=>({t:fmt(T.t[m.k]),align:"right"}))]})],[2300,900,1500,1500,1500,1050,1050,1050,1050,1050],{header:true}));
+    B.push(wTable([["Maand","Dagen",...MATS.map(m=>m.groep==="schuur"?m.naam.replace("Schuurpapier ",""):m.naam)],...maanden.map(k=>{const T=matTotalen(k),d=parseDate(k+"-01");return [MAANDEN[d.getMonth()]+" "+d.getFullYear(),{t:String(T.n),align:"right"},...MATS.map(m=>({t:fmt(T.t[m.k]),align:"right"}))]})],[2200,800,...MATS.map(m=>m.groep==="schuur"?1000:1400)],{header:true}));
   }
   B.push(wP("Storingen",{style:"Kop1",pageBreak:true}));
   const st=stSorted();
@@ -1444,6 +1444,7 @@ const MATS=[
   {k:"primer",naam:"Primer",sub:"blik 25 kg",eenheid:"blik",meer:"blikken",stap:0.5,groep:"lak"},
   {k:"grondlak",naam:"Grondlak",sub:"blik 30 kg",eenheid:"blik",meer:"blikken",stap:0.5,groep:"lak"},
   {k:"deklak",naam:"Deklak",sub:"blik 30 kg",eenheid:"blik",meer:"blikken",stap:0.5,groep:"lak"},
+  {k:"tm22",naam:"TM22 verdunner",sub:"jerrycan 25 L",eenheid:"jerrycan",meer:"jerrycans",stap:0.5,groep:"verdunner",kort:"TM22"},
   {k:"p500",naam:"Schuurpapier P500",sub:"",eenheid:"",meer:"",stap:1,groep:"schuur"},
   {k:"p360",naam:"Schuurpapier P360",sub:"",eenheid:"",meer:"",stap:1,groep:"schuur"},
   {k:"p220",naam:"Schuurpapier P220",sub:"",eenheid:"",meer:"",stap:1,groep:"schuur"},
@@ -1511,7 +1512,7 @@ function renderMatSheet(){
         <input id="mat-${m.k}" data-k="${m.k}" inputmode="decimal" autocomplete="off" value="${esc(fmt(r[m.k]))}" placeholder="0" aria-label="${esc(m.naam)} gebruikt">
         <button type="button" data-step="1" data-k="${m.k}" aria-label="${esc(m.naam)} meer">+</button>
       </div>
-      <span class="hint">${m.eenheid?"aantal blikken (halve mag: 0,5)":"aantal gebruikt"}</span>
+      <span class="hint">${m.eenheid?`aantal ${m.meer} (halve mag: 0,5)`:"aantal gebruikt"}</span>
       ${LAK_K.includes(m.k)?`<div class="mat-ch"><label for="mch-${m.k}">Charge</label><div class="inp"><input id="mch-${m.k}" data-ch="${m.k}" autocomplete="off" value="${esc(r.charge?.[m.k]||"")}" placeholder="chargenummer"></div></div>`:""}
     </div>`;
   el.innerHTML=`<div class="sheet-head"><div><div class="title">Materialen ${esc(r.datum?longDate(r.datum):"")}</div><div class="sub">${isNew?"Nieuwe dag":"Opgeslagen dag"} ${statusHtml(matSaving,matDirty,matSaved)}</div></div></div>
@@ -1520,6 +1521,7 @@ function renderMatSheet(){
       ${dubbel?'<span class="hint" style="color:var(--warn);font-family:var(--f-body)">Er is al een materialenblad voor deze datum.</span>':""}
       <span class="hint" style="font-family:var(--f-body)">${lakdagOp(r.datum)?"Charges komen uit de lakdag van deze datum. Pas je ze hier aan, dan wordt de lakdag ook bijgewerkt.":"Er is nog geen lakdag op deze datum. De charges worden bij dit materialenblad bewaard en komen mee als je de lakdag later aanmaakt."}</span></div></div></div>
     <div class="section"><h3>Lak</h3><div class="mat-grid drie">${MATS.filter(m=>m.groep==="lak").map(kaart).join("")}</div></div>
+    <div class="section"><h3>Verdunner</h3><div class="mat-grid drie">${MATS.filter(m=>m.groep==="verdunner").map(kaart).join("")}</div></div>
     <div class="section"><h3>Schuurpapier</h3><div class="mat-grid vier">${MATS.filter(m=>m.groep==="schuur").map(kaart).join("")}</div></div>
     <div class="section"><h3><label for="mat-opm" style="all:inherit">Opmerking</label></h3><textarea id="mat-opm" placeholder="Bijv. nieuwe batch lak geopend, blik deels gebruikt…" style="min-height:80px">${esc(r.opmerking)}</textarea></div>
     <div class="foot">
