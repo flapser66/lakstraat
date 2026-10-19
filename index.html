@@ -454,6 +454,11 @@ input,textarea,select,.inp{transition:border-color .18s,box-shadow .18s,backgrou
 @keyframes ring{0%{transform:scale(.6);opacity:.9}100%{transform:scale(1.7);opacity:0}}
 .ck-klaar{display:flex;align-items:center;gap:10px;margin:4px 0 0;padding:12px 14px;border:1px solid #22a447;border-radius:8px;background:color-mix(in srgb,#22a447 12%,transparent);font-size:15px}
 .ck-v{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#22a447;color:#fff;font-weight:700;font-size:14px;flex:none}
+.modal-box .ck-list{padding-left:0;margin:0}
+.pdf-snel{display:flex;flex-wrap:wrap;gap:6px}
+.pdf-dat{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pdf-dat input{font-size:16px}
+.pdf-delen label{padding:8px 12px;font-size:15px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -1572,7 +1577,10 @@ async function maakStoringPdf(s,fotos){
   return pdfBytes(pages,imgs,W,H);
 }
 // ===================== LOGBOEK ALS PDF =====================
-async function maakLogboekPdf(meld){
+async function maakLogboekPdf(meld,opt){
+  const inR=r=>{const d=r.datum||"";return d>=opt.van&&d<=opt.tot},deel=k=>opt.delen.includes(k);
+  const fDagen=sorted().filter(inR),fLamp=lampSorted().filter(inR),fReg=regSorted().filter(inR),fMat=matSorted().filter(inR),fSt=stSorted().filter(inR);
+  const periode=opt.van===opt.tot?longDate(opt.van):`${longDate(opt.van)} t/m ${longDate(opt.tot)}`;
   const W=842,H=595,M=36,CW=W-2*M;const pages=[],imgs=[];let ops=[],y;
   const BLAUW="0.055 0.298 0.573",GRIJS="0.34 0.39 0.48",DONKER="0.08 0.11 0.15",ROOD="0.75 0.15 0.18";
   const txt=(t,x,yy,size,bold,kleur)=>ops.push(`${kleur||DONKER} rg BT /${bold?"F2":"F1"} ${size} Tf ${x.toFixed(1)} ${yy.toFixed(1)} Td ${pdfStr(t)} Tj ET`);
@@ -1601,11 +1609,11 @@ async function maakLogboekPdf(meld){
     if(col)y-=rijH+gap;y-=4};
   const tijd=t=>new Date(t).toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"});
   // voorblad
-  nieuwePagina();y-=60;txt("Lakstraat logboek",M,y,34,true,BLAUW);y-=28;txt("Houtindustrie Ideaal · gemaakt op "+longDate(today()),M,y,12,false,GRIJS);y-=40;
-  [["Lakdagen",dagen.length],["Lampregels",lampRows.length],["Registratiebladen",regSheets.length],["Materialenbladen",matRows.length],["Storingen",storingen.length]].forEach(([a,b])=>{txt(a,M,y,12,true);txt(String(b),M+170,y,12,false);y-=20});
+  nieuwePagina();y-=60;txt("Lakstraat logboek",M,y,34,true,BLAUW);y-=28;txt("Periode: "+periode,M,y,13,true);y-=20;txt("Houtindustrie Ideaal · gemaakt op "+longDate(today()),M,y,11,false,GRIJS);y-=36;
+  [["Lakdagen",fDagen.length,"walsen"],["Lampregels",fLamp.length,"lampen"],["Registratiebladen",fReg.length,"registratie"],["Materialenbladen",fMat.length,"materialen"],["Storingen",fSt.length,"storingen"]].filter(x=>deel(x[2])).forEach(([a,b])=>{txt(a,M,y,12,true);txt(String(b),M+170,y,12,false);y-=20});
   // lakdagen
-  meld("Lakdagen…");kop1("Walsen (lakdagen)");
-  const ld=sorted().slice().reverse();if(!ld.length)alinea("Nog geen lakdagen opgeslagen.");
+  if(deel("walsen")){meld("Lakdagen…");kop1("Walsen (lakdagen)");
+  const ld=fDagen.slice().reverse();if(!ld.length)alinea("Nog geen lakdagen opgeslagen.");
   for(const r of ld){kop2(longDate(r.datum).replace(/^./,c=>c.toUpperCase()));
     regel([["Temperatuur",r.temperatuur!=null?fmt(r.temperatuur)+" °C":"–"],["Luchtvochtigheid",r.luchtvochtigheid!=null?fmt(r.luchtvochtigheid)+" %":"–"],["Tevredenheid",r.tevredenheid!=null?r.tevredenheid+"/5 ("+SCORE_TXT[r.tevredenheid]+")":"–"],["Slotgaten",r.slotgaten!=null?r.slotgaten+"/5 ("+BEOORDELINGEN[1].txt[r.slotgaten]+")":"–"]]);
     const ws=r.walsen||[];if(ws.length)tabel([["Wals","Stand begin","Stand eind","Hoogte begin","Hoogte eind"],...ws.map(x=>[x.naam,{t:fmt(x.stand),align:"right"},{t:fmt(x.eind),align:"right"},{t:fmt(x.hoogte),align:"right"},{t:fmt(x.hoogteEind),align:"right"}])],[4,2,2,2,2],{header:true});
@@ -1614,51 +1622,83 @@ async function maakLogboekPdf(meld){
     if((r.slotOpmerking||"").trim()){alinea("Opmerkingen slotgaten:",9.5,true,GRIJS);alinea(r.slotOpmerking)}
     if((r.bijzonderheden||"").trim()){alinea("Bijzonderheden:",9.5,true,GRIJS);alinea(r.bijzonderheden)}
     if(r.fotos&&r.fotos.length){meld("Foto's lakdag "+shortDate(r.datum)+"…");await fotoRij(r.fotos)}
-    y-=8}
+    y-=8}}
   // lampen
-  meld("Lampen…");kop1("Lampen");const lr=lampSorted();
+  if(deel("lampen")){meld("Lampen…");kop1("Lampen");const lr=fLamp;
   if(!lr.length)alinea("Nog geen lampregels opgeslagen.");
-  else tabel([["Dag / datum","Lamp 12","Lamp 16","Lamp 24","Lamp 28 = variabel 28 + 29","Tijd","Sterkte lamp 28"],...lr.map(r=>[paperDate(r.datum),{t:fmt(r.l12),align:"right"},{t:fmt(r.l16),align:"right"},{t:[r.l24w!=null?fmt(r.l24w):"",r.l24?"X":""].filter(Boolean).join("  "),align:"center"},{t:fmt(r.l28),align:"right"},{t:r.tijd||"",align:"center"},{t:r.sterkte!=null?fmt(r.sterkte)+" %":"",align:"right"}])],[26,17,17,15,29,15,20],{header:true,sz:9.5});
+  else tabel([["Dag / datum","Lamp 12","Lamp 16","Lamp 24","Lamp 28 = variabel 28 + 29","Tijd","Sterkte lamp 28"],...lr.map(r=>[paperDate(r.datum),{t:fmt(r.l12),align:"right"},{t:fmt(r.l16),align:"right"},{t:[r.l24w!=null?fmt(r.l24w):"",r.l24?"X":""].filter(Boolean).join("  "),align:"center"},{t:fmt(r.l28),align:"right"},{t:r.tijd||"",align:"center"},{t:r.sterkte!=null?fmt(r.sterkte)+" %":"",align:"right"}])],[26,17,17,15,29,15,20],{header:true,sz:9.5});}
   // registratiebladen
-  meld("Registratiebladen…");kop1("Registratiebladen");const rs=regSorted().slice().reverse();
+  if(deel("registratie")){meld("Registratiebladen…");kop1("Registratiebladen");const rs=fReg.slice().reverse();
   if(!rs.length)alinea("Nog geen registratiebladen opgeslagen.");
   const schaal=k=>SCHALEN.find(s=>s.k===k);
   const lab=(k,v)=>{if(v==null)return {t:""};const s=schaal(k);const uit=v<s.mid[0]-1e-9||v>s.mid[1]+1e-9;return {t:fmt(v)+(uit?" (buiten)":""),align:"right",color:uit?ROOD:undefined,b:uit}};
   for(const r of rs){kop2("Registratieblad "+longDate(r.datum));regel([["Kleur RAL",r.kleur||"–"],["Paraaf",r.paraaf||"–"]]);
     const ms=(r.metingen||[]).map((m,i)=>({...m,nr:i+1})).filter(meetGevuld);
     if(!ms.length){alinea("Geen metingen ingevuld.");continue}
-    tabel([["Nr.","Tijdstip","Charge","L","A","B","Glansgraad","Opbr. 10","Opbr. 13","Opbr. 22","Opbr. 25"],...ms.map(m=>[{t:String(m.nr),align:"center"},{t:m.tijd||"",align:"center"},m.charge||"",lab("L",m.L),lab("a",m.a),lab("b",m.b),{t:m.glans!=null?fmt(m.glans)+" (bij "+fmt(m.hoek??60)+"°)":"",align:"right"},{t:fmt(m.o10),align:"right"},{t:fmt(m.o13),align:"right"},{t:fmt(m.o22),align:"right"},{t:fmt(m.o25),align:"right"}])],[7,12,18,15,15,15,17,13,13,13,13],{header:true})}
+    tabel([["Nr.","Tijdstip","Charge","L","A","B","Glansgraad","Opbr. 10","Opbr. 13","Opbr. 22","Opbr. 25"],...ms.map(m=>[{t:String(m.nr),align:"center"},{t:m.tijd||"",align:"center"},m.charge||"",lab("L",m.L),lab("a",m.a),lab("b",m.b),{t:m.glans!=null?fmt(m.glans)+" (bij "+fmt(m.hoek??60)+"°)":"",align:"right"},{t:fmt(m.o10),align:"right"},{t:fmt(m.o13),align:"right"},{t:fmt(m.o22),align:"right"},{t:fmt(m.o25),align:"right"}])],[7,12,18,15,15,15,17,13,13,13,13],{header:true})}}
   // materialen
-  meld("Materialen…");kop1("Materialen");const mr=matSorted().slice().reverse();
+  if(deel("materialen")){meld("Materialen…");kop1("Materialen");const mr=fMat.slice().reverse();
   if(!mr.length)alinea("Nog geen materialen ingevuld.");
   else{const kort=m=>m.groep==="schuur"?m.naam.replace("Schuurpapier ",""):m.naam;
     tabel([["Datum",...MATS.map(kort),"Opmerking"],...mr.map(r=>[paperDate(r.datum),...MATS.map(m=>({t:fmt(LAK_K.includes(m.k)&&r[m.k+"B"]!=null?matTot(r,m.k):r[m.k]),align:"right"})),r.opmerking||""])],[13,...MATS.map(m=>m.groep==="schuur"?8:12),30],{header:true,sz:8});
     const pcAll=perCharge(mr);
     if(pcAll.length){kop2("Verbruik per charge");tabel([["Soort","Charge","Blikken","Dagen","Van","Tot en met"],...pcAll.map(o=>[o.soort,{t:o.charge,b:true},{t:fmt(o.blik),align:"right"},{t:String(o.dagen),align:"right"},paperDate(o.van),paperDate(o.tot)])],[26,30,15,12,22,22],{header:true})}
     const maanden=[...new Set(mr.map(r=>(r.datum||"").slice(0,7)).filter(Boolean))];
-    kop2("Totaal per maand");tabel([["Maand","Dagen",...MATS.map(kort)],...maanden.map(k=>{const T=matTotalen(k),d=parseDate(k+"-01");return [MAANDEN[d.getMonth()]+" "+d.getFullYear(),{t:String(T.n),align:"right"},...MATS.map(m=>({t:fmt(T.t[m.k]),align:"right"}))]})],[22,8,...MATS.map(m=>m.groep==="schuur"?10:14)],{header:true})}
+    kop2("Totaal per maand");tabel([["Maand","Dagen",...MATS.map(kort)],...maanden.map(k=>{const T=matTotalen(k),d=parseDate(k+"-01");return [MAANDEN[d.getMonth()]+" "+d.getFullYear(),{t:String(T.n),align:"right"},...MATS.map(m=>({t:fmt(T.t[m.k]),align:"right"}))]})],[22,8,...MATS.map(m=>m.groep==="schuur"?10:14)],{header:true})}}
   // storingen, met foto's
-  kop1("Storingen");const st=stSorted();
+  if(deel("storingen")){kop1("Storingen");const st=fSt;
   if(!st.length)alinea("Nog geen storingen vastgelegd.");
   for(const s of st){meld("Storing "+(s.titel||"")+"…");kop2(s.titel||"(zonder titel)");
     regel([["Datum",s.datum?longDate(s.datum):"–"],["Wals / onderdeel",s.onderdeel||"–"]].concat(s.trefwoorden?[["Trefwoorden",s.trefwoorden]]:[]));
     alinea("Oorzaak:",9.5,true,"0.6 0.36 0");alinea(s.oorzaak||"Niet ingevuld.");
     alinea("Oplossing:",9.5,true,BLAUW);alinea(s.oplossing||"Niet ingevuld.");
     if(s.fotos&&s.fotos.length)await fotoRij(s.fotos,3,230);
-    y-=6;ruimte(10);ops.push(`0.85 0.87 0.9 rg ${M} ${y} ${CW} 0.8 re f`);y-=12}
+    y-=6;ruimte(10);ops.push(`0.85 0.87 0.9 rg ${M} ${y} ${CW} 0.8 re f`);y-=12}}
   ruimte(20);alinea("Opbrengst in gr/m2. \"(buiten)\" betekent dat de waarde buiten het middengebied van het registratieblad valt.",8,false,GRIJS);
   pages.push(ops);
-  pages.forEach((pg,i)=>pg.push(`0.55 0.58 0.63 rg BT /F1 8 Tf ${M} 18 Td ${pdfStr(`Lakstraat Logboek · gemaakt op ${longDate(today())} · pagina ${i+1} van ${pages.length}`)} Tj ET`));
+  pages.forEach((pg,i)=>pg.push(`0.55 0.58 0.63 rg BT /F1 8 Tf ${M} 18 Td ${pdfStr(`Lakstraat Logboek · ${periode} · pagina ${i+1} van ${pages.length}`)} Tj ET`));
   meld("PDF opslaan…");
   return pdfBytes(pages,imgs,W,H);
 }
-async function exportPdf(){
-  const knop=$("#btnExport"),oud=knop.textContent;knop.disabled=true;
-  try{const bytes=await maakLogboekPdf(t=>{knop.textContent=t});
-    const blob=new Blob([bytes],{type:"application/pdf"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="lakstraat-logboek-"+today()+".pdf";
-    document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);knop.textContent="Gedownload ✓";setTimeout(()=>{knop.textContent=oud},2500)}
-  catch(e){console.error(e);knop.textContent="PDF maken mislukt";setTimeout(()=>{knop.textContent=oud},3000)}
-  knop.disabled=false;
+const PDF_DELEN=[["walsen","Lakdagen (walsen)"],["lampen","Lampen"],["registratie","Registratiebladen"],["materialen","Materialen"],["storingen","Storingen"]];
+function exportPdf(){
+  const m=$("#modal"),t=today(),mk=t.slice(0,7);
+  const maandEind=k=>{const [j,mm]=k.split("-").map(Number);return k+"-"+String(new Date(j,mm,0).getDate()).padStart(2,"0")};
+  const vorig=(()=>{const d=new Date(+mk.slice(0,4),+mk.slice(5)-2,1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")})();
+  const open=(tab==="walsen"&&draft&&draft.id&&draft.datum)?draft.datum:null;
+  const alles=[...dagen,...lampRows,...regSheets,...matRows,...storingen].map(r=>r.datum).filter(Boolean).sort();
+  const snel=[open?["Deze lakdag",open,open]:null,["Vandaag",t,t],["Deze maand",mk+"-01",maandEind(mk)],["Vorige maand",vorig+"-01",maandEind(vorig)],["Alles",alles[0]||t,alles[alles.length-1]||t]].filter(Boolean);
+  const start=open?[open,open]:[mk+"-01",maandEind(mk)];
+  m.innerHTML=`<div class="modal-box check" role="dialog" aria-modal="true" aria-labelledby="pdfT">
+    <h2 id="pdfT">PDF downloaden</h2>
+    <p>Kies welke periode en welke onderdelen in de PDF komen.</p>
+    <div class="pdf-snel">${snel.map((s,i)=>`<button type="button" class="btn" data-snel="${i}">${s[0]}</button>`).join("")}</div>
+    <div class="pdf-dat"><div class="field"><label for="pdfVan">Van</label><div class="inp"><input type="date" id="pdfVan" value="${start[0]}"></div></div>
+      <div class="field"><label for="pdfTot">Tot en met</label><div class="inp"><input type="date" id="pdfTot" value="${start[1]}"></div></div></div>
+    <ul class="ck-list pdf-delen">${PDF_DELEN.map(([k,n])=>`<li><label><input type="checkbox" data-deel="${k}" checked><span>${n}</span></label></li>`).join("")}</ul>
+    <span class="ck-tel" id="pdfTel"></span>
+    <div class="row"><button class="btn primary" type="button" id="pdfGo">PDF maken</button><button class="btn" type="button" id="pdfNee">Annuleren</button></div>
+  </div>`;
+  m.hidden=false;
+  const van=$("#pdfVan"),tot=$("#pdfTot"),go=$("#pdfGo"),sluit=()=>{m.hidden=true;m.innerHTML=""};
+  const delen=()=>[...m.querySelectorAll("[data-deel]")].filter(x=>x.checked).map(x=>x.dataset.deel);
+  const tel=()=>{const a=van.value,b=tot.value,inR=r=>r.datum>=a&&r.datum<=b;
+    const n=dagen.filter(inR).length,s=storingen.filter(inR).length;
+    const fout=!a||!b||a>b?"Kies een geldige periode.":!delen().length?"Kies minstens één onderdeel.":"";
+    $("#pdfTel").textContent=fout||`${n} lakdag${n===1?"":"en"} en ${s} storing${s===1?"":"en"} in deze periode`;go.disabled=!!fout;
+    m.querySelectorAll("[data-snel]").forEach(bt=>{const x=snel[bt.dataset.snel];bt.classList.toggle("primary",x[1]===a&&x[2]===b)})};
+  m.querySelectorAll("[data-snel]").forEach(bt=>bt.onclick=()=>{const x=snel[bt.dataset.snel];van.value=x[1];tot.value=x[2];tel()});
+  [van,tot].forEach(i=>{i.onchange=tel;i.onclick=()=>{try{i.showPicker()}catch(e){}}});
+  m.querySelectorAll("[data-deel]").forEach(c=>c.onchange=tel);
+  $("#pdfNee").onclick=sluit;m.onclick=e=>{if(e.target===m)sluit()};
+  go.onclick=async()=>{const opt={van:van.value,tot:tot.value,delen:delen()};go.disabled=true;
+    try{const bytes=await maakLogboekPdf(t=>{go.textContent=t},opt);
+      const blob=new Blob([bytes],{type:"application/pdf"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+      a.download="lakstraat-logboek-"+(opt.van===opt.tot?opt.van:opt.van+"-tm-"+opt.tot)+".pdf";
+      document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);
+      go.textContent="Gedownload ✓";setTimeout(sluit,1200)}
+    catch(e){console.error(e);go.textContent="PDF maken mislukt";go.disabled=false}};
+  tel();
 }
 let tdMail="";
 function storingTekst(s){return [`Storing: ${s.titel||""}`,s.onderdeel?`Wals / onderdeel: ${s.onderdeel}`:"",s.datum?`Datum: ${longDate(s.datum)}`:"","",
