@@ -401,8 +401,8 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 @keyframes shine{from{transform:translateX(-120%) skewX(-20deg)}to{transform:translateX(320%) skewX(-20deg)}}
 @keyframes pulseDot{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--warn) 45%,transparent)}50%{box-shadow:0 0 0 5px transparent}}
 header.top{position:relative;overflow:hidden}
-@keyframes glint{0%{transform:translateX(-150%) skewX(-20deg)}22%,100%{transform:translateX(650%) skewX(-20deg)}}
-header.top::after{content:"";position:absolute;top:0;bottom:0;left:0;width:16%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.08) 30%,rgba(255,255,255,.35) 50%,rgba(255,255,255,.08) 70%,transparent);transform:translateX(-150%) skewX(-20deg);animation:glint 7s 1s ease-in-out infinite;pointer-events:none}
+@keyframes glint{0%{transform:translateX(-150%) skewX(-20deg)}30%,100%{transform:translateX(550%) skewX(-20deg)}}
+header.top::after{content:"";position:absolute;top:0;bottom:0;left:0;width:22%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.15) 30%,rgba(255,255,255,.75) 50%,rgba(255,255,255,.15) 70%,transparent);transform:translateX(-150%) skewX(-20deg);animation:glint 6s 1s ease-in-out infinite!important;z-index:1;pointer-events:none}
 .brand-logo{animation:slideLeft .6s ease-out both}
 .brand{animation:slideLeft .6s .12s ease-out both}
 .wrap>*{animation:fadeUp .6s ease-out both}
