@@ -332,7 +332,9 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .st-blk.opl{border-left:3px solid var(--accent);padding-left:10px}
 .st-tags{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
 .st-tags span{font-size:12px;background:var(--sunk);border-radius:99px;padding:2px 9px;color:var(--muted)}
-.st-acties{grid-column:1/-1}
+.st-acties{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+.td-mail{padding:10px 18px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.td-mail b{color:var(--fg)}
 .st-fotos{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .st-thumb{width:110px;height:110px;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--sunk);padding:0;position:relative;display:grid;place-items:center;cursor:zoom-in}
 .st-thumb img{width:100%;height:100%;object-fit:cover;display:block}
@@ -1412,6 +1414,99 @@ function toonFoto(data){const m=$("#modal");
 function vulThumbs(root){root.querySelectorAll("[data-foto]").forEach(async b=>{const data=await laadFoto(b.dataset.foto);
   b.innerHTML=data?`<img src="${data}" alt="Foto bij storing">`:'<span class="hint">niet gevonden</span>';if(data)b.onclick=()=>toonFoto(data)})}
 
+// ===================== PDF + VERSTUREN STORING =====================
+const HELV=[278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584];
+const HELVB=[278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584];
+function pdfChar(ch){const c=ch.charCodeAt(0);if(c>=32&&c<=126)return c;if(c>=160&&c<=255)return c;
+  const map={"€":128,"‘":145,"’":146,"“":147,"”":148,"–":150,"—":151,"•":149,"…":133};return map[ch]||63}
+function baseW(ch,bold){const t=bold?HELVB:HELV;const n=ch.normalize("NFD")[0];const c=n.charCodeAt(0);return (c>=32&&c<=126)?t[c-32]:556}
+function tekstBreedte(s,size,bold){let w=0;for(const ch of s)w+=baseW(ch,bold);return w*size/1000}
+function wrap(s,size,bold,max){const out=[];for(const para of String(s||"").split(/\n/)){let line="";for(const w of para.split(/\s+/).filter(Boolean)){const t=line?line+" "+w:w;if(tekstBreedte(t,size,bold)<=max||!line)line=t;else{out.push(line);line=w}}out.push(line)}return out}
+function pdfStr(s){let o="(";for(const ch of String(s)){const b=pdfChar(ch);if(b===40||b===41||b===92)o+="\\"+String.fromCharCode(b);else if(b<128)o+=String.fromCharCode(b);else o+="\\"+b.toString(8).padStart(3,"0")}return o+")"}
+function b64bytes(dataUrl){const b=atob(dataUrl.split(",")[1]);const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u}
+function imgMaat(dataUrl){return new Promise(res=>{const i=new Image();i.onload=()=>res({w:i.naturalWidth,h:i.naturalHeight});i.onerror=()=>res(null);i.src=dataUrl})}
+async function maakStoringPdf(s,fotos){
+  const W=595,H=842,M=48,CW=W-2*M;const pages=[];let ops=[],y;
+  const nieuwePagina=()=>{if(ops.length)pages.push(ops);ops=[];y=H-M};
+  const txt=(t,x,yy,size,bold,kleur)=>{ops.push(`${kleur||"0.08 0.11 0.15"} rg BT /${bold?"F2":"F1"} ${size} Tf ${x.toFixed(1)} ${yy.toFixed(1)} Td ${pdfStr(t)} Tj ET`)};
+  const ruimte=h=>{if(y-h<M+20)nieuwePagina()};
+  nieuwePagina();
+  // kopband
+  ops.push(`0.055 0.298 0.573 rg 0 ${H-86} ${W} 86 re f`);
+  txt("HOUTINDUSTRIE IDEAAL · LAKSTRAAT",M,H-36,9,true,"0.85 0.9 1");
+  txt("Storingsmelding",M,H-64,24,true,"1 1 1");
+  y=H-86-30;
+  for(const l of wrap(s.titel||"(zonder titel)",18,true,CW)){ruimte(24);txt(l,M,y,18,true);y-=24}
+  y-=6;
+  const rij=(lab,val)=>{if(!val)return;const ls=wrap(val,11,false,CW-130);ruimte(16*ls.length);txt(lab,M,y,10,true,"0.34 0.39 0.48");ls.forEach((l,i)=>txt(l,M+130,y-i*15,11,false));y-=15*ls.length+5};
+  rij("Wals / onderdeel",s.onderdeel);rij("Datum",s.datum?longDate(s.datum):"");rij("Trefwoorden",s.trefwoorden);
+  const blok=(kop,tekst,kleur)=>{y-=10;ruimte(40);ops.push(`${kleur} rg ${M} ${y-4} 4 18 re f`);txt(kop.toUpperCase(),M+12,y,11,true,"0.34 0.39 0.48");y-=20;
+    for(const l of wrap(tekst||"Niet ingevuld.",11.5,false,CW-12)){ruimte(16);txt(l,M+12,y,11.5,false);y-=16}};
+  blok("Oorzaak",s.oorzaak,"0.6 0.36 0");blok("Oplossing",s.oplossing,"0.055 0.298 0.573");
+  // foto's
+  const imgs=[];
+  if(fotos.length){y-=14;ruimte(30);txt(`FOTO'S (${fotos.length})`,M,y,11,true,"0.34 0.39 0.48");y-=12;
+    for(const f of fotos){const m=await imgMaat(f.data);if(!m)continue;let w=CW,h=w*m.h/m.w;if(h>340){h=340;w=h*m.w/m.h}
+      if(y-h<M+20)nieuwePagina();const name="Im"+imgs.length;imgs.push({name,bytes:b64bytes(f.data),pw:m.w,ph:m.h});
+      ops.push(`q ${w.toFixed(1)} 0 0 ${h.toFixed(1)} ${M} ${(y-h).toFixed(1)} cm /${name} Do Q`);y-=h+12}}
+  pages.push(ops);
+  // voettekst op elke pagina
+  pages.forEach((p,i)=>p.push(`0.55 0.58 0.63 rg BT /F1 8 Tf ${M} 26 Td ${pdfStr(`Lakstraat Logboek · gemaakt op ${longDate(today())} · pagina ${i+1} van ${pages.length}`)} Tj ET`));
+  // objecten samenstellen
+  const enc=new TextEncoder(),parts=[],offs=[];let len=0;
+  const add=b=>{parts.push(b);len+=b.length};const addS=s=>add(enc.encode(s));
+  addS("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n");
+  const objs=[];const obj=(body)=>{objs.push(body);return objs.length};
+  const catalog=obj(null),pagesId=obj(null),f1=obj("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>"),f2=obj("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+  const imgIds=imgs.map(im=>obj({img:im}));
+  const xo=imgs.length?`/XObject << ${imgs.map((im,i)=>`/${im.name} ${imgIds[i]} 0 R`).join(" ")} >>`:"";
+  const pageIds=[];
+  for(const p of pages){const content=p.join("\n");const cId=obj({stream:content});const pid=obj(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R >> ${xo} >> /Contents ${cId} 0 R >>`);pageIds.push(pid)}
+  objs[catalog-1]=`<< /Type /Catalog /Pages ${pagesId} 0 R >>`;
+  objs[pagesId-1]=`<< /Type /Pages /Kids [${pageIds.map(i=>i+" 0 R").join(" ")}] /Count ${pageIds.length} >>`;
+  objs.forEach((o,i)=>{offs[i]=len;addS(`${i+1} 0 obj\n`);
+    if(typeof o==="string")addS(o+"\n");
+    else if(o.stream!=null){const b=new Uint8Array([...o.stream].map(ch=>{const c=ch.charCodeAt(0);return c<256?c:63}));addS(`<< /Length ${b.length} >>\nstream\n`);add(b);addS("\nendstream\n")}
+    else{const im=o.img;addS(`<< /Type /XObject /Subtype /Image /Width ${im.pw} /Height ${im.ph} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${im.bytes.length} >>\nstream\n`);add(im.bytes);addS("\nendstream\n")}
+    addS("endobj\n")});
+  const xref=len;addS(`xref\n0 ${objs.length+1}\n0000000000 65535 f \n`+offs.map(o=>String(o).padStart(10,"0")+" 00000 n \n").join(""));
+  addS(`trailer\n<< /Size ${objs.length+1} /Root ${catalog} 0 R >>\nstartxref\n${xref}\n%%EOF`);
+  const out=new Uint8Array(len);let p=0;for(const b of parts){out.set(b,p);p+=b.length}
+  return out;
+}
+let tdMail="";
+function storingTekst(s){return [`Storing: ${s.titel||""}`,s.onderdeel?`Wals / onderdeel: ${s.onderdeel}`:"",s.datum?`Datum: ${longDate(s.datum)}`:"","",
+  "Oorzaak:",s.oorzaak||"Niet ingevuld.","","Oplossing:",s.oplossing||"Niet ingevuld.",s.trefwoorden?`\nTrefwoorden: ${s.trefwoorden}`:"",
+  (s.fotos&&s.fotos.length)?`\nIn de bijgevoegde PDF staan ${s.fotos.length} foto${s.fotos.length===1?"":"'s"}.`:"","","Verstuurd vanuit het Lakstraat Logboek."].filter(x=>x!=="").join("\n").replace(/\n{3,}/g,"\n\n")}
+function bestandsnaam(s){return ("Storing "+(s.datum||"")+" "+(s.titel||"")).replace(/[\\/:*?"<>|]+/g,"").replace(/\s+/g," ").trim().slice(0,80)+".pdf"}
+async function verstuurStoring(id,knop){
+  const s=storingen.find(x=>x.id===id);if(!s)return;
+  const oud=knop.textContent;knop.disabled=true;knop.textContent="PDF maken…";
+  try{
+    const fotos=await laadFotos(s.fotos||[]);
+    const bytes=await maakStoringPdf(s,fotos);
+    const file=new File([bytes],bestandsnaam(s),{type:"application/pdf"});
+    const tekst=storingTekst(s),onderwerp="Storing lakstraat: "+(s.titel||"");
+    const deel=async()=>{await navigator.share({files:[file],title:onderwerp,text:(tdMail?`Aan: ${tdMail}\n\n`:"")+tekst})};
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      try{await deel();knop.textContent=oud}
+      catch(e){if(e&&e.name==="AbortError"){knop.textContent=oud}
+        else{knop.textContent="Klaar: tik om te delen";knop.disabled=false;knop.onclick=async()=>{try{await deel()}catch(x){}knop.textContent=oud;knop.onclick=()=>verstuurStoring(id,knop)};return}}
+    } else {
+      const a=document.createElement("a");a.href=URL.createObjectURL(file);a.download=file.name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);
+      location.href=`mailto:${encodeURIComponent(tdMail||"")}?subject=${encodeURIComponent(onderwerp)}&body=${encodeURIComponent(tekst+"\n\n(De PDF is gedownload. Voeg hem als bijlage toe.)")}`;
+      knop.textContent=oud;
+    }
+  }catch(e){knop.textContent="Versturen mislukt";setTimeout(()=>{knop.textContent=oud},3000)}
+  knop.disabled=false;
+}
+function renderTdMail(){const el=$("#tdMail");if(!el)return;
+  el.innerHTML=`<span>Technische dienst: <b>${tdMail?esc(tdMail):"nog geen e-mailadres"}</b></span><button type="button" class="linkbtn" id="tdEdit">${tdMail?"Wijzigen":"Instellen"}</button>`;
+  $("#tdEdit").onclick=()=>{el.innerHTML=`<div class="inp" style="max-width:320px"><input id="tdInp" type="email" value="${esc(tdMail)}" placeholder="td@ideaal.nl" style="font-family:var(--f-body);font-size:15px;padding:6px 10px" aria-label="E-mailadres technische dienst"></div><button type="button" class="btn primary" id="tdOk">Opslaan</button><button type="button" class="btn" id="tdNee">Annuleren</button>`;
+    $("#tdInp").focus();$("#tdNee").onclick=renderTdMail;
+    $("#tdOk").onclick=async()=>{const v=$("#tdInp").value.trim();if(v&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){$("#tdInp").style.outline="2px solid var(--danger)";return}
+      try{await db.collection("instellingen").doc("tdmail").set({email:v,bijgewerkt:Date.now()});tdMail=v}catch(e){}renderTdMail()}}}
+
 // ===================== STORINGEN =====================
 let storingen=[], stLoaded=false, stQ="", stOpen=null, stEdit=null, stDirty=false, stSaving=false, stErr="", stDel=false;
 const ST_LEEG=()=>({id:null,titel:"",onderdeel:"",datum:today(),oorzaak:"",oplossing:"",trefwoorden:""});
@@ -1440,7 +1535,7 @@ function stItemHtml(s,open){
       <div class="st-blk opl"><h4>Oplossing</h4><p>${hl(s.oplossing)||"<span class='hint'>Niet ingevuld</span>"}</p></div>
       ${s.fotos&&s.fotos.length?`<div class="st-fotos">${s.fotos.map(id=>`<button type="button" class="st-thumb" data-foto="${esc(id)}" aria-label="Foto vergroten"><span class="hint">laden…</span></button>`).join("")}</div>`:""}
       ${tags.length?`<div class="st-tags">${tags.map(x=>`<span>${hl(x)}</span>`).join("")}</div>`:""}
-      <div class="st-acties"><button class="btn" type="button" data-edit="${esc(s.id)}">Bewerken</button></div>
+      <div class="st-acties"><button class="btn" type="button" data-edit="${esc(s.id)}">Bewerken</button><button class="btn primary" type="button" data-send="${esc(s.id)}">Versturen</button></div>
     </div>`:""}
   </article>`;
 }
@@ -1456,6 +1551,7 @@ function renderStLijst(){
   box.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{if(stDirty&&!stGuard())return;const s=storingen.find(x=>x.id===b.dataset.edit);stEdit={...ST_LEEG(),...s,fotos:[],fotosLaden:!!(s.fotos&&s.fotos.length)};stDirty=false;stErr="";stDel=false;renderStoringen();$("#st-titel")?.focus();
     if(s.fotos&&s.fotos.length)laadFotos(s.fotos).then(f=>{if(stEdit&&stEdit.id===s.id){stEdit.fotos=f;stEdit.fotosLaden=false;renderStForm()}})});
   vulThumbs(box);
+  box.querySelectorAll("[data-send]").forEach(b=>b.onclick=()=>verstuurStoring(b.dataset.send,b));
 }
 let stArmed=false;
 function stGuard(){if(!stDirty)return true;if(stArmed){stArmed=false;return true}stArmed=true;stErr="Je hebt niet-opgeslagen wijzigingen. Klik nog eens om ze weg te gooien, of sla eerst op.";renderStForm();setTimeout(()=>{stArmed=false},6000);return false}
@@ -1524,11 +1620,12 @@ function renderStoringen(){
   const el=$("#storView");
   el.innerHTML=`<main class="sheet solo">
     <div class="sheet-head"><div><div class="title">Storingen</div><div class="sub">Storingen, oorzaken en oplossingen</div></div><button class="btn primary" type="button" id="stNew">+ Nieuwe storing</button></div>
+    <div class="td-mail" id="tdMail"></div>
     <div class="st-zoek"><div class="inp"><span class="unit" aria-hidden="true">Zoek</span><input id="stQ" type="search" placeholder="Trefwoorden, bijv. strepen wals 2" value="${esc(stQ)}" autocomplete="off" aria-label="Zoeken in storingen"></div><span class="hint" id="stCount"></span></div>
     <div id="stFormHolder"></div>
     <div class="st-lijst" id="stLijst"></div>
   </main>`;
-  renderStForm();renderStLijst();
+  renderStForm();renderStLijst();renderTdMail();
   const q=$("#stQ");q.oninput=()=>{stQ=q.value;renderStLijst()};
   $("#stNew").onclick=()=>{if(stEdit&&!stGuard())return;stEdit={...ST_LEEG(),fotos:[]};stDirty=false;stErr="";stDel=false;renderStForm();$("#st-titel").focus()};
 }
@@ -1735,7 +1832,7 @@ async function start(user){
   unsubs.push(db.collection("instellingen").where(firebase.firestore.FieldPath.documentId(),">=","g").onSnapshot(s=>{
     const docs=s.docs.map(d=>({id:d.id,...d.data()}));
     lampRows=docs.filter(d=>d.id.startsWith("lamp_")); regSheets=docs.filter(d=>d.id.startsWith("reg_"));
-    storingen=docs.filter(d=>d.id.startsWith("stor_")); matRows=docs.filter(d=>d.id.startsWith("mat_")); matLoaded=true;
+    storingen=docs.filter(d=>d.id.startsWith("stor_")); const tdd=docs.find(d=>d.id==="tdmail"); tdMail=(tdd&&tdd.email)||""; if(tab==="storingen")renderTdMail(); matRows=docs.filter(d=>d.id.startsWith("mat_")); matLoaded=true;
     if(tab==="materialen"){renderMatList();if(!matDirty&&!matSaving){if(matDraft&&matDraft.id){const r=matRows.find(x=>x.id===matDraft.id);matDraft=r?matFrom(r):null;if(!r)matSel=null}renderMatSheet()}}
     lampLoaded=true; regLoaded=true; stLoaded=true;
     if(tab==="storingen"){if(!$("#stLijst"))renderStoringen();else renderStLijst()}
