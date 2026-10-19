@@ -438,6 +438,20 @@ input,textarea,select,.inp{transition:border-color .18s,box-shadow .18s,backgrou
 .ck-list label:has(input:checked){background:var(--accent-soft);border-color:var(--accent)}
 .ck-list li{animation:fadeUp .35s ease-out both}.ck-list li:nth-child(2){animation-delay:.06s}.ck-list li:nth-child(3){animation-delay:.12s}.ck-list li:nth-child(4){animation-delay:.18s}
 .ck-tel{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+.ck-list input{appearance:none;-webkit-appearance:none;width:26px;height:26px;border-radius:50%;border:2px solid var(--line);background:var(--panel);display:grid;place-items:center;transition:background-color .2s,border-color .2s,transform .2s}
+.ck-list input:checked{background:#22a447;border-color:#22a447;transform:scale(1.1)}
+.ck-list input:checked::after{content:"";width:7px;height:12px;border:solid #fff;border-width:0 3px 3px 0;transform:translateY(-2px) rotate(45deg)}
+.ck-list label:has(input:checked){background:color-mix(in srgb,#22a447 14%,transparent);border-color:#22a447}
+.duim{position:fixed;inset:0;z-index:60;display:grid;place-items:center;align-content:center;gap:18px;background:rgba(10,30,15,.55);animation:fadeIn .25s ease-out both;cursor:pointer}
+.duim.weg{animation:fadeIn .35s ease-in reverse both}
+.duim-c{position:relative;width:min(46vw,220px);aspect-ratio:1;display:grid;place-items:center}
+.duim-c::before,.duim-c::after{content:"";position:absolute;inset:0;border-radius:50%;border:6px solid #2ecc5f;animation:ring 1.2s .35s ease-out both}
+.duim-c::after{animation-delay:.6s}
+.duim svg{width:100%;height:100%;fill:#2ecc5f;filter:drop-shadow(0 8px 24px rgba(0,0,0,.35));animation:duimPop .7s cubic-bezier(.2,1.6,.4,1) both,duimWiebel 1s .8s ease-in-out 2}
+.duim-t{font-family:var(--f-display);font-size:clamp(32px,8vw,64px);color:#fff;text-transform:uppercase;text-shadow:0 4px 18px rgba(0,0,0,.45);animation:fadeUp .5s .45s ease-out both}
+@keyframes duimPop{0%{transform:scale(0) rotate(-35deg)}100%{transform:none}}
+@keyframes duimWiebel{0%,100%{transform:none}25%{transform:rotate(-12deg) scale(1.05)}75%{transform:rotate(8deg)}}
+@keyframes ring{0%{transform:scale(.6);opacity:.9}100%{transform:scale(1.7);opacity:0}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -608,22 +622,27 @@ function confirmLeave(){
 }
 // ===================== CHECKLIST NIEUWE LAKDAG =====================
 const CHECKLIST=["Zijn alle schuurbanden vervangen?","Zijn alle schuurzolen vervangen?","Is alle lak bijgevuld?","Staan de walsen in de correcte stand?"];
+function toonDuim(){
+  const d=document.createElement("div");d.className="duim";d.setAttribute("role","status");
+  d.innerHTML=`<div class="duim-c"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg></div><div class="duim-t">Succes vandaag !!!</div>`;
+  document.body.appendChild(d);
+  const weg=()=>{if(d.classList.contains("weg"))return;d.classList.add("weg");setTimeout(()=>d.remove(),350)};
+  d.onclick=weg;setTimeout(weg,2800);
+}
 function startChecklist(){
   if(dirty && !confirmLeave())return;
   const m=$("#modal");
   m.innerHTML=`<div class="modal-box check" role="dialog" aria-modal="true" aria-labelledby="ckT">
     <h2 id="ckT">Checklist voor de start</h2>
-    <p>Vink alles af voordat je de nieuwe lakdag begint.</p>
+    <p>Vink alle punten af. Daarna start de nieuwe lakdag.</p>
     <ul class="ck-list">${CHECKLIST.map((t,i)=>`<li><label><input type="checkbox" data-ck="${i}"><span>${esc(t)}</span></label></li>`).join("")}</ul>
     <span class="ck-tel" id="ckTel">0 van ${CHECKLIST.length} afgevinkt</span>
-    <div class="row"><button class="btn primary" type="button" id="ckGo" disabled>Lakdag starten</button><button class="btn" type="button" id="ckNee">Annuleren</button></div>
-  </div>`;
+      </div>`;
   m.hidden=false;
-  const sluit=()=>{m.hidden=true;m.innerHTML=""};
+  m.onclick=null; // niet wegklikken: eerst alles afvinken
   const boxes=[...m.querySelectorAll("[data-ck]")];
-  boxes.forEach(b=>b.onchange=()=>{const n=boxes.filter(x=>x.checked).length;$("#ckTel").textContent=`${n} van ${CHECKLIST.length} afgevinkt`;$("#ckGo").disabled=n<CHECKLIST.length});
-  $("#ckNee").onclick=sluit;m.onclick=e=>{if(e.target===m)sluit()};
-  $("#ckGo").onclick=()=>{sluit();dirty=false;newDay()};
+  boxes.forEach(b=>b.onchange=()=>{const n=boxes.filter(x=>x.checked).length;$("#ckTel").textContent=`${n} van ${CHECKLIST.length} afgevinkt`;
+    if(n===CHECKLIST.length){boxes.forEach(x=>x.disabled=true);setTimeout(()=>{m.hidden=true;m.innerHTML="";dirty=false;newDay();toonDuim()},450)}});
   boxes[0].focus();
 }
 function newDay(){
