@@ -499,13 +499,23 @@ function beoordelingHtml(b){const v=draft[b.k];return `
       ${b.opm?`<div class="field" style="margin-top:6px"><label for="${b.id}-opm">Opmerkingen slotgaten</label><textarea id="${b.id}-opm" data-opm="${b.opm}" style="min-height:90px" placeholder="Wat was er goed of mis? Bijv. lak in de slotgaten, ruwe randen, kleurverschil…">${esc(draft[b.opm]||"")}</textarea></div>`:""}
     </div>
 `}
+// ---- foto's bij lakdag
+function ldTouch(){if(!dirty){dirty=true;justSaved=false}refreshHead()}
+function renderLdFotos(){const box=$("#ldFotos");if(!box||!draft)return;
+  if(draft.fotos==null){box.innerHTML='<span class="hint">Foto\'s laden…</span>';const d=draft;laadFotos(d.fotoIds).then(f=>{d.fotos=f;if(draft===d)renderLdFotos()});return}
+  box.innerHTML=draft.fotos.map((f,i)=>`<div class="st-thumb edit"><img src="${f.data}" alt="Foto ${i+1}" data-groot="${i}"><button type="button" class="st-fx" data-weg="${i}" aria-label="Foto ${i+1} verwijderen">×</button></div>`).join("")
+    +(draft.fotoBezig?'<span class="hint">Foto verwerken…</span>':"")
+    +(draft.fotos.length<MAX_FOTOS?'<label class="st-add" for="ld-cam">Foto maken<br><span>camera</span></label><label class="st-add" for="ld-file">Foto kiezen<br><span>uit galerij</span></label>':"");
+  box.querySelectorAll("[data-weg]").forEach(b=>b.onclick=()=>{draft.fotos.splice(+b.dataset.weg,1);ldTouch();renderLdFotos()});
+  box.querySelectorAll("[data-groot]").forEach(im=>im.onclick=()=>toonFoto(im.src));
+}
 // ---- draft handling
 function blankDraft(){
-  return {id:null,datum:today(),temperatuur:null,luchtvochtigheid:null,walsen:{},bijzonderheden:"",tevredenheid:null,slotgaten:null,slotOpmerking:"",charge:{primer:"",grondlak:"",deklak:""}};
+  return {id:null,datum:today(),temperatuur:null,luchtvochtigheid:null,walsen:{},bijzonderheden:"",tevredenheid:null,slotgaten:null,slotOpmerking:"",charge:{primer:"",grondlak:"",deklak:""},fotos:[],fotoIds:[]};
 }
 function draftFrom(rec){
   const w={};(rec.walsen||[]).forEach(x=>{const o={naam:x.naam};VELDEN.forEach(f=>{if(x[f]!=null)o[f]=x[f]});w[x.id]=o});
-  return {id:rec.id,datum:rec.datum||"",temperatuur:rec.temperatuur??null,luchtvochtigheid:rec.luchtvochtigheid??null,walsen:w,bijzonderheden:rec.bijzonderheden||"",tevredenheid:rec.tevredenheid??null,slotgaten:rec.slotgaten??null,slotOpmerking:rec.slotOpmerking||"",charge:{primer:rec.charge?.primer||"",grondlak:rec.charge?.grondlak||"",deklak:rec.charge?.deklak||""}};
+  return {id:rec.id,datum:rec.datum||"",temperatuur:rec.temperatuur??null,luchtvochtigheid:rec.luchtvochtigheid??null,walsen:w,bijzonderheden:rec.bijzonderheden||"",tevredenheid:rec.tevredenheid??null,slotgaten:rec.slotgaten??null,fotos:(rec.fotos&&rec.fotos.length)?null:[],fotoIds:rec.fotos||[],slotOpmerking:rec.slotOpmerking||"",charge:{primer:rec.charge?.primer||"",grondlak:rec.charge?.grondlak||"",deklak:rec.charge?.deklak||""}};
 }
 function sorted(){return dagen.slice().sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||(b.bijgewerkt||0)-(a.bijgewerkt||0))}
 function previousOf(d){
@@ -671,6 +681,12 @@ function renderSheet(){
     </div>
 
 ${BEOORDELINGEN.map(b=>beoordelingHtml(b)).join("")}
+    <div class="section">
+      <h3>Foto's van deze lakdag <span style="text-transform:none;letter-spacing:0;font-family:var(--f-body)">(maximaal ${MAX_FOTOS})</span></h3>
+      <div class="st-fotos" id="ldFotos"></div>
+      <input type="file" id="ld-cam" accept="image/*" capture="environment" hidden>
+      <input type="file" id="ld-file" accept="image/*" multiple hidden>
+    </div>
     <div class="foot">
       <div class="grp">
         ${confirmDel
@@ -739,6 +755,12 @@ ${BEOORDELINGEN.map(b=>beoordelingHtml(b)).join("")}
   $("#save").onclick=save;
   $("#editWalsen").onclick=openSetup;
   renderAdvies();
+  ["#ld-cam","#ld-file"].forEach(sel=>{const fi=$(sel);if(fi)fi.onchange=async()=>{const d=draft;if(!d||d.fotos==null)return;
+    const files=[...fi.files].slice(0,MAX_FOTOS-d.fotos.length);fi.value="";if(!files.length)return;
+    d.fotoBezig=true;renderLdFotos();
+    for(const f of files){try{const data=await verklein(f);d.fotos.push({id:null,data});if(draft===d)ldTouch()}catch(e){if(draft===d){error=e.message||"Foto kon niet worden gelezen.";refreshHead()}}}
+    d.fotoBezig=false;if(draft===d)renderLdFotos()}});
+  renderLdFotos();
   const gs=$("#goSetup"); if(gs)gs.onclick=openSetup;
   const o=$("#navOlder"), n=$("#navNewer");
   if(o)o.onclick=()=>{const r=rows[idx+1];if(r)select(r.id)};
@@ -774,6 +796,11 @@ async function save(){
   const rec=toRecord();
   try{
     if(db){
+      if(draft.fotos!=null){const ids=[];
+        for(const f of draft.fotos){if(!f.id){f.id=DOC_ID("foto_ld_");await db.collection("instellingen").doc(f.id).set({lakdag:draft.id||"",data:f.data,aangemaakt:Date.now()});fotoCache[f.id]=f.data}ids.push(f.id)}
+        for(const fid of draft.fotoIds||[])if(!ids.includes(fid)){try{await db.collection("instellingen").doc(fid).delete()}catch(x){}delete fotoCache[fid]}
+        rec.fotos=ids;draft.fotoIds=ids}
+      else rec.fotos=draft.fotoIds||[];
       const ref=draft.id?db.collection("lakdagen").doc(draft.id):db.collection("lakdagen").doc();
       await ref.set(rec);
       draft.id=ref.id; selectedId=ref.id;
@@ -793,7 +820,7 @@ async function save(){
 async function removeDay(){
   if(!draft.id){draft=null;selectedId=null;dirty=false;confirmDel=false;const f=sorted()[0];if(f){select(f.id)}else render();return}
   const id=draft.id;
-  try{ if(db) await db.collection("lakdagen").doc(id).delete(); }
+  try{ if(db) await (async()=>{const oud=dagen.find(x=>x.id===id);for(const fid of (oud&&oud.fotos)||[]){try{await db.collection("instellingen").doc(fid).delete()}catch(x){}}})(),await db.collection("lakdagen").doc(id).delete(); }
   catch(e){error="Verwijderen mislukt. Probeer het opnieuw.";confirmDel=false;renderSheet();return}
   dagen=dagen.filter(r=>r.id!==id); dirty=false; confirmDel=false;
   const f=sorted()[0]; if(f){selectedId=null;select(f.id)} else {draft=null;selectedId=null;render()}
@@ -1222,6 +1249,7 @@ function buildWordBody(){
     B.push(wP([wRun("Temperatuur: ",{b:true}),wRun(r.temperatuur!=null?fmt(r.temperatuur)+" °C":"–"),wRun("     Luchtvochtigheid: ",{b:true}),wRun(r.luchtvochtigheid!=null?fmt(r.luchtvochtigheid)+" %":"–"),wRun("     Tevredenheid: ",{b:true}),wRun(r.tevredenheid!=null?r.tevredenheid+"/5 ("+SCORE_TXT[r.tevredenheid]+")":"–"),wRun("     Slotgaten: ",{b:true}),wRun(r.slotgaten!=null?r.slotgaten+"/5 ("+BEOORDELINGEN[1].txt[r.slotgaten]+")":"–")]));
     const ws=r.walsen||[];
     if(ws.length) B.push(wTable([["Wals","Stand begin","Stand eind","Hoogte begin","Hoogte eind"],...ws.map(x=>[x.naam,{t:fmt(x.stand),align:"right"},{t:fmt(x.eind),align:"right"},{t:fmt(x.hoogte),align:"right"},{t:fmt(x.hoogteEind),align:"right"}])],[4200,2300,2300,2300,2300],{header:true}));
+    if(r.fotos&&r.fotos.length)B.push(wP([wRun(`Foto's: ${r.fotos.length} (te bekijken in de app)`,{i:true,color:"56637A"})]));
     if(r.charge&&(r.charge.primer||r.charge.grondlak||r.charge.deklak))B.push(wP([wRun("Charge lak: ",{b:true}),wRun(`Primer ${r.charge.primer||"–"} · Grondlak ${r.charge.grondlak||"–"} · Deklak ${r.charge.deklak||"–"}`)]));
     if((r.slotOpmerking||"").trim()){B.push(wP([wRun("Opmerkingen slotgaten:",{b:true})],{after:40}));String(r.slotOpmerking).split(/\n/).forEach(l=>B.push(wP(l)))}
     if((r.bijzonderheden||"").trim()){B.push(wP([wRun("Bijzonderheden:",{b:true})],{after:40}));String(r.bijzonderheden).split(/\n/).forEach(l=>B.push(wP(l)))}
