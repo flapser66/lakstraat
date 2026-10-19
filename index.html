@@ -392,6 +392,44 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .mat-tot dt{color:var(--muted)}
 .mat-tot dd{margin:0;text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 .err{color:var(--danger);font-size:14px}
+/* ===== animaties ===== */
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes popIn{0%{opacity:0;transform:scale(.92)}70%{transform:scale(1.02)}100%{opacity:1;transform:none}}
+@keyframes slideDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@keyframes slideLeft{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
+@keyframes shine{from{transform:translateX(-120%) skewX(-20deg)}to{transform:translateX(320%) skewX(-20deg)}}
+@keyframes pulseDot{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--warn) 45%,transparent)}50%{box-shadow:0 0 0 5px transparent}}
+header.top{position:relative;overflow:hidden}
+header.top::after{content:"";position:absolute;top:0;bottom:0;left:0;width:30%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);transform:translateX(-120%) skewX(-20deg);animation:shine 1.6s .4s ease-out 1 both;pointer-events:none}
+.brand-logo{animation:slideLeft .6s ease-out both}
+.brand{animation:slideLeft .6s .12s ease-out both}
+.wrap>*{animation:fadeUp .45s ease-out both}
+.wrap>*:nth-child(2){animation-delay:.06s}.wrap>*:nth-child(3){animation-delay:.12s}.wrap>*:nth-child(4){animation-delay:.18s}
+.btn,.tabs button,.linkbtn,.list li button,.stepper button,.st-kop{transition:background-color .18s,color .18s,border-color .18s,box-shadow .18s,transform .12s}
+.btn:active:not(:disabled),.tabs button:active,.stepper button:active,.st-thumb:active{transform:scale(.95)}
+.btn.primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 12px color-mix(in srgb,var(--accent) 35%,transparent)}
+.tabs button[aria-selected="true"]{animation:popIn .3s ease-out}
+input,textarea,select,.inp{transition:border-color .18s,box-shadow .18s,background-color .18s}
+.st-item,.mat-card{transition:box-shadow .2s,transform .2s,border-color .2s}
+.st-item:hover,.mat-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.08)}
+.st-item.open{box-shadow:0 6px 20px rgba(0,0,0,.10)}
+.st-body{animation:slideDown .28s ease-out both}
+.st-form{animation:slideDown .3s ease-out both}
+.status{transition:background-color .25s,color .25s}
+.status.saved{animation:popIn .35s ease-out}
+.status.dirty{animation:pulseDot 1.6s ease-in-out infinite}
+.modal{animation:fadeIn .2s ease-out both}
+.modal-box{animation:popIn .32s ease-out both}
+.lightbox img{animation:popIn .3s ease-out both}
+.err{animation:slideDown .25s ease-out both}
+.st-thumb{transition:transform .15s}
+.anim-in .list li,.anim-in .st-item,.anim-in .mat-card,.anim-in .section,.anim-in .wals,.anim-in .sheet,.anim-in .paper{animation:fadeUp .4s ease-out both}
+.anim-in .list li:nth-child(2),.anim-in .st-item:nth-child(2),.anim-in .mat-card:nth-child(2),.anim-in .section:nth-child(2),.anim-in .wals:nth-child(2){animation-delay:.04s}
+.anim-in .list li:nth-child(3),.anim-in .st-item:nth-child(3),.anim-in .mat-card:nth-child(3),.anim-in .section:nth-child(3),.anim-in .wals:nth-child(3){animation-delay:.08s}
+.anim-in .list li:nth-child(4),.anim-in .st-item:nth-child(4),.anim-in .mat-card:nth-child(4),.anim-in .section:nth-child(4),.anim-in .wals:nth-child(4){animation-delay:.12s}
+.anim-in .list li:nth-child(5),.anim-in .st-item:nth-child(5),.anim-in .mat-card:nth-child(5),.anim-in .section:nth-child(5),.anim-in .wals:nth-child(5){animation-delay:.16s}
+.anim-in .list li:nth-child(n+6),.anim-in .st-item:nth-child(n+6),.anim-in .mat-card:nth-child(n+6),.anim-in .section:nth-child(n+6),.anim-in .wals:nth-child(n+6){animation-delay:.2s}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -994,6 +1032,7 @@ function renderTabs(){
   document.querySelectorAll("#tabs [data-tab]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===tab)));
   $("#appLayout").hidden=tab!=="walsen"; $("#lampenView").hidden=tab!=="lampen"; $("#regLayout").hidden=tab!=="registratie"; $("#storView").hidden=tab!=="storingen"; $("#matLayout").hidden=tab!=="materialen"; $("#matActions").hidden=tab!=="materialen";
   $("#walsActions").hidden=tab!=="walsen"; $("#regActions").hidden=tab!=="registratie";
+  {const v=$({walsen:"#appLayout",lampen:"#lampenView",registratie:"#regLayout",storingen:"#storView",materialen:"#matLayout"}[tab]);if(v){v.classList.remove("anim-in");void v.offsetWidth;v.classList.add("anim-in");clearTimeout(v._at);v._at=setTimeout(()=>v.classList.remove("anim-in"),900)}}
   if(tab==="walsen")render();
   if(tab==="lampen")renderLampen();
   if(tab==="registratie"){renderRegList();renderRegSheet()}
