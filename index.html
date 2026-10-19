@@ -233,7 +233,13 @@ table.lamp td.act .cf button{font-size:13px;color:var(--ink-bad);font-weight:700
 table.scale{border-collapse:collapse;border:2px solid var(--paper-line);align-self:start}
 table.scale td{padding:0;text-align:center;width:40px;height:30px;font-size:16px;white-space:nowrap}
 table.scale td.side{width:40px}
-table.scale tr.sl td{height:46px;vertical-align:top;padding-top:2px}
+table.scale tr.vw td{height:40px;text-align:left;padding:4px 8px;border-top:1px dashed #C9CED6}
+.vwr{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.vwr label{font-size:14px;color:#444}
+.vwr .vin{width:100px;height:30px;border:1.5px solid var(--paper-line)!important;border-radius:4px;padding:0 8px;font-size:18px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.vwr .vin.uit{border-color:var(--ink-bad)!important;color:var(--ink-bad)}
+.vst{font-size:12px;color:var(--paper-soft)}
+.vst.uit{color:var(--ink-bad);font-weight:700}
 .slw{position:relative;height:42px;margin:0 20px}
 .sld{-webkit-appearance:none;appearance:none;position:absolute;left:-10px;width:calc(100% + 20px);top:2px;height:20px;margin:0;background:transparent;cursor:pointer}
 .sld::-webkit-slider-runnable-track{height:4px;background:#C9CED6;border-radius:2px}
@@ -1076,7 +1082,7 @@ function schaalHtml(i,m){
     const maj=[0,5,10];
     return `<tr class="top"><td class="nm side" colspan="2">${esc(s.links)}</td>${mid.map((v,j)=>`<td class="${j===0?"g":""}">${maj.includes(j)?v.toFixed(1).replace(".",","):""}</td>`).join("")}<td class="nm r side g" colspan="2">${esc(s.rechts)}</td></tr>
       <tr>${lo.map(v=>`<td class="side side-l">${btn(v,true)}</td>`).join("")}${mid.map((v,j)=>`<td class="${j===0?"g":""}">${btn(v,false)}</td>`).join("")}${hi.map((v,j)=>`<td class="side side-r${j===0?" g":""}">${btn(v,true)}</td>`).join("")}</tr>
-      <tr class="sl"><td colspan="15"><div class="slw" data-m="${i}" data-s="${s.k}"><input type="range" class="sld" min="${s.lo[0]}" max="${s.hi[1]}" step="0.01" value="${m[s.k]!=null?m[s.k]:(s.mid[0]+s.mid[1])/2}" aria-label="${esc(s.links)} tot ${esc(s.rechts)}, fijn instellen"><span class="bub"></span></div></td></tr>`}).join("")}</table>`;
+      <tr class="vw"><td colspan="15"><div class="vwr" data-m="${i}" data-s="${s.k}"><label for="v-${i}-${s.k}">Waarde ${esc(s.links.split(" ")[0])}</label><input id="v-${i}-${s.k}" class="vin" inputmode="decimal" autocomplete="off" value="${esc(fmt(m[s.k]))}" placeholder="bijv. ${String(s.mid[0]+(s.mid[1]-s.mid[0])/2).replace(".",",")}" aria-label="${esc(s.links)} tot ${esc(s.rechts)}, waarde"><span class="vst"></span></div></td></tr>`}).join("")}</table>`;
 }
 function renderRegSheet(){
   const el=$("#regSheet");
@@ -1103,7 +1109,7 @@ function renderRegSheet(){
       </div>
     </div>`).join("")}
   </div></div>
-  <div class="reg-hint">Klik op een cijfer om het te omcirkelen. Klik nog eens om het weg te halen. Een rode cirkel valt buiten het middengebied.</div>
+  <div class="reg-hint">Klik op een cijfer om het te omcirkelen, of typ de exacte waarde in het vakje onder de rij (bijv. 93,25). Klik nog eens op het cijfer om het weg te halen. Rood betekent buiten het middengebied.</div>
   <div class="foot">
     <div class="grp">${regDel?`<span class="confirm">Dit blad ${isNew?"weggooien":"verwijderen"}? <button class="btn danger-solid" type="button" id="regDelYes">Ja</button><button class="btn" type="button" id="regDelNo">Annuleren</button></span>`:`<button class="btn danger" type="button" id="regDel">${isNew?"Weggooien":"Verwijderen"}</button>`}</div>
     <div class="grp">${regErr?`<span class="err">${esc(regErr)}</span>`:""}<button class="btn primary" type="button" id="regSave" ${regSaving||!regDirty?"disabled":""}>Opslaan</button></div>
@@ -1115,20 +1121,18 @@ function renderRegSheet(){
   el.querySelectorAll("input[data-m]").forEach(inp=>{const m=r.metingen[+inp.dataset.m],f=inp.dataset.f;
     if(inp.dataset.n){inp.oninput=()=>{m[f]=num(inp.value);touch()};inp.onblur=()=>{if(f==="hoek"&&m[f]==null){m[f]=60;touch()}if(m[f]!=null)inp.value=fmt(m[f])}}
     else inp.oninput=()=>{m[f]=inp.value;touch()}});
-  const upd=(i,k)=>{const m=r.metingen[i],v=m[k],s=SCHALEN.find(x=>x.k===k);
+  const upd=(i,k,vanVak)=>{const m=r.metingen[i],v=m[k],s=SCHALEN.find(x=>x.k===k);
     el.querySelectorAll(`.dg[data-m="${i}"][data-s="${k}"]`).forEach(x=>{const on=v!=null&&Math.abs(v-Number(x.dataset.v))<1e-9;x.classList.toggle("on",on);x.setAttribute("aria-pressed",String(on))});
-    const w=el.querySelector(`.slw[data-m="${i}"][data-s="${k}"]`),sl=w.querySelector(".sld"),bub=w.querySelector(".bub");
+    const w=el.querySelector(`.vwr[data-m="${i}"][data-s="${k}"]`),inp=w.querySelector(".vin"),st=w.querySelector(".vst");
     const uit=v!=null&&(v<s.mid[0]-1e-9||v>s.mid[1]+1e-9);
-    sl.classList.toggle("leeg",v==null);sl.classList.toggle("uit",uit);
-    if(v!=null&&Math.abs(Number(sl.value)-v)>1e-9)sl.value=v;
-    const pos=v!=null?v:Number(sl.value);bub.style.left=((pos-s.lo[0])/(s.hi[1]-s.lo[0])*100)+"%";
-    bub.classList.toggle("uit",uit);
-    bub.innerHTML=v!=null?`${fmt(v)}<button type="button" aria-label="Waarde wissen">×</button>`:'<span class="ph">schuif voor tussenwaarde</span>';
-    const x=bub.querySelector("button");if(x)x.onclick=()=>{m[k]=null;upd(i,k);touch()};};
+    if(!vanVak)inp.value=fmt(v);
+    inp.classList.toggle("uit",uit);
+    st.className="vst"+(uit?" uit":"");st.textContent=v==null?"":uit?"buiten het middengebied":"binnen het middengebied";};
   el.querySelectorAll(".dg").forEach(b=>b.onclick=()=>{const i=+b.dataset.m,m=r.metingen[i],k=b.dataset.s,v=Number(b.dataset.v);
     m[k]=(m[k]!=null&&Math.abs(m[k]-v)<1e-9)?null:v;upd(i,k);touch()});
-  el.querySelectorAll(".slw").forEach(w=>{const i=+w.dataset.m,k=w.dataset.s,sl=w.querySelector(".sld");
-    sl.oninput=()=>{r.metingen[i][k]=Math.round(Number(sl.value)*100)/100;upd(i,k);touch()};upd(i,k)});
+  el.querySelectorAll(".vwr").forEach(w=>{const i=+w.dataset.m,k=w.dataset.s,inp=w.querySelector(".vin");
+    inp.oninput=()=>{const t=inp.value.trim();const v=t===""?null:num(t);if(t!==""&&v==null)return;r.metingen[i][k]=v==null?null:Math.round(v*100)/100;upd(i,k,true);touch()};
+    inp.onblur=()=>{inp.value=fmt(r.metingen[i][k])};upd(i,k)});
   $("#regSave").onclick=saveReg;
   const d=$("#regDel");if(d)d.onclick=()=>{regDel=true;renderRegSheet()};
   const dn=$("#regDelNo");if(dn)dn.onclick=()=>{regDel=false;renderRegSheet()};
