@@ -274,7 +274,8 @@ table.scale td.side-r{text-align:left}
 .meet-side .opr:first-of-type{border-top:1.5px solid var(--paper-line)}
 .meet-side .opr input{width:100%;font-size:17px;text-align:right;padding:0 4px}
 .reg-hint{font-size:12px;color:var(--muted);padding:8px 18px 0}
-.charges{display:grid;grid-template-columns:repeat(3,minmax(0,200px));gap:12px}
+.charges{display:grid;grid-template-columns:repeat(3,minmax(0,220px));gap:12px}
+.ch2{display:flex;flex-direction:column;gap:6px}
 @media (max-width:560px){.charges{grid-template-columns:minmax(0,1fr)}}
 .charges .inp input{font-family:var(--f-mono);font-size:16px;padding:7px 10px}
 .modal{position:fixed;inset:0;background:rgba(10,20,35,.55);display:grid;place-items:center;padding:16px;z-index:50}
@@ -369,6 +370,7 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .maandkiezer select{height:38px;border:1px solid var(--line);border-radius:6px;background:var(--sunk);color:var(--fg);font:inherit;font-size:14px;font-weight:600;padding:0 4px;text-transform:capitalize;min-width:0}
 .mat-ch{display:flex;flex-direction:column;gap:3px;border-top:1px dashed var(--line);padding-top:8px}
 .mat-ch label{font-size:12px;color:var(--muted)}
+.mat-ch .ch2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .mat-ch .inp input{font-family:var(--f-mono);font-size:15px;padding:6px 10px}
 .mat-tot .chg{font-family:var(--f-mono);font-size:12px;color:var(--fg)}
 .mat-tot{padding:12px 14px;border-bottom:1px solid var(--line);background:var(--sunk)}
@@ -509,13 +511,18 @@ function renderLdFotos(){const box=$("#ldFotos");if(!box||!draft)return;
   box.querySelectorAll("[data-weg]").forEach(b=>b.onclick=()=>{draft.fotos.splice(+b.dataset.weg,1);ldTouch();renderLdFotos()});
   box.querySelectorAll("[data-groot]").forEach(im=>im.onclick=()=>toonFoto(im.src));
 }
+// ---- charges (per laksoort twee chargenummers)
+const CH_K=["primer","primer2","grondlak","grondlak2","deklak","deklak2"];
+function chObj(src,trim){const o={};CH_K.forEach(k=>{const v=(src&&src[k])||"";o[k]=trim?String(v).trim():v});return o}
+function chHas(c){return !!c&&CH_K.some(k=>(c[k]||"").trim())}
+function chTekst(c,k){return [c&&c[k],c&&c[k+"2"]].map(x=>(x||"").trim()).filter(Boolean).join(" + ")}
 // ---- draft handling
 function blankDraft(){
-  return {id:null,datum:today(),temperatuur:null,luchtvochtigheid:null,walsen:{},bijzonderheden:"",tevredenheid:null,slotgaten:null,slotOpmerking:"",charge:{primer:"",grondlak:"",deklak:""},fotos:[],fotoIds:[]};
+  return {id:null,datum:today(),temperatuur:null,luchtvochtigheid:null,walsen:{},bijzonderheden:"",tevredenheid:null,slotgaten:null,slotOpmerking:"",charge:chObj({}),fotos:[],fotoIds:[]};
 }
 function draftFrom(rec){
   const w={};(rec.walsen||[]).forEach(x=>{const o={naam:x.naam};VELDEN.forEach(f=>{if(x[f]!=null)o[f]=x[f]});w[x.id]=o});
-  return {id:rec.id,datum:rec.datum||"",temperatuur:rec.temperatuur??null,luchtvochtigheid:rec.luchtvochtigheid??null,walsen:w,bijzonderheden:rec.bijzonderheden||"",tevredenheid:rec.tevredenheid??null,slotgaten:rec.slotgaten??null,fotos:(rec.fotos&&rec.fotos.length)?null:[],fotoIds:rec.fotos||[],slotOpmerking:rec.slotOpmerking||"",charge:{primer:rec.charge?.primer||"",grondlak:rec.charge?.grondlak||"",deklak:rec.charge?.deklak||""}};
+  return {id:rec.id,datum:rec.datum||"",temperatuur:rec.temperatuur??null,luchtvochtigheid:rec.luchtvochtigheid??null,walsen:w,bijzonderheden:rec.bijzonderheden||"",tevredenheid:rec.tevredenheid??null,slotgaten:rec.slotgaten??null,fotos:(rec.fotos&&rec.fotos.length)?null:[],fotoIds:rec.fotos||[],slotOpmerking:rec.slotOpmerking||"",charge:chObj(rec.charge)};
 }
 function sorted(){return dagen.slice().sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||(b.bijgewerkt||0)-(a.bijgewerkt||0))}
 function previousOf(d){
@@ -545,7 +552,7 @@ function newDay(){
   if(dirty && !confirmLeave())return;
   mode="dag"; selectedId="__new"; confirmDel=false; error=""; justSaved=false;
   draft=blankDraft();
-  const mt=matRows.find(m=>m.datum===draft.datum&&m.charge&&(m.charge.primer||m.charge.grondlak||m.charge.deklak));if(mt)draft.charge={primer:mt.charge.primer||"",grondlak:mt.charge.grondlak||"",deklak:mt.charge.deklak||""};
+  const mt=matRows.find(m=>m.datum===draft.datum&&chHas(m.charge));if(mt)draft.charge=chObj(mt.charge);
   // standen van vorige lakdag voorinvullen
   const prev=sorted()[0];
   if(prev){(prev.walsen||[]).forEach(x=>{const o={naam:x.naam};if(x.stand!=null)o.stand=x.stand;if(x.hoogte!=null)o.hoogte=x.hoogte;if(o.stand!=null||o.hoogte!=null)draft.walsen[x.id]=o})}
@@ -672,7 +679,7 @@ function renderSheet(){
 
     <div class="section">
       <h3>Charge lakblikken</h3>
-      <div class="charges">${[["primer","Primer"],["grondlak","Grondlak"],["deklak","Deklak"]].map(([k,n])=>`<div class="field"><label for="ch-${k}">${n}</label><div class="inp"><input id="ch-${k}" data-ch="${k}" autocomplete="off" value="${esc(draft.charge?.[k]||"")}" placeholder="chargenummer"></div><span class="hint">${prev&&prev.charge&&prev.charge[k]?"vorige: "+esc(prev.charge[k]):"&nbsp;"}</span></div>`).join("")}</div>
+      <div class="charges">${[["primer","Primer"],["grondlak","Grondlak"],["deklak","Deklak"]].map(([k,n])=>`<div class="field"><label for="ch-${k}">${n}</label><div class="ch2"><div class="inp"><input id="ch-${k}" data-ch="${k}" autocomplete="off" value="${esc(draft.charge?.[k]||"")}" placeholder="charge 1" aria-label="${n} charge 1"></div><div class="inp"><input id="ch-${k}2" data-ch="${k}2" autocomplete="off" value="${esc(draft.charge?.[k+"2"]||"")}" placeholder="charge 2" aria-label="${n} charge 2"></div></div><span class="hint">${prev&&chTekst(prev.charge,k)?"vorige: "+esc(chTekst(prev.charge,k)):"&nbsp;"}</span></div>`).join("")}</div>
     </div>
 
     <div class="section">
@@ -710,9 +717,9 @@ ${BEOORDELINGEN.map(b=>beoordelingHtml(b)).join("")}
     const t=$("#"+b.id+"-opm");if(t)t.oninput=()=>{draft[b.opm]=t.value;touch()};
   });
   $("#f-datum").onchange=e=>{draft.datum=e.target.value;
-    const leeg=!draft.charge||["primer","grondlak","deklak"].every(k=>!(draft.charge[k]||"").trim());
-    const mt=matRows.find(m=>m.datum===draft.datum&&m.charge&&(m.charge.primer||m.charge.grondlak||m.charge.deklak));
-    if(leeg&&mt)draft.charge={primer:mt.charge.primer||"",grondlak:mt.charge.grondlak||"",deklak:mt.charge.deklak||""};
+    const leeg=!chHas(draft.charge);
+    const mt=matRows.find(m=>m.datum===draft.datum&&chHas(m.charge));
+    if(leeg&&mt)draft.charge=chObj(mt.charge);
     touch();renderSheetKeepFocus("f-datum")};
   $("#f-temp").oninput=e=>{draft.temperatuur=num(e.target.value);touch()};
   $("#f-rv").oninput=e=>{draft.luchtvochtigheid=num(e.target.value);touch()};
@@ -788,7 +795,7 @@ function toRecord(){
   const order=walsen.map(w=>w.id);
   const ids=Object.keys(draft.walsen).sort((a,b)=>{const ia=order.indexOf(a),ib=order.indexOf(b);return (ia<0?999:ia)-(ib<0?999:ib)});
   for(const id of ids){const x=draft.walsen[id];if(x&&VELDEN.some(f=>x[f]!=null)){const cfg=walsen.find(w=>w.id===id);const o={id,naam:cfg?cfg.naam:x.naam};VELDEN.forEach(f=>o[f]=x[f]??null);ws.push(o)}}
-  return {datum:draft.datum,temperatuur:draft.temperatuur,luchtvochtigheid:draft.luchtvochtigheid,walsen:ws,bijzonderheden:draft.bijzonderheden||"",tevredenheid:draft.tevredenheid??null,slotgaten:draft.slotgaten??null,slotOpmerking:(draft.slotOpmerking||"").trim(),charge:{primer:(draft.charge?.primer||"").trim(),grondlak:(draft.charge?.grondlak||"").trim(),deklak:(draft.charge?.deklak||"").trim()},bijgewerkt:Date.now()};
+  return {datum:draft.datum,temperatuur:draft.temperatuur,luchtvochtigheid:draft.luchtvochtigheid,walsen:ws,bijzonderheden:draft.bijzonderheden||"",tevredenheid:draft.tevredenheid??null,slotgaten:draft.slotgaten??null,slotOpmerking:(draft.slotOpmerking||"").trim(),charge:chObj(draft.charge,true),bijgewerkt:Date.now()};
 }
 async function save(){
   if(!draft.datum){error="Vul een datum in.";renderSheet();return}
@@ -1250,7 +1257,7 @@ function buildWordBody(){
     const ws=r.walsen||[];
     if(ws.length) B.push(wTable([["Wals","Stand begin","Stand eind","Hoogte begin","Hoogte eind"],...ws.map(x=>[x.naam,{t:fmt(x.stand),align:"right"},{t:fmt(x.eind),align:"right"},{t:fmt(x.hoogte),align:"right"},{t:fmt(x.hoogteEind),align:"right"}])],[4200,2300,2300,2300,2300],{header:true}));
     if(r.fotos&&r.fotos.length)B.push(wP([wRun(`Foto's: ${r.fotos.length} (te bekijken in de app)`,{i:true,color:"56637A"})]));
-    if(r.charge&&(r.charge.primer||r.charge.grondlak||r.charge.deklak))B.push(wP([wRun("Charge lak: ",{b:true}),wRun(`Primer ${r.charge.primer||"–"} · Grondlak ${r.charge.grondlak||"–"} · Deklak ${r.charge.deklak||"–"}`)]));
+    if(chHas(r.charge))B.push(wP([wRun("Charge lak: ",{b:true}),wRun(`Primer ${chTekst(r.charge,"primer")||"–"} · Grondlak ${chTekst(r.charge,"grondlak")||"–"} · Deklak ${chTekst(r.charge,"deklak")||"–"}`)]));
     if((r.slotOpmerking||"").trim()){B.push(wP([wRun("Opmerkingen slotgaten:",{b:true})],{after:40}));String(r.slotOpmerking).split(/\n/).forEach(l=>B.push(wP(l)))}
     if((r.bijzonderheden||"").trim()){B.push(wP([wRun("Bijzonderheden:",{b:true})],{after:40}));String(r.bijzonderheden).split(/\n/).forEach(l=>B.push(wP(l)))}
   }
@@ -1530,9 +1537,9 @@ let matRows=[],matLoaded=false,matSel=null,matDraft=null,matDirty=false,matSavin
 const LAK_K=["primer","grondlak","deklak"];
 function lakdagOp(datum){return datum?dagen.find(d=>d.datum===datum)||null:null}
 function chargeVoor(r,k){const ld=lakdagOp(r.datum);const c=ld&&ld.charge&&ld.charge[k];return (c&&String(c).trim())||(r.charge&&r.charge[k])||""}
-function chargesVoor(r){const o={};LAK_K.forEach(k=>o[k]=chargeVoor(r,k));return o}
+function chargesVoor(r){const o={};CH_K.forEach(k=>o[k]=chargeVoor(r,k));return o}
 function perCharge(rows){const map={};
-  for(const r of rows)for(const m of MATS.filter(m=>m.groep==="lak")){const v=r[m.k];if(!v)continue;const c=chargeVoor(r,m.k)||"onbekend";const key=m.k+"|"+c;
+  for(const r of rows)for(const m of MATS.filter(m=>m.groep==="lak")){const v=r[m.k];if(!v)continue;const c=[chargeVoor(r,m.k),chargeVoor(r,m.k+"2")].filter(Boolean).join(" + ")||"onbekend";const key=m.k+"|"+c;
     const o=map[key]||(map[key]={soort:m.naam,k:m.k,charge:c,blik:0,dagen:0,van:r.datum,tot:r.datum});o.blik+=v;o.dagen++;if(r.datum<o.van)o.van=r.datum;if(r.datum>o.tot)o.tot=r.datum}
   return Object.values(map).sort((a,b)=>LAK_K.indexOf(a.k)-LAK_K.indexOf(b.k)||(a.van||"").localeCompare(b.van||""))}
 function matBlank(){const o={id:null,datum:today(),opmerking:"",chargeAangepast:false};MATS.forEach(m=>o[m.k]=null);o.charge=chargesVoor(o);return o}
@@ -1589,7 +1596,7 @@ function renderMatSheet(){
         <button type="button" data-step="1" data-k="${m.k}" aria-label="${esc(m.naam)} meer">+</button>
       </div>
       <span class="hint">${m.eenheid?`aantal ${m.meer} (halve mag: 0,5)`:"aantal gebruikt"}</span>
-      ${LAK_K.includes(m.k)?`<div class="mat-ch"><label for="mch-${m.k}">Charge</label><div class="inp"><input id="mch-${m.k}" data-ch="${m.k}" autocomplete="off" value="${esc(r.charge?.[m.k]||"")}" placeholder="chargenummer"></div></div>`:""}
+      ${LAK_K.includes(m.k)?`<div class="mat-ch"><label for="mch-${m.k}">Charge</label><div class="ch2"><div class="inp"><input id="mch-${m.k}" data-ch="${m.k}" autocomplete="off" value="${esc(r.charge?.[m.k]||"")}" placeholder="charge 1" aria-label="${esc(m.naam)} charge 1"></div><div class="inp"><input id="mch-${m.k}2" data-ch="${m.k}2" autocomplete="off" value="${esc(r.charge?.[m.k+"2"]||"")}" placeholder="charge 2" aria-label="${esc(m.naam)} charge 2"></div></div></div>`:""}
     </div>`;
   el.innerHTML=`<div class="sheet-head"><div><div class="title">Materialen ${esc(r.datum?longDate(r.datum):"")}</div><div class="sub">${isNew?"Nieuwe dag":"Opgeslagen dag"} ${statusHtml(matSaving,matDirty,matSaved)}</div></div></div>
     <div class="section"><h3>Lakdag</h3>
@@ -1622,11 +1629,11 @@ function renderMatSheet(){
 async function saveMat(){
   const r=matDraft;if(!r.datum){matErr="Vul een datum in.";return renderMatSheet()}
   matSaving=true;matErr="";renderMatSheet();
-  try{const ch={};LAK_K.forEach(k=>ch[k]=(r.charge?.[k]||"").trim());
+  try{const ch=chObj(r.charge,true);
     const rec={datum:r.datum,opmerking:(r.opmerking||"").trim(),charge:ch,bijgewerkt:Date.now()};MATS.forEach(m=>rec[m.k]=r[m.k]??null);
     const id=r.id||DOC_ID("mat_");await db.collection("instellingen").doc(id).set(rec);
     const ld=lakdagOp(r.datum);
-    if(ld&&LAK_K.some(k=>((ld.charge&&ld.charge[k])||"")!==ch[k])){await db.collection("lakdagen").doc(ld.id).update({charge:ch});ld.charge=ch;
+    if(ld&&CH_K.some(k=>((ld.charge&&ld.charge[k])||"")!==ch[k])){await db.collection("lakdagen").doc(ld.id).update({charge:ch});ld.charge=ch;
       if(draft&&draft.id===ld.id&&!dirty)draft.charge={...ch}}
     r.chargeAangepast=false;
     r.id=id;matSel=id;matRows=matRows.filter(x=>x.id!==id).concat([{id,...rec}]);matDirty=false;matSaved=true;if(rec.datum)matMaand=rec.datum.slice(0,7)}
