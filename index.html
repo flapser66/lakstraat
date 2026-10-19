@@ -332,6 +332,15 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .st-tags{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
 .st-tags span{font-size:12px;background:var(--sunk);border-radius:99px;padding:2px 9px;color:var(--muted)}
 .st-acties{grid-column:1/-1}
+.st-fotos{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.st-thumb{width:110px;height:110px;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--sunk);padding:0;position:relative;display:grid;place-items:center;cursor:zoom-in}
+.st-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.st-thumb.edit{cursor:default}.st-thumb.edit img{cursor:zoom-in}
+.st-fx{position:absolute;top:4px;right:4px;width:28px;height:28px;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:16px;line-height:1}
+.st-add{width:110px;height:110px;border:2px dashed var(--accent);border-radius:6px;display:grid;place-items:center;text-align:center;font-size:13px;color:var(--accent);font-weight:600;cursor:pointer;line-height:1.3}
+.st-add:hover{background:var(--accent-soft)}
+.lightbox{display:flex;flex-direction:column;align-items:center;gap:12px;max-width:100%;max-height:100%}
+.lightbox img{max-width:min(96vw,1400px);max-height:82vh;object-fit:contain;border-radius:6px;background:#000}
 .st-leeg{margin:0;color:var(--muted);padding:8px 2px}
 .st-form{margin:14px 18px 0;border:1px solid var(--accent);border-radius:8px;overflow:hidden;background:var(--panel)}
 .st-form-h{padding:10px 14px;background:var(--accent-soft);font-weight:600}
@@ -1341,6 +1350,22 @@ function renderAdvies(){
     dirty=true;justSaved=false;renderSheet()};
   box.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>select(b.dataset.open));
 }
+// ===================== FOTO'S BIJ STORINGEN =====================
+const fotoCache={}, MAX_FOTOS=4;
+async function laadFoto(id){if(fotoCache[id])return fotoCache[id];try{const d=await db.collection("instellingen").doc(id).get();if(d.exists)fotoCache[id]=d.data().data}catch(e){}return fotoCache[id]||null}
+async function laadFotos(ids){const out=[];for(const id of ids||[]){const data=await laadFoto(id);if(data)out.push({id,data})}return out}
+function verklein(file){return new Promise((res,rej)=>{const url=URL.createObjectURL(file),img=new Image();
+  img.onload=()=>{URL.revokeObjectURL(url);let max=1600,q=0.72,data="";
+    for(let t=0;t<7;t++){const sc=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);
+      c.getContext("2d").drawImage(img,0,0,c.width,c.height);data=c.toDataURL("image/jpeg",q);if(data.length<650000)break;max=Math.round(max*0.8);q=Math.max(0.5,q-0.05)}
+    res(data)};
+  img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error("Dit bestand is geen foto."))};img.src=url})}
+function toonFoto(data){const m=$("#modal");
+  m.innerHTML=`<div class="lightbox" role="dialog" aria-modal="true" aria-label="Foto bij storing"><img src="${data}" alt="Foto bij storing"><button type="button" class="btn" id="lbClose">Sluiten</button></div>`;
+  m.hidden=false;const sluit=()=>{m.hidden=true;m.innerHTML=""};$("#lbClose").onclick=sluit;m.onclick=e=>{if(e.target===m||e.target.tagName==="IMG")sluit()};$("#lbClose").focus()}
+function vulThumbs(root){root.querySelectorAll("[data-foto]").forEach(async b=>{const data=await laadFoto(b.dataset.foto);
+  b.innerHTML=data?`<img src="${data}" alt="Foto bij storing">`:'<span class="hint">niet gevonden</span>';if(data)b.onclick=()=>toonFoto(data)})}
+
 // ===================== STORINGEN =====================
 let storingen=[], stLoaded=false, stQ="", stOpen=null, stEdit=null, stDirty=false, stSaving=false, stErr="", stDel=false;
 const ST_LEEG=()=>({id:null,titel:"",onderdeel:"",datum:today(),oorzaak:"",oplossing:"",trefwoorden:""});
@@ -1367,6 +1392,7 @@ function stItemHtml(s,open){
     ${open?`<div class="st-body">
       <div class="st-blk oorz"><h4>Oorzaak</h4><p>${hl(s.oorzaak)||"<span class='hint'>Niet ingevuld</span>"}</p></div>
       <div class="st-blk opl"><h4>Oplossing</h4><p>${hl(s.oplossing)||"<span class='hint'>Niet ingevuld</span>"}</p></div>
+      ${s.fotos&&s.fotos.length?`<div class="st-fotos">${s.fotos.map(id=>`<button type="button" class="st-thumb" data-foto="${esc(id)}" aria-label="Foto vergroten"><span class="hint">laden…</span></button>`).join("")}</div>`:""}
       ${tags.length?`<div class="st-tags">${tags.map(x=>`<span>${hl(x)}</span>`).join("")}</div>`:""}
       <div class="st-acties"><button class="btn" type="button" data-edit="${esc(s.id)}">Bewerken</button></div>
     </div>`:""}
@@ -1381,7 +1407,9 @@ function renderStLijst(){
   else if(!lijst.length){box.innerHTML=`<p class="st-leeg">Niets gevonden voor "${esc(stQ)}". Probeer een ander of korter woord.</p>`}
   else box.innerHTML=lijst.map(s=>stItemHtml(s,q>0||stOpen===s.id)).join("");
   box.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{if(zoekWoorden().length)return;stOpen=stOpen===b.dataset.open?null:b.dataset.open;renderStLijst()});
-  box.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{if(stDirty&&!stGuard())return;const s=storingen.find(x=>x.id===b.dataset.edit);stEdit={...ST_LEEG(),...s};stDirty=false;stErr="";stDel=false;renderStoringen();$("#st-titel")?.focus()});
+  box.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{if(stDirty&&!stGuard())return;const s=storingen.find(x=>x.id===b.dataset.edit);stEdit={...ST_LEEG(),...s,fotos:[],fotosLaden:!!(s.fotos&&s.fotos.length)};stDirty=false;stErr="";stDel=false;renderStoringen();$("#st-titel")?.focus();
+    if(s.fotos&&s.fotos.length)laadFotos(s.fotos).then(f=>{if(stEdit&&stEdit.id===s.id){stEdit.fotos=f;stEdit.fotosLaden=false;renderStForm()}})});
+  vulThumbs(box);
 }
 let stArmed=false;
 function stGuard(){if(!stDirty)return true;if(stArmed){stArmed=false;return true}stArmed=true;stErr="Je hebt niet-opgeslagen wijzigingen. Klik nog eens om ze weg te gooien, of sla eerst op.";renderStForm();setTimeout(()=>{stArmed=false},6000);return false}
@@ -1398,6 +1426,11 @@ function stFormHtml(){
       <div class="field full"><label for="st-oorzaak">Oorzaak</label><textarea id="st-oorzaak" data-f="oorzaak" placeholder="Wat was de oorzaak?">${esc(e.oorzaak)}</textarea></div>
       <div class="field full"><label for="st-oplossing">Oplossing</label><textarea id="st-oplossing" data-f="oplossing" placeholder="Hoe is het opgelost?">${esc(e.oplossing)}</textarea></div>
       <div class="field full"><label for="st-tref">Trefwoorden</label><div class="inp"><input id="st-tref" data-f="trefwoorden" value="${esc(e.trefwoorden)}" placeholder="Gescheiden door komma's, bijv. strepen, rakel, vuil"></div><span class="hint" style="font-family:var(--f-body)">Woorden waarop je deze storing later wilt terugvinden.</span></div>
+      <div class="field full"><label>Foto's <span class="hint" style="font-family:var(--f-body)">(maximaal ${MAX_FOTOS})</span></label>
+        <div class="st-fotos">${(e.fotos||[]).map((f,i)=>`<div class="st-thumb edit"><img src="${f.data}" alt="Foto ${i+1}" data-groot="${i}"><button type="button" class="st-fx" data-weg="${i}" aria-label="Foto ${i+1} verwijderen">×</button></div>`).join("")}
+          ${e.fotosLaden?'<span class="hint">Foto\'s laden…</span>':""}${e.fotoBezig?'<span class="hint">Foto verwerken…</span>':""}
+          ${(e.fotos||[]).length<MAX_FOTOS&&!e.fotosLaden?`<label class="st-add" for="st-file">+ Foto maken<br>of kiezen</label>`:""}</div>
+        <input type="file" id="st-file" accept="image/*" multiple hidden></div>
     </div>
     <div class="foot">
       <div class="grp">${isNew?"":stDel?`<span class="confirm">Deze storing verwijderen? <button class="btn danger-solid" type="button" id="stDelYes">Ja, verwijderen</button><button class="btn" type="button" id="stDelNo">Annuleren</button></span>`:`<button class="btn danger" type="button" id="stDelBtn">Verwijderen</button>`}</div>
@@ -1408,19 +1441,31 @@ function stFormHtml(){
 function renderStForm(){
   const holder=$("#stFormHolder");if(!holder)return;holder.innerHTML=stFormHtml();if(!stEdit)return;
   holder.querySelectorAll("[data-f]").forEach(inp=>{const ev=inp.type==="date"?"onchange":"oninput";inp[ev]=()=>{stEdit[inp.dataset.f]=inp.value;if(!stDirty){stDirty=true;stErr="";const s=$("#stSave");if(s)s.disabled=false}}});
+  const markeer=()=>{stDirty=true;stErr=""};
+  const fi=$("#st-file");if(fi)fi.onchange=async()=>{const files=[...fi.files].slice(0,MAX_FOTOS-(stEdit.fotos||[]).length);fi.value="";if(!files.length)return;
+    stEdit.fotoBezig=true;renderStForm();
+    for(const f of files){try{const data=await verklein(f);if(!stEdit)return;stEdit.fotos.push({id:null,data});markeer()}catch(err){stErr=err.message||"Foto kon niet worden gelezen."}}
+    if(stEdit){stEdit.fotoBezig=false;renderStForm()}};
+  holder.querySelectorAll("[data-weg]").forEach(b=>b.onclick=()=>{stEdit.fotos.splice(+b.dataset.weg,1);markeer();renderStForm()});
+  holder.querySelectorAll("[data-groot]").forEach(im=>im.onclick=()=>toonFoto(im.src));
   $("#stCancel").onclick=()=>{stEdit=null;stDirty=false;stErr="";stDel=false;renderStForm()};
   $("#stSave").onclick=saveStoring;
   const d=$("#stDelBtn");if(d)d.onclick=()=>{stDel=true;renderStForm()};
   const dn=$("#stDelNo");if(dn)dn.onclick=()=>{stDel=false;renderStForm()};
-  const dy=$("#stDelYes");if(dy)dy.onclick=async()=>{try{await db.collection("instellingen").doc(stEdit.id).delete();storingen=storingen.filter(x=>x.id!==stEdit.id)}catch(e){stErr="Verwijderen mislukt.";stDel=false;return renderStForm()}
+  const dy=$("#stDelYes");if(dy)dy.onclick=async()=>{try{const oud=storingen.find(x=>x.id===stEdit.id);for(const fid of (oud&&oud.fotos)||[]){try{await db.collection("instellingen").doc(fid).delete()}catch(e){}}await db.collection("instellingen").doc(stEdit.id).delete();storingen=storingen.filter(x=>x.id!==stEdit.id)}catch(e){stErr="Verwijderen mislukt.";stDel=false;return renderStForm()}
     stEdit=null;stDirty=false;stDel=false;renderStoringen()};
 }
 async function saveStoring(){
   const e=stEdit;if(!e.titel.trim()){stErr="Vul in wat de storing is.";return renderStForm()}
   stSaving=true;stErr="";renderStForm();
   try{
-    const rec={titel:e.titel.trim(),onderdeel:(e.onderdeel||"").trim(),datum:e.datum||"",oorzaak:(e.oorzaak||"").trim(),oplossing:(e.oplossing||"").trim(),trefwoorden:(e.trefwoorden||"").trim(),bijgewerkt:Date.now()};
     const id=e.id||DOC_ID("stor_");
+    const ids=[];
+    for(const f of e.fotos||[]){if(f.id){ids.push(f.id);continue}
+      const fid=DOC_ID("foto_"+id.slice(5)+"_");await db.collection("instellingen").doc(fid).set({storing:id,data:f.data,aangemaakt:Date.now()});fotoCache[fid]=f.data;f.id=fid;ids.push(fid)}
+    const oud=storingen.find(x=>x.id===id);
+    for(const fid of (oud&&oud.fotos)||[])if(!ids.includes(fid)){try{await db.collection("instellingen").doc(fid).delete()}catch(x){}delete fotoCache[fid]}
+    const rec={titel:e.titel.trim(),onderdeel:(e.onderdeel||"").trim(),datum:e.datum||"",oorzaak:(e.oorzaak||"").trim(),oplossing:(e.oplossing||"").trim(),trefwoorden:(e.trefwoorden||"").trim(),fotos:ids,bijgewerkt:Date.now()};
     await db.collection("instellingen").doc(id).set(rec);
     storingen=storingen.filter(x=>x.id!==id).concat([{id,...rec}]);
     stEdit=null;stDirty=false;stOpen=id;
@@ -1437,7 +1482,7 @@ function renderStoringen(){
   </main>`;
   renderStForm();renderStLijst();
   const q=$("#stQ");q.oninput=()=>{stQ=q.value;renderStLijst()};
-  $("#stNew").onclick=()=>{if(stEdit&&!stGuard())return;stEdit=ST_LEEG();stDirty=false;stErr="";stDel=false;renderStForm();$("#st-titel").focus()};
+  $("#stNew").onclick=()=>{if(stEdit&&!stGuard())return;stEdit={...ST_LEEG(),fotos:[]};stDirty=false;stErr="";stDel=false;renderStForm();$("#st-titel").focus()};
 }
 // ===================== MATERIALEN =====================
 const MATS=[
@@ -1614,7 +1659,7 @@ async function start(user){
     if(mode==="dag" && !dirty)render(); else renderList();
     if(!s.metadata||!s.metadata.fromCache)slotHerinnering();
   },e=>{$("#offline").hidden=false}));
-  unsubs.push(db.collection("instellingen").onSnapshot(s=>{
+  unsubs.push(db.collection("instellingen").where(firebase.firestore.FieldPath.documentId(),">=","g").onSnapshot(s=>{
     const docs=s.docs.map(d=>({id:d.id,...d.data()}));
     lampRows=docs.filter(d=>d.id.startsWith("lamp_")); regSheets=docs.filter(d=>d.id.startsWith("reg_"));
     storingen=docs.filter(d=>d.id.startsWith("stor_")); matRows=docs.filter(d=>d.id.startsWith("mat_")); matLoaded=true;
