@@ -494,6 +494,13 @@ input,textarea,select,.inp{transition:border-color .18s,box-shadow .18s,backgrou
 .fab-save.ok{background:#22a447;box-shadow:0 6px 20px rgba(34,164,71,.45)}
 @media (max-width:1024px),(pointer:coarse){.fab-save.toon{display:inline-flex}}
 @keyframes fabIn{from{opacity:0;transform:translateY(30px) scale(.8)}to{opacity:1;transform:none}}
+.goedjob{position:fixed;inset:0;z-index:70;display:grid;place-items:center;padding:16px;background:rgba(10,20,35,.45);animation:fadeIn .25s ease-out both;cursor:pointer}
+.goedjob.weg{animation:fadeIn .4s ease-in reverse both}
+.goedjob-kaart{width:min(94vw,calc(80vh * 1500 / 1060),800px);aspect-ratio:1500/1060;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.45);animation:goedjobIn .7s cubic-bezier(.2,1.5,.4,1) both}
+.goedjob-kaart img{display:block;width:100%;height:100%;object-fit:contain}
+.goedjob.weg .goedjob-kaart{animation:goedjobUit .4s ease-in both}
+@keyframes goedjobIn{0%{opacity:0;transform:translateY(60px) scale(.6) rotate(-6deg)}60%{opacity:1;transform:translateY(-8px) scale(1.04) rotate(1.5deg)}100%{transform:none}}
+@keyframes goedjobUit{to{opacity:0;transform:scale(.85) translateY(30px)}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -670,6 +677,17 @@ const SCHRIK_SVG=`<svg class="schrik" viewBox="0 0 120 140" aria-hidden="true">
     <path class="sk-arm sk-arm-l" d="M60 80 L36 64 L28 46"/><path class="sk-arm sk-arm-r" d="M60 80 L84 64 L92 46"/>
   </g></svg>`;
 const SAVERS={walsen:()=>save(),lampen:()=>saveLampen(),registratie:()=>saveReg(),materialen:()=>saveMat(),storingen:()=>saveStoring()};
+// "Good job"-afbeelding na elke geslaagde opslag
+function toonOpgeslagen(){
+  const oud=document.querySelector(".goedjob");if(oud)oud.remove();
+  const d=document.createElement("div");d.className="goedjob";d.setAttribute("role","status");d.setAttribute("aria-label","Opgeslagen");
+  d.innerHTML=`<div class="goedjob-kaart"><img src="opgeslagen.jpg" alt="Good job, your work is saved!"></div>`;
+  document.body.appendChild(d);
+  const weg=()=>{if(d.classList.contains("weg"))return;d.classList.add("weg");setTimeout(()=>d.remove(),400)};
+  d.onclick=weg;setTimeout(weg,3000);
+}
+const metFeest=(fn,t)=>async(...a)=>{const voor=tabDirty(t);const r=await fn(...a);if(voor&&!tabDirty(t))toonOpgeslagen();return r};
+save=metFeest(save,"walsen");saveLampen=metFeest(saveLampen,"lampen");saveReg=metFeest(saveReg,"registratie");saveMat=metFeest(saveMat,"materialen");saveStoring=metFeest(saveStoring,"storingen");
 function vraagOpslaan(t,opnieuw){
   const m=$("#modal");
   m.innerHTML=`<div class="modal-box onopg" role="alertdialog" aria-modal="true" aria-labelledby="onT">

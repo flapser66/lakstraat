@@ -1,6 +1,6 @@
 // Eenvoudige service worker: app-bestanden offline beschikbaar, altijd eerst de nieuwste versie proberen.
-const CACHE = "lakstraat-v44";
-const FILES = ["./", "index.html", "config.js", "manifest.json", "icon-192.png", "icon-512.png", "logo-ideaal.png", "logo-embleem.png"];
+const CACHE = "lakstraat-v45";
+const FILES = ["./", "index.html", "config.js", "manifest.json", "icon-192.png", "icon-512.png", "logo-ideaal.png", "logo-embleem.png", "opgeslagen.jpg"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))); self.clients.claim(); });
 self.addEventListener("fetch", e => {
