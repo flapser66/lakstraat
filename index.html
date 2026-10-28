@@ -459,6 +459,34 @@ input,textarea,select,.inp{transition:border-color .18s,box-shadow .18s,backgrou
 .pdf-dat{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .pdf-dat input{font-size:16px}
 .pdf-delen label{padding:8px 12px;font-size:15px}
+.modal-box.onopg{border-top:none;background:#c62828;color:#fff;text-align:center;align-items:center;animation:popIn .35s ease-out both,schud .5s .35s ease-in-out}
+.onopg h2{color:#fff;font-size:30px}.onopg p{font-size:18px;margin:0;font-weight:600}
+.onopg .err{color:#ffe0e0}
+.onopg .row{justify-content:center;gap:12px}
+.onopg .btn{min-width:110px;font-size:18px;font-weight:700;padding:10px 20px;border:2px solid #fff}
+.onopg-ja{background:#fff;color:#c62828}.onopg-nee{background:transparent;color:#fff}
+.onopg-nee:hover{background:rgba(255,255,255,.15)}
+.schrik{width:120px;height:140px;overflow:visible}
+.schrik .sk-hoofd{fill:#ffd9b3;stroke:#3a1a1a;stroke-width:3}
+.schrik .sk-oog{fill:#fff;stroke:#3a1a1a;stroke-width:2.5}
+.schrik .sk-pupil{fill:#111;animation:pupil 1.6s .5s ease-in-out infinite}
+.schrik .sk-mond{fill:#3a1a1a;transform-origin:60px 59px;animation:mond 1.6s .5s ease-in-out infinite}
+.schrik .sk-lijf,.schrik .sk-arm{fill:none;stroke:#fff;stroke-width:6;stroke-linecap:round;stroke-linejoin:round}
+.schrik .sk-haar path{fill:#3a1a1a}
+.schrik .sk-haar{transform-origin:60px 30px;animation:haar .35s .25s cubic-bezier(.2,1.8,.4,1) both}
+.schrik .sk-pop{transform-origin:60px 134px;animation:sprong .6s .2s cubic-bezier(.2,1.6,.4,1) both,tril .12s .8s linear 6}
+.schrik .sk-arm-l{transform-origin:60px 80px;animation:armL .4s .25s ease-out both}
+.schrik .sk-arm-r{transform-origin:60px 80px;animation:armR .4s .25s ease-out both}
+.schrik .sk-uitroep text{fill:#ffeb3b;font:900 22px var(--f-display,sans-serif);animation:knipper .5s .4s steps(2) infinite}
+@keyframes sprong{0%{transform:translateY(0) scaleY(1)}35%{transform:translateY(-22px) scaleY(1.06)}100%{transform:none}}
+@keyframes tril{0%,100%{transform:translateX(0)}50%{transform:translateX(2px)}}
+@keyframes haar{from{transform:scaleY(.2)}to{transform:none}}
+@keyframes armL{from{transform:rotate(60deg)}to{transform:none}}
+@keyframes armR{from{transform:rotate(-60deg)}to{transform:none}}
+@keyframes mond{0%,100%{transform:scale(1)}50%{transform:scale(1.25,1.35)}}
+@keyframes pupil{0%,100%{transform:translate(0)}30%{transform:translate(-2px,-1px)}70%{transform:translate(2px,-1px)}}
+@keyframes knipper{50%{opacity:0}}
+@keyframes schud{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -611,7 +639,7 @@ function previousOf(d){
 }
 
 function select(id){
-  if(dirty && !window.__skipDirty){ if(!confirmLeave())return; }
+  if(dirty && !window.__skipDirty){ if(!confirmLeave(()=>select(id)))return; }
   mode="dag"; confirmDel=false; error=""; justSaved=false;
   selectedId=id;
   const rec=dagen.find(r=>r.id===id);
@@ -620,12 +648,37 @@ function select(id){
   render();
 }
 let leaveArmed=false;
-function confirmLeave(){
-  // eerste klik: waarschuwen; tweede klik: toch verlaten
-  if(leaveArmed){leaveArmed=false;return true}
-  leaveArmed=true; error="Je hebt niet-opgeslagen wijzigingen. Klik nog eens om ze te laten vallen, of sla eerst op.";
-  renderSheet(); setTimeout(()=>{leaveArmed=false},6000);
-  return false;
+function confirmLeave(opnieuw){vraagOpslaan("walsen",opnieuw);return false}
+// ===================== POPUP: NIET OPGESLAGEN =====================
+const SCHRIK_SVG=`<svg class="schrik" viewBox="0 0 120 140" aria-hidden="true">
+  <g class="sk-uitroep"><text x="92" y="30">!</text><text x="104" y="44">!</text></g>
+  <g class="sk-pop">
+    <g class="sk-haar"><path d="M42 30 L38 8 L50 26 Z"/><path d="M56 24 L58 2 L66 22 Z"/><path d="M72 26 L84 8 L80 30 Z"/></g>
+    <circle class="sk-hoofd" cx="60" cy="46" r="24"/>
+    <circle class="sk-oog" cx="51" cy="42" r="8"/><circle class="sk-oog" cx="69" cy="42" r="8"/>
+    <circle class="sk-pupil" cx="51" cy="42" r="3"/><circle class="sk-pupil" cx="69" cy="42" r="3"/>
+    <ellipse class="sk-mond" cx="60" cy="59" rx="5" ry="7"/>
+    <path class="sk-lijf" d="M60 70 L60 108 M60 108 L46 134 M60 108 L74 134"/>
+    <path class="sk-arm sk-arm-l" d="M60 80 L36 64 L28 46"/><path class="sk-arm sk-arm-r" d="M60 80 L84 64 L92 46"/>
+  </g></svg>`;
+const SAVERS={walsen:()=>save(),lampen:()=>saveLampen(),registratie:()=>saveReg(),materialen:()=>saveMat(),storingen:()=>saveStoring()};
+function vraagOpslaan(t,opnieuw){
+  const m=$("#modal");
+  m.innerHTML=`<div class="modal-box onopg" role="alertdialog" aria-modal="true" aria-labelledby="onT">
+    ${SCHRIK_SVG}
+    <h2 id="onT">Let op!</h2>
+    <p>Uw data is nog niet opgeslagen, wilt u dit opslaan?</p>
+    <span class="err" id="onErr" hidden></span>
+    <div class="row"><button class="btn onopg-ja" type="button" id="onJa">Ja</button><button class="btn onopg-nee" type="button" id="onNee">Nee</button></div>
+  </div>`;
+  m.hidden=false;m.onclick=null;
+  const sluit=()=>{m.hidden=true;m.innerHTML=""};
+  $("#onJa").onclick=async()=>{const b=$("#onJa");b.disabled=true;b.textContent="Opslaan…";
+    try{await SAVERS[t]()}catch(e){}
+    if(tabDirty(t)){b.disabled=false;b.textContent="Ja";const er=$("#onErr");if(er){er.hidden=false;er.textContent="Opslaan lukte niet. Controleer de invoer (bijv. datum of titel) en probeer opnieuw."}return}
+    sluit();if(opnieuw)opnieuw()};
+  $("#onNee").onclick=()=>{discardTab(t);sluit();if(opnieuw)opnieuw();else renderTabs()};
+  $("#onJa").focus();
 }
 // ===================== CHECKLIST NIEUWE LAKDAG =====================
 const CHECKLIST=["Zijn alle schuurbanden vervangen?","Zijn alle schuurzolen vervangen?","Is alle lak bijgevuld?","Staan de walsen in de correcte stand?"];
@@ -637,7 +690,7 @@ function toonDuim(){
   d.onclick=weg;setTimeout(weg,2800);
 }
 function startChecklist(){
-  if(dirty && !confirmLeave())return;
+  if(dirty && !confirmLeave(startChecklist))return;
   const m=$("#modal");
   m.innerHTML=`<div class="modal-box check" role="dialog" aria-modal="true" aria-labelledby="ckT">
     <h2 id="ckT">Checklist voor de start</h2>
@@ -658,7 +711,7 @@ function startChecklist(){
   boxes[0].focus();
 }
 function newDay(){
-  if(dirty && !confirmLeave())return;
+  if(dirty && !confirmLeave(newDay))return;
   mode="dag"; selectedId="__new"; confirmDel=false; error=""; justSaved=false;
   draft=blankDraft();
   const mt=matRows.find(m=>m.datum===draft.datum&&chHas(m.charge));if(mt)draft.charge=chObj(mt.charge);
@@ -1082,10 +1135,7 @@ function discardTab(t){
 }
 function setTab(t){
   if(t===tab)return;
-  if(tabDirty(tab)){
-    if(!tabArmed){tabArmed=true;warn("Je hebt niet-opgeslagen wijzigingen op dit tabblad. Klik nog een keer om ze weg te gooien, of sla eerst op.");setTimeout(()=>{tabArmed=false;warn("")},6000);return}
-    discardTab(tab);
-  }
+  if(tabDirty(tab))return vraagOpslaan(tab,()=>setTab(t));
   tabArmed=false;warn("");tab=t;renderTabs();
 }
 function renderTabs(){
@@ -1212,13 +1262,9 @@ function regBlank(){return {id:null,datum:today(),kleur:"9010",paraaf:"",metinge
 function regFrom(r){return {id:r.id,datum:r.datum||"",kleur:r.kleur||"9010",paraaf:r.paraaf||"",metingen:[0,1,2,3,4].map(i=>({...MEET_LEEG(),...((r.metingen||[])[i]||{})}))}}
 function regSorted(){return regSheets.slice().sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||(b.bijgewerkt||0)-(a.bijgewerkt||0))}
 function meetGevuld(m){return !!(m.tijd||m.charge||m.glans!=null||m.L!=null||m.a!=null||m.b!=null||m.o10!=null||m.o13!=null||m.o22!=null||m.o25!=null)}
-function regGuard(){
-  if(!regDirty)return true;
-  if(regArmed){regArmed=false;return true}
-  regArmed=true;regErr="Je hebt niet-opgeslagen wijzigingen. Klik nog eens om ze weg te gooien, of sla eerst op.";renderRegSheet();setTimeout(()=>{regArmed=false},6000);return false;
-}
-function regOpen(id){if(!regGuard())return;const r=regSheets.find(x=>x.id===id);regSel=id;regDraft=r?regFrom(r):null;regDirty=false;regSaved=false;regErr="";regDel=false;renderRegList();renderRegSheet()}
-function regNew(){if(!regGuard())return;regSel="__new";regDraft=regBlank();regDirty=true;regSaved=false;regErr="";regDel=false;renderRegList();renderRegSheet()}
+function regGuard(opnieuw){if(!regDirty)return true;vraagOpslaan("registratie",opnieuw);return false}
+function regOpen(id){if(!regGuard(()=>regOpen(id)))return;const r=regSheets.find(x=>x.id===id);regSel=id;regDraft=r?regFrom(r):null;regDirty=false;regSaved=false;regErr="";regDel=false;renderRegList();renderRegSheet()}
+function regNew(){if(!regGuard(regNew))return;regSel="__new";regDraft=regBlank();regDirty=true;regSaved=false;regErr="";regDel=false;renderRegList();renderRegSheet()}
 function renderRegList(){
   const ul=$("#regList");$("#regCount").textContent=regLoaded?String(regSheets.length):"–";
   if(!regLoaded){ul.innerHTML='<li class="empty">Laden…</li>';return}
@@ -1847,13 +1893,13 @@ function renderStLijst(){
   else if(!lijst.length){box.innerHTML=`<p class="st-leeg">Niets gevonden voor "${esc(stQ)}". Probeer een ander of korter woord.</p>`}
   else box.innerHTML=lijst.map(s=>stItemHtml(s,q>0||stOpen===s.id)).join("");
   box.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{if(zoekWoorden().length)return;stOpen=stOpen===b.dataset.open?null:b.dataset.open;renderStLijst()});
-  box.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{if(stDirty&&!stGuard())return;const s=storingen.find(x=>x.id===b.dataset.edit);stEdit={...ST_LEEG(),...s,fotos:[],fotosLaden:!!(s.fotos&&s.fotos.length)};stDirty=false;stErr="";stDel=false;renderStoringen();$("#st-titel")?.focus();
+  box.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{if(stDirty&&!stGuard(()=>b.click()))return;const s=storingen.find(x=>x.id===b.dataset.edit);stEdit={...ST_LEEG(),...s,fotos:[],fotosLaden:!!(s.fotos&&s.fotos.length)};stDirty=false;stErr="";stDel=false;renderStoringen();$("#st-titel")?.focus();
     if(s.fotos&&s.fotos.length)laadFotos(s.fotos).then(f=>{if(stEdit&&stEdit.id===s.id){stEdit.fotos=f;stEdit.fotosLaden=false;renderStForm()}})});
   vulThumbs(box);
   box.querySelectorAll("[data-send]").forEach(b=>b.onclick=()=>verstuurStoring(b.dataset.send,b));
 }
 let stArmed=false;
-function stGuard(){if(!stDirty)return true;if(stArmed){stArmed=false;return true}stArmed=true;stErr="Je hebt niet-opgeslagen wijzigingen. Klik nog eens om ze weg te gooien, of sla eerst op.";renderStForm();setTimeout(()=>{stArmed=false},6000);return false}
+function stGuard(opnieuw){if(!stDirty)return true;vraagOpslaan("storingen",opnieuw);return false}
 function stFormHtml(){
   if(!stEdit)return "";
   const e=stEdit,isNew=!e.id;
@@ -1926,7 +1972,7 @@ function renderStoringen(){
   </main>`;
   renderStForm();renderStLijst();renderTdMail();
   const q=$("#stQ");q.oninput=()=>{stQ=q.value;renderStLijst()};
-  $("#stNew").onclick=()=>{if(stEdit&&!stGuard())return;stEdit={...ST_LEEG(),fotos:[]};stDirty=false;stErr="";stDel=false;renderStForm();$("#st-titel").focus()};
+  $("#stNew").onclick=()=>{if(stEdit&&!stGuard(()=>$("#stNew").click()))return;stEdit={...ST_LEEG(),fotos:[]};stDirty=false;stErr="";stDel=false;renderStForm();$("#st-titel").focus()};
 }
 // ===================== MATERIALEN =====================
 const MATS=[
@@ -1955,9 +2001,9 @@ function matBlank(){const o={id:null,datum:today(),opmerking:"",chargeAangepast:
 function matFrom(r){const o={id:r.id,datum:r.datum||"",opmerking:r.opmerking||"",chargeAangepast:false};MATS.forEach(m=>o[m.k]=r[m.k]??null);LAK_K.forEach(k=>o[k+"B"]=r[k+"B"]??null);o.charge=chargesVoor(r);return o}
 function matSorted(){return matRows.slice().sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||(b.bijgewerkt||0)-(a.bijgewerkt||0))}
 const matAantal=(m,v)=>v==null?"":fmt(v)+(m.eenheid?" "+(v===1?m.eenheid:m.meer):"");
-function matGuard(){if(!matDirty)return true;if(matArmed){matArmed=false;return true}matArmed=true;matErr="Je hebt niet-opgeslagen wijzigingen. Klik nog eens om ze weg te gooien, of sla eerst op.";renderMatSheet();setTimeout(()=>{matArmed=false},6000);return false}
-function matOpen(id){if(!matGuard())return;const r=matRows.find(x=>x.id===id);matSel=id;matDraft=r?matFrom(r):null;matDirty=false;matSaved=false;matErr="";matDel=false;renderMatList();renderMatSheet()}
-function matNew(){if(!matGuard())return;matSel="__new";matDraft=matBlank();matDirty=true;matSaved=false;matErr="";matDel=false;renderMatList();renderMatSheet()}
+function matGuard(opnieuw){if(!matDirty)return true;vraagOpslaan("materialen",opnieuw);return false}
+function matOpen(id){if(!matGuard(()=>matOpen(id)))return;const r=matRows.find(x=>x.id===id);matSel=id;matDraft=r?matFrom(r):null;matDirty=false;matSaved=false;matErr="";matDel=false;renderMatList();renderMatSheet()}
+function matNew(){if(!matGuard(matNew))return;matSel="__new";matDraft=matBlank();matDirty=true;matSaved=false;matErr="";matDel=false;renderMatList();renderMatSheet()}
 function matTotalen(maandKey){const t={};MATS.forEach(m=>t[m.k]=0);let n=0;
   matRows.filter(r=>(r.datum||"").slice(0,7)===maandKey).forEach(r=>{n++;MATS.forEach(m=>t[m.k]+=matTot(r,m.k))});return {t,n}}
 let matMaand=today().slice(0,7);
