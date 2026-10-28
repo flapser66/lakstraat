@@ -487,6 +487,13 @@ input,textarea,select,.inp{transition:border-color .18s,box-shadow .18s,backgrou
 @keyframes pupil{0%,100%{transform:translate(0)}30%{transform:translate(-2px,-1px)}70%{transform:translate(2px,-1px)}}
 @keyframes knipper{50%{opacity:0}}
 @keyframes schud{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+.fab-save{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:40;display:none;align-items:center;gap:8px;border:0;border-radius:999px;padding:14px 22px;background:var(--accent,#0e4c92);color:#fff;font-size:17px;font-weight:700;box-shadow:0 6px 20px rgba(14,76,146,.45);animation:fabIn .35s cubic-bezier(.2,1.5,.4,1) both}
+.fab-save svg{width:20px;height:20px;fill:currentColor}
+.fab-save:active{transform:scale(.94)}
+.fab-save:disabled{opacity:.7}
+.fab-save.ok{background:#22a447;box-shadow:0 6px 20px rgba(34,164,71,.45)}
+@media (max-width:1024px),(pointer:coarse){.fab-save.toon{display:inline-flex}}
+@keyframes fabIn{from{opacity:0;transform:translateY(30px) scale(.8)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -531,6 +538,7 @@ input,textarea,select,.inp{transition:border-color .18s,box-shadow .18s,backgrou
 
   <section class="auth" id="authBox" hidden></section>
   <div class="modal" id="modal" hidden></div>
+  <button type="button" class="fab-save" id="fabSave" aria-label="Opslaan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"/></svg><span>Opslaan</span></button>
 
   <div class="layout" id="appLayout" hidden>
     <aside class="list" aria-label="Lakdagen">
@@ -2192,6 +2200,17 @@ async function start(user){
 $("#btnNew").onclick=startChecklist;
 $("#btnSetup").onclick=openSetup;
 $("#btnExport").onclick=exportPdf;
+// zwevende opslaanknop (tablet/mobiel): zichtbaar zolang er niet-opgeslagen wijzigingen zijn
+(function(){const f=$("#fabSave"),t=f.querySelector("span");let bezig=false,okTot=0;
+  setInterval(()=>{if(bezig)return;const vuil=!!(typeof tab!=="undefined"&&tabDirty(tab))&&$("#modal").hidden;
+    if(Date.now()<okTot)return;f.classList.remove("ok");t.textContent="Opslaan";f.classList.toggle("toon",vuil)},300);
+  f.onclick=async()=>{if(bezig)return;bezig=true;f.disabled=true;t.textContent="Opslaan…";const welk=tab;
+    try{await SAVERS[welk]()}catch(e){}
+    bezig=false;f.disabled=false;
+    if(!tabDirty(welk)){f.classList.add("ok");t.textContent="Opgeslagen ✓";okTot=Date.now()+1600;setTimeout(()=>f.classList.remove("toon"),1600)}
+    else t.textContent="Opslaan"};
+})();
+
 $("#btnUsers").onclick=()=>{if(tab!=="walsen"){setTab("walsen");if(tab!=="walsen")return}mode="users";renderUsers($("#sheet"))};
 $("#btnLogout").onclick=()=>{dagen=[];walsen=[];draft=null;selectedId=null;dirty=false;mode="dag";
   lampRows=[];lampEdits={};lampNew=blankLampRows();lampDirty=false;storingen=[];stEdit=null;stDirty=false;stQ="";matRows=[];matDraft=null;matSel=null;matDirty=false;regSheets=[];regDraft=null;regSel=null;regDirty=false;tab="walsen";
