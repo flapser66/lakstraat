@@ -501,6 +501,17 @@ input,textarea,select,.inp{transition:border-color .18s,box-shadow .18s,backgrou
 .goedjob.weg .goedjob-kaart{animation:goedjobUit .4s ease-in both}
 @keyframes goedjobIn{0%{opacity:0;transform:translateY(60px) scale(.6) rotate(-6deg)}60%{opacity:1;transform:translateY(-8px) scale(1.04) rotate(1.5deg)}100%{transform:none}}
 @keyframes goedjobUit{to{opacity:0;transform:scale(.85) translateY(30px)}}
+.lakkeuze{display:flex;gap:8px;flex-wrap:wrap}
+.lakk{display:inline-flex;align-items:center;gap:10px;padding:10px 16px;border-radius:10px;border:2px solid var(--line);background:var(--panel);color:var(--fg);font-size:16px;font-weight:600;cursor:pointer;transition:border-color .18s,box-shadow .18s,transform .12s}
+.lakk:active{transform:scale(.96)}
+.lakk-bol{width:22px;height:22px;border-radius:50%;border:2px solid #888;flex:none}
+.lakk-wit .lakk-bol{background:#f4f4f1}.lakk-zwart .lakk-bol{background:#151515;border-color:#151515}
+.lakk[aria-checked="true"]{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+.lakk[aria-checked="true"].lakk-zwart{background:#1d1f23;color:#fff;border-color:#1d1f23}
+.lakk[aria-checked="true"].lakk-wit{background:#fff;color:#111}
+.lak-veld{margin-bottom:12px}
+.lakb{display:inline-block;font-family:var(--f-mono);font-size:10px;padding:1px 6px;border-radius:99px;vertical-align:2px;border:1px solid #999}
+.lakb-wit{background:#fff;color:#222}.lakb-zwart{background:#151515;color:#fff;border-color:#151515}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -640,11 +651,11 @@ function chHas(c){return !!c&&CH_K.some(k=>(c[k]||"").trim())}
 function chTekst(c,k){return [c&&c[k],c&&c[k+"2"]].map(x=>(x||"").trim()).filter(Boolean).join(" + ")}
 // ---- draft handling
 function blankDraft(){
-  return {id:null,datum:today(),temperatuur:null,luchtvochtigheid:null,walsen:{},bijzonderheden:"",tevredenheid:null,slotgaten:null,slotOpmerking:"",charge:chObj({}),fotos:[],fotoIds:[],checklist:null};
+  return {id:null,datum:today(),temperatuur:null,luchtvochtigheid:null,walsen:{},bijzonderheden:"",tevredenheid:null,slotgaten:null,slotOpmerking:"",charge:chObj({}),fotos:[],fotoIds:[],checklist:null,lak:null};
 }
 function draftFrom(rec){
   const w={};(rec.walsen||[]).forEach(x=>{const o={naam:x.naam};VELDEN.forEach(f=>{if(x[f]!=null)o[f]=x[f]});w[x.id]=o});
-  return {id:rec.id,datum:rec.datum||"",temperatuur:rec.temperatuur??null,luchtvochtigheid:rec.luchtvochtigheid??null,walsen:w,bijzonderheden:rec.bijzonderheden||"",tevredenheid:rec.tevredenheid??null,slotgaten:rec.slotgaten??null,fotos:(rec.fotos&&rec.fotos.length)?null:[],fotoIds:rec.fotos||[],slotOpmerking:rec.slotOpmerking||"",charge:chObj(rec.charge),checklist:rec.checklist||null};
+  return {id:rec.id,datum:rec.datum||"",temperatuur:rec.temperatuur??null,luchtvochtigheid:rec.luchtvochtigheid??null,walsen:w,bijzonderheden:rec.bijzonderheden||"",tevredenheid:rec.tevredenheid??null,slotgaten:rec.slotgaten??null,fotos:(rec.fotos&&rec.fotos.length)?null:[],fotoIds:rec.fotos||[],slotOpmerking:rec.slotOpmerking||"",charge:chObj(rec.charge),checklist:rec.checklist||null,lak:rec.lak||null};
 }
 function sorted(){return dagen.slice().sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||(b.bijgewerkt||0)-(a.bijgewerkt||0))}
 function previousOf(d){
@@ -706,6 +717,9 @@ function vraagOpslaan(t,opnieuw){
   $("#onNee").onclick=()=>{discardTab(t);sluit();if(opnieuw)opnieuw();else renderTabs()};
   $("#onJa").focus();
 }
+const LAKKEN={wit:"Witte lak",zwart:"Zwarte lak"};
+const lakBadge=k=>k?`<span class="lakb lakb-${k}">${k==="wit"?"Wit":"Zwart"}</span>`:"";
+const lakKeuze=(k,id)=>`<div class="lakkeuze" role="radiogroup" aria-label="Welke lak">${Object.keys(LAKKEN).map(x=>`<button type="button" class="lakk lakk-${x}" role="radio" aria-checked="${k===x}" data-${id}="${x}"><span class="lakk-bol"></span>${LAKKEN[x]}</button>`).join("")}</div>`;
 // ===================== CHECKLIST NIEUWE LAKDAG =====================
 const CHECKLIST=["Zijn alle schuurbanden vervangen?","Zijn alle schuurzolen vervangen?","Is alle lak bijgevuld?","Staan de walsen in de correcte stand?"];
 function toonDuim(){
@@ -720,6 +734,8 @@ function startChecklist(){
   const m=$("#modal");
   m.innerHTML=`<div class="modal-box check" role="dialog" aria-modal="true" aria-labelledby="ckT">
     <h2 id="ckT">Checklist voor de start</h2>
+    <p><b>Welke lak gebruik je vandaag?</b></p>
+    ${lakKeuze(null,"cklak")}
     <p>Vink alle punten af. Daarna start de nieuwe lakdag.</p>
     <ul class="ck-list">${CHECKLIST.map((t,i)=>`<li><label><input type="checkbox" data-ck="${i}"><span>${esc(t)}</span></label></li>`).join("")}</ul>
     <span class="ck-tel" id="ckTel">0 van ${CHECKLIST.length} afgevinkt</span>
@@ -729,11 +745,12 @@ function startChecklist(){
   m.hidden=false;
   m.onclick=null; // niet wegklikken: eerst alles afvinken
   const boxes=[...m.querySelectorAll("[data-ck]")];
-  const pf=$("#ckParaaf"),go=$("#ckGo");
-  const check=()=>{const n=boxes.filter(x=>x.checked).length;$("#ckTel").textContent=`${n} van ${CHECKLIST.length} afgevinkt`+(n===CHECKLIST.length&&pf.value.trim().length<2?" · zet je paraaf":"");go.disabled=n<CHECKLIST.length||pf.value.trim().length<2};
+  const pf=$("#ckParaaf"),go=$("#ckGo");let lak=null;
+  m.querySelectorAll("[data-cklak]").forEach(b=>b.onclick=()=>{lak=b.dataset.cklak;m.querySelectorAll("[data-cklak]").forEach(x=>x.setAttribute("aria-checked",String(x===b)));check()});
+  const check=()=>{const n=boxes.filter(x=>x.checked).length;$("#ckTel").textContent=`${n} van ${CHECKLIST.length} afgevinkt`+(!lak?" · kies wit of zwart":"")+(n===CHECKLIST.length&&pf.value.trim().length<2?" · zet je paraaf":"");go.disabled=!lak||n<CHECKLIST.length||pf.value.trim().length<2};
   boxes.forEach(b=>b.onchange=check);pf.oninput=check;
   go.onclick=()=>{const door=pf.value.trim().toUpperCase();m.hidden=true;m.innerHTML="";dirty=false;newDay();
-    draft.checklist={door,tijd:Date.now(),punten:CHECKLIST.slice()};dirty=true;render();toonDuim()};
+    draft.checklist={door,tijd:Date.now(),punten:CHECKLIST.slice()};draft.lak=lak;dirty=true;render();toonDuim()};
   boxes[0].focus();
 }
 function newDay(){
@@ -762,7 +779,7 @@ function renderList(){
     const d=parseDate(r.datum);
     const c=[r.temperatuur!=null?fmt(r.temperatuur)+"°C":null,r.luchtvochtigheid!=null?fmt(r.luchtvochtigheid)+"%":null].filter(Boolean).join(" · ");
     html+=`<li><button type="button" data-id="${esc(r.id)}" aria-current="${r.id===selectedId}">
-      <span><span class="d">${esc(shortDate(r.datum))}</span><br><span class="wd">${d?DAGEN[d.getDay()]:""}</span></span>
+      <span><span class="d">${esc(shortDate(r.datum))}</span> ${lakBadge(r.lak)}<br><span class="wd">${d?DAGEN[d.getDay()]:""}</span></span>
       <span class="cond">${esc(c)}</span>
       ${r.tevredenheid!=null||slotOpen(r)||(r.bijzonderheden&&r.bijzonderheden.trim())?`<span class="flag">${r.tevredenheid!=null?`<span class="score s${r.tevredenheid}">${r.tevredenheid}/5</span> `:""}${slotOpen(r)?'<span class="score open">slotgaten open</span> ':""}${r.bijzonderheden&&r.bijzonderheden.trim()?"● bijzonderheden":""}</span>`:""}
     </button></li>`;
@@ -837,6 +854,7 @@ function renderSheet(){
 
     <div class="section">
       <h3>Algemeen</h3>
+      <div class="field lak-veld"><label>Lak van deze dag</label>${lakKeuze(draft.lak,"lak")}${!draft.lak?'<span class="hint" style="color:var(--warn);font-family:var(--f-body)">Kies wit of zwart, dan klopt het advies.</span>':""}</div>
       <div class="conds">
         <div class="field">
           <label for="f-datum">Datum lakken</label>
@@ -910,6 +928,7 @@ ${BEOORDELINGEN.map(b=>beoordelingHtml(b)).join("")}
     const mt=matRows.find(m=>m.datum===draft.datum&&chHas(m.charge));
     if(leeg&&mt)draft.charge=chObj(mt.charge);
     touch();renderSheetKeepFocus("f-datum")};
+  document.querySelectorAll("[data-lak]").forEach(b=>b.onclick=()=>{draft.lak=b.dataset.lak;touch();renderSheet()});
   $("#f-temp").oninput=e=>{draft.temperatuur=num(e.target.value);touch()};
   $("#f-rv").oninput=e=>{draft.luchtvochtigheid=num(e.target.value);touch()};
   $("#f-bijz").oninput=e=>{draft.bijzonderheden=e.target.value;touch()};
@@ -984,7 +1003,7 @@ function toRecord(){
   const order=walsen.map(w=>w.id);
   const ids=Object.keys(draft.walsen).sort((a,b)=>{const ia=order.indexOf(a),ib=order.indexOf(b);return (ia<0?999:ia)-(ib<0?999:ib)});
   for(const id of ids){const x=draft.walsen[id];if(x&&VELDEN.some(f=>x[f]!=null)){const cfg=walsen.find(w=>w.id===id);const o={id,naam:cfg?cfg.naam:x.naam};VELDEN.forEach(f=>o[f]=x[f]??null);ws.push(o)}}
-  return {datum:draft.datum,temperatuur:draft.temperatuur,luchtvochtigheid:draft.luchtvochtigheid,walsen:ws,bijzonderheden:draft.bijzonderheden||"",tevredenheid:draft.tevredenheid??null,slotgaten:draft.slotgaten??null,slotOpmerking:(draft.slotOpmerking||"").trim(),charge:chObj(draft.charge,true),checklist:draft.checklist||null,bijgewerkt:Date.now()};
+  return {datum:draft.datum,temperatuur:draft.temperatuur,luchtvochtigheid:draft.luchtvochtigheid,walsen:ws,bijzonderheden:draft.bijzonderheden||"",tevredenheid:draft.tevredenheid??null,slotgaten:draft.slotgaten??null,slotOpmerking:(draft.slotOpmerking||"").trim(),charge:chObj(draft.charge,true),checklist:draft.checklist||null,lak:draft.lak||null,bijgewerkt:Date.now()};
 }
 async function save(){
   if(!draft.datum){error="Vul een datum in.";renderSheet();return}
@@ -1436,7 +1455,7 @@ function buildWordBody(){
   if(!ld.length)B.push(wP("Nog geen lakdagen opgeslagen."));
   for(const r of ld){
     B.push(wP(longDate(r.datum).replace(/^./,c=>c.toUpperCase()),{style:"Kop2"}));
-    B.push(wP([wRun("Temperatuur: ",{b:true}),wRun(r.temperatuur!=null?fmt(r.temperatuur)+" °C":"–"),wRun("     Luchtvochtigheid: ",{b:true}),wRun(r.luchtvochtigheid!=null?fmt(r.luchtvochtigheid)+" %":"–"),wRun("     Tevredenheid: ",{b:true}),wRun(r.tevredenheid!=null?r.tevredenheid+"/5 ("+SCORE_TXT[r.tevredenheid]+")":"–"),wRun("     Slotgaten: ",{b:true}),wRun(r.slotgaten!=null?r.slotgaten+"/5 ("+BEOORDELINGEN[1].txt[r.slotgaten]+")":"–")]));
+    B.push(wP([wRun("Lak: ",{b:true}),wRun(r.lak?LAKKEN[r.lak]:"–"),wRun("     Temperatuur: ",{b:true}),wRun(r.temperatuur!=null?fmt(r.temperatuur)+" °C":"–"),wRun("     Luchtvochtigheid: ",{b:true}),wRun(r.luchtvochtigheid!=null?fmt(r.luchtvochtigheid)+" %":"–"),wRun("     Tevredenheid: ",{b:true}),wRun(r.tevredenheid!=null?r.tevredenheid+"/5 ("+SCORE_TXT[r.tevredenheid]+")":"–"),wRun("     Slotgaten: ",{b:true}),wRun(r.slotgaten!=null?r.slotgaten+"/5 ("+BEOORDELINGEN[1].txt[r.slotgaten]+")":"–")]));
     const ws=r.walsen||[];
     if(ws.length) B.push(wTable([["Wals","Stand begin","Stand eind","Hoogte begin","Hoogte eind"],...ws.map(x=>[x.naam,{t:fmt(x.stand),align:"right"},{t:fmt(x.eind),align:"right"},{t:fmt(x.hoogte),align:"right"},{t:fmt(x.hoogteEind),align:"right"}])],[4200,2300,2300,2300,2300],{header:true}));
     if(r.fotos&&r.fotos.length)B.push(wP([wRun(`Foto's: ${r.fotos.length} (te bekijken in de app)`,{i:true,color:"56637A"})]));
@@ -1504,7 +1523,7 @@ function gelijkenis(d,T,H){let s=0;
   if(H!=null&&d.luchtvochtigheid!=null)s+=((d.luchtvochtigheid-H)/10)**2;
   return Math.exp(-s/2)}
 function analyse(cur){
-  const rated=dagen.filter(d=>d.id!==cur.id&&d.tevredenheid!=null);
+  const rated=dagen.filter(d=>d.id!==cur.id&&d.tevredenheid!=null&&d.lak===cur.lak);
   const goed=rated.filter(d=>d.tevredenheid>=4), slecht=rated.filter(d=>d.tevredenheid<=2);
   const T=cur.temperatuur,H=cur.luchtvochtigheid,metWeer=T!=null||H!=null;
   const kand=goed.map(d=>({d,s:gelijkenis(d,T,H)})).sort((a,b)=>metWeer?(b.s-a.s||b.d.tevredenheid-a.d.tevredenheid):(b.d.datum||"").localeCompare(a.d.datum||""));
@@ -1544,9 +1563,10 @@ function analyse(cur){
 function afwijking(a,v){if(!a||v==null)return false;const grens=Math.max(2*a.sd,Math.abs(a.v)*0.05,0.05);return Math.abs(v-a.v)>grens}
 function renderAdvies(){
   const box=$("#advies");if(!box||!draft)return;
-  const A=analyse(draft),NODIG=3;
+  if(!draft.lak){box.innerHTML=`<p class="adv-leeg">Kies bovenaan of je vandaag <b>wit</b> of <b>zwart</b> lakt. Het advies kijkt alleen naar lakdagen met dezelfde lak.</p>`;return}
+  const A=analyse(draft),NODIG=3,lakNaam=draft.lak==="wit"?"witte":"zwarte";
   if(A.rated.length<NODIG){
-    box.innerHTML=`<p class="adv-leeg">Hoe meer lakdagen je beoordeelt, hoe beter het advies wordt. Nu zijn er ${A.rated.length} van minimaal ${NODIG} beoordeelde lakdagen. Vul onderaan bij elke lakdag de tevredenheid in.</p>`;return}
+    box.innerHTML=`<p class="adv-leeg">Hoe meer lakdagen met ${lakNaam} lak je beoordeelt, hoe beter het advies wordt. Nu zijn er ${A.rated.length} van minimaal ${NODIG} beoordeelde lakdagen met ${lakNaam} lak. Vul onderaan bij elke lakdag de tevredenheid in, en geef bij oudere lakdagen aan of het wit of zwart was.</p>`;return}
   const T=draft.temperatuur,H=draft.luchtvochtigheid;
   let h="";
   if(!A.goed.length){h+=`<p class="adv-leeg">Er is nog geen lakdag met een 4 of 5. Zodra die er is, kan de app beginwaarden voorstellen.</p>`}
@@ -1557,7 +1577,7 @@ function renderAdvies(){
         <td class="num">${a.stand?fmt(a.stand.v):"–"}</td><td class="num">${a.hoogte?fmt(a.hoogte.v):"–"}</td>
         <td>${x.stand!=null?fmt(x.stand):"–"} / ${x.hoogte!=null?fmt(x.hoogte):"–"}${ws||wh?`<div class="adv-warn">Wijkt af van het advies${ws&&wh?" (stand en hoogte)":ws?" (stand)":" (hoogte)"}</div>`:""}</td></tr>`}).join("");
     h+=`<div class="adv-scroll"><table class="adv-tbl"><thead><tr><th>Wals</th><th>Advies beginstand</th><th>Advies beginhoogte</th><th>Jouw begin (stand / hoogte)</th></tr></thead><tbody>${rijen}</tbody></table></div>
-      <p class="adv-basis">${A.metWeer?`Gebaseerd op de ${A.vergelijkbaar.length} lakdag${A.vergelijkbaar.length===1?"":"en"} met een 4 of 5 waarvan de temperatuur en luchtvochtigheid het meest lijken op die van deze lakdag${T!=null?` (${fmt(T)} °C`:" ("}${H!=null?`${T!=null?", ":""}${fmt(H)} %`:""}).`:`Gebaseerd op de ${A.vergelijkbaar.length} meest recente lakdag${A.vergelijkbaar.length===1?"":"en"} met een 4 of 5. Vul temperatuur en luchtvochtigheid in om te vergelijken met dagen met hetzelfde weer.`} Er is gekeken waar de walsen aan het eind van die dagen stonden. Een 5 telt twee keer zo zwaar als een 4.</p>
+      <p class="adv-basis">${A.metWeer?`Gebaseerd op de ${A.vergelijkbaar.length} lakdag${A.vergelijkbaar.length===1?"":"en"} met ${lakNaam} lak en een 4 of 5 waarvan de temperatuur en luchtvochtigheid het meest lijken op die van deze lakdag${T!=null?` (${fmt(T)} °C`:" ("}${H!=null?`${T!=null?", ":""}${fmt(H)} %`:""}).`:`Gebaseerd op de ${A.vergelijkbaar.length} meest recente lakdag${A.vergelijkbaar.length===1?"":"en"} met ${lakNaam} lak en een 4 of 5. Vul temperatuur en luchtvochtigheid in om te vergelijken met dagen met hetzelfde weer.`} Er is gekeken waar de walsen aan het eind van die dagen stonden. Een 5 telt twee keer zo zwaar als een 4.</p>
       <div><button class="btn" type="button" id="advNeem">Advies overnemen als beginwaarden</button></div>`;
     if(A.vergelijkbaar.length){
       h+=`<div class="adv-sub">Gebruikt voor dit advies</div><div class="adv-dagen">${A.vergelijkbaar.map(({d})=>`<button type="button" data-open="${esc(d.id)}">${esc(shortDate(d.datum))} · ${d.temperatuur!=null?fmt(d.temperatuur)+" °C":"–"} · ${d.luchtvochtigheid!=null?fmt(d.luchtvochtigheid)+" %":"–"} · ${d.tevredenheid}/5</button>`).join("")}</div>`}
@@ -1687,7 +1707,7 @@ async function maakLogboekPdf(meld,opt){
   if(deel("walsen")){meld("Lakdagen…");kop1("Walsen (lakdagen)");
   const ld=fDagen.slice().reverse();if(!ld.length)alinea("Nog geen lakdagen opgeslagen.");
   for(const r of ld){kop2(longDate(r.datum).replace(/^./,c=>c.toUpperCase()));
-    regel([["Temperatuur",r.temperatuur!=null?fmt(r.temperatuur)+" °C":"–"],["Luchtvochtigheid",r.luchtvochtigheid!=null?fmt(r.luchtvochtigheid)+" %":"–"],["Tevredenheid",r.tevredenheid!=null?r.tevredenheid+"/5 ("+SCORE_TXT[r.tevredenheid]+")":"–"],["Slotgaten",r.slotgaten!=null?r.slotgaten+"/5 ("+BEOORDELINGEN[1].txt[r.slotgaten]+")":"–"]]);
+    regel([["Lak",r.lak?LAKKEN[r.lak]:"–"],["Temperatuur",r.temperatuur!=null?fmt(r.temperatuur)+" °C":"–"],["Luchtvochtigheid",r.luchtvochtigheid!=null?fmt(r.luchtvochtigheid)+" %":"–"],["Tevredenheid",r.tevredenheid!=null?r.tevredenheid+"/5 ("+SCORE_TXT[r.tevredenheid]+")":"–"],["Slotgaten",r.slotgaten!=null?r.slotgaten+"/5 ("+BEOORDELINGEN[1].txt[r.slotgaten]+")":"–"]]);
     const ws=r.walsen||[];if(ws.length)tabel([["Wals","Stand begin","Stand eind","Hoogte begin","Hoogte eind"],...ws.map(x=>[x.naam,{t:fmt(x.stand),align:"right"},{t:fmt(x.eind),align:"right"},{t:fmt(x.hoogte),align:"right"},{t:fmt(x.hoogteEind),align:"right"}])],[4,2,2,2,2],{header:true});
     if(chHas(r.charge))regel([["Charge lak","Primer "+(chTekst(r.charge,"primer")||"–")+" · Grondlak "+(chTekst(r.charge,"grondlak")||"–")+" · Deklak "+(chTekst(r.charge,"deklak")||"–")]]);
     if(r.checklist&&r.checklist.door)regel([["Checklist voltooid door",r.checklist.door+(r.checklist.tijd?" om "+tijd(r.checklist.tijd):"")]]);
