@@ -512,6 +512,9 @@ input,textarea,select,.inp{transition:border-color .18s,box-shadow .18s,backgrou
 .lak-veld{margin-bottom:12px}
 .lakb{display:inline-block;font-family:var(--f-mono);font-size:10px;padding:1px 6px;border-radius:99px;vertical-align:2px;border:1px solid #999}
 .lakb-wit{background:#fff;color:#222}.lakb-zwart{background:#151515;color:#fff;border-color:#151515}
+.lampLak{display:block;margin-top:3px;font:600 11px var(--f-mono,monospace);padding:2px 8px;border-radius:99px;border:1px solid #999;background:#fff;color:#222;cursor:pointer}
+.lampLak.lakmini-zwart{background:#151515;color:#fff;border-color:#151515}
+.lampLak.lakmini-geen{background:transparent;color:#888;border-style:dashed}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -609,7 +612,14 @@ function uid(){return "w"+Math.random().toString(36).slice(2,8)}
 
 // ---- state
 let db=null, dbReady=false;
-let walsen=[];            // [{id,naam}]
+let walsen=[];            // [{id,naam}] — actieve set (hangt af van de lak van de open lakdag)
+let walsCfg={basis:[],wit:null,zwart:null};
+function walsVoor(lak){
+  if(lak&&walsCfg[lak]&&walsCfg[lak].length)return walsCfg[lak];
+  if(lak){const vorige=sorted().find(d=>d.lak===lak&&(d.walsen||[]).length);if(vorige)return vorige.walsen.map(w=>({id:w.id,naam:w.naam}))}
+  return walsCfg.basis;
+}
+function syncWalsen(lak){walsen=walsVoor(lak===undefined?(draft&&draft.lak):lak)}
 let walsenLoaded=false;
 let dagen=[];             // [{id, ...data}]
 let dagenLoaded=false;
@@ -749,19 +759,23 @@ function startChecklist(){
   m.querySelectorAll("[data-cklak]").forEach(b=>b.onclick=()=>{lak=b.dataset.cklak;m.querySelectorAll("[data-cklak]").forEach(x=>x.setAttribute("aria-checked",String(x===b)));check()});
   const check=()=>{const n=boxes.filter(x=>x.checked).length;$("#ckTel").textContent=`${n} van ${CHECKLIST.length} afgevinkt`+(!lak?" · kies wit of zwart":"")+(n===CHECKLIST.length&&pf.value.trim().length<2?" · zet je paraaf":"");go.disabled=!lak||n<CHECKLIST.length||pf.value.trim().length<2};
   boxes.forEach(b=>b.onchange=check);pf.oninput=check;
-  go.onclick=()=>{const door=pf.value.trim().toUpperCase();m.hidden=true;m.innerHTML="";dirty=false;newDay();
+  go.onclick=()=>{const door=pf.value.trim().toUpperCase();m.hidden=true;m.innerHTML="";dirty=false;nieuweLak=lak;newDay();
     draft.checklist={door,tijd:Date.now(),punten:CHECKLIST.slice()};draft.lak=lak;dirty=true;render();toonDuim()};
   boxes[0].focus();
 }
+let nieuweLak=null;
 function newDay(){
   if(dirty && !confirmLeave(newDay))return;
   mode="dag"; selectedId="__new"; confirmDel=false; error=""; justSaved=false;
-  draft=blankDraft();
+  draft=blankDraft();draft.lak=nieuweLak;nieuweLak=null;
   const mt=matRows.find(m=>m.datum===draft.datum&&chHas(m.charge));if(mt)draft.charge=chObj(mt.charge);
   // standen van vorige lakdag voorinvullen
-  const prev=sorted()[0];
-  if(prev){(prev.walsen||[]).forEach(x=>{const o={naam:x.naam};if(x.stand!=null)o.stand=x.stand;if(x.hoogte!=null)o.hoogte=x.hoogte;if(o.stand!=null||o.hoogte!=null)draft.walsen[x.id]=o})}
+  vulVorigeStanden();
   dirty=true; render();
+}
+function vulVorigeStanden(){
+  draft.walsen={};const prev=sorted().find(d=>!draft.lak||d.lak===draft.lak);
+  if(prev){(prev.walsen||[]).forEach(x=>{const o={naam:x.naam};if(x.stand!=null)o.stand=x.stand;if(x.hoogte!=null)o.hoogte=x.hoogte;if(o.stand!=null||o.hoogte!=null)draft.walsen[x.id]=o})}
 }
 
 // ---- rendering
@@ -796,6 +810,7 @@ function statusPill(){
 }
 
 function renderSheet(){
+  if(mode!=="setup")syncWalsen();
   const el=$("#sheet");
   if(mode==="setup")return renderSetup(el);
   if(mode==="users")return renderUsers(el);
@@ -928,7 +943,7 @@ ${BEOORDELINGEN.map(b=>beoordelingHtml(b)).join("")}
     const mt=matRows.find(m=>m.datum===draft.datum&&chHas(m.charge));
     if(leeg&&mt)draft.charge=chObj(mt.charge);
     touch();renderSheetKeepFocus("f-datum")};
-  document.querySelectorAll("[data-lak]").forEach(b=>b.onclick=()=>{draft.lak=b.dataset.lak;touch();renderSheet()});
+  document.querySelectorAll("[data-lak]").forEach(b=>b.onclick=()=>{if(draft.lak===b.dataset.lak)return;draft.lak=b.dataset.lak;if(!draft.id)vulVorigeStanden();touch();renderSheet()});
   $("#f-temp").oninput=e=>{draft.temperatuur=num(e.target.value);touch()};
   $("#f-rv").oninput=e=>{draft.luchtvochtigheid=num(e.target.value);touch()};
   $("#f-bijz").oninput=e=>{draft.bijzonderheden=e.target.value;touch()};
@@ -1006,6 +1021,7 @@ function toRecord(){
   return {datum:draft.datum,temperatuur:draft.temperatuur,luchtvochtigheid:draft.luchtvochtigheid,walsen:ws,bijzonderheden:draft.bijzonderheden||"",tevredenheid:draft.tevredenheid??null,slotgaten:draft.slotgaten??null,slotOpmerking:(draft.slotOpmerking||"").trim(),charge:chObj(draft.charge,true),checklist:draft.checklist||null,lak:draft.lak||null,bijgewerkt:Date.now()};
 }
 async function save(){
+  syncWalsen();
   if(!draft.datum){error="Vul een datum in.";renderSheet();return}
   error=""; saving=true; refreshHead();
   const rec=toRecord();
@@ -1042,14 +1058,17 @@ async function removeDay(){
 }
 
 // ---- walsen instellen
+let setupLak=null;
 function openSetup(){
   if(dirty && mode==="dag"){ /* behoud concept: setup is een tussenscherm */ }
-  mode="setup"; setupDraft=walsen.length?walsen.map(w=>({...w})):[{id:uid(),naam:"Wals 1"},{id:uid(),naam:"Wals 2"},{id:uid(),naam:"Wals 3"},{id:uid(),naam:"Wals 4"}];
+  setupLak=setupLak||(draft&&draft.lak)||"wit";const bron=walsVoor(setupLak);
+  mode="setup"; setupDraft=bron.length?bron.map(w=>({...w})):[{id:uid(),naam:"Wals 1"},{id:uid(),naam:"Wals 2"},{id:uid(),naam:"Wals 3"},{id:uid(),naam:"Wals 4"}];
   error=""; renderSheet();
 }
 function renderSetup(el){
   el.innerHTML=`
-    <div class="sheet-head"><div><div class="title">Walsen instellen</div><div class="sub">Namen en volgorde van de walsen in de lakstraat. Oude bladen behouden hun waarden.</div></div></div>
+    <div class="sheet-head"><div><div class="title">Walsen instellen</div><div class="sub">Namen en volgorde van de walsen, apart voor witte en zwarte lak. Oude bladen behouden hun waarden.</div></div></div>
+    <div class="section"><h3>Walsen voor</h3>${lakKeuze(setupLak,"slak")}</div>
     <div class="section">
       <div class="setup" id="setupRows">${setupDraft.map((w,i)=>`
         <div class="setup-row">
@@ -1068,6 +1087,7 @@ function renderSetup(el){
       <div class="grp"><button class="btn" type="button" id="setupCancel">Annuleren</button></div>
       <div class="grp">${error?`<span class="err">${esc(error)}</span>`:""}<button class="btn primary" type="button" id="setupSave">Walsen opslaan</button></div>
     </div>`;
+  el.querySelectorAll("[data-slak]").forEach(b=>b.onclick=()=>{setupLak=b.dataset.slak;const bron=walsVoor(setupLak);setupDraft=bron.length?bron.map(w=>({...w})):[{id:uid(),naam:"Wals 1"}];renderSetup(el)});
   el.querySelectorAll("#setupRows input").forEach(inp=>inp.oninput=()=>{setupDraft[+inp.dataset.i].naam=inp.value});
   el.querySelectorAll("#setupRows button").forEach(b=>b.onclick=()=>{
     const i=+b.dataset.i,a=b.dataset.a;
@@ -1077,12 +1097,13 @@ function renderSetup(el){
     renderSetup(el);
   });
   $("#addWals").onclick=()=>{setupDraft.push({id:uid(),naam:"Wals "+(setupDraft.length+1)});renderSetup(el);const l=el.querySelectorAll("#setupRows input");l[l.length-1].select()};
-  $("#setupCancel").onclick=()=>{mode="dag";error="";renderSheet()};
+  $("#setupCancel").onclick=()=>{mode="dag";error="";syncWalsen();renderSheet()};
   $("#setupSave").onclick=async()=>{
     const clean=setupDraft.map(w=>({id:w.id,naam:(w.naam||"").trim()})).filter(w=>w.naam);
-    try{ if(db) await db.doc("instellingen/walsen").set({walsen:clean,bijgewerkt:Date.now()}); }
+    const veld=setupLak==="zwart"?"walsenZwart":"walsenWit";
+    try{ if(db) await db.doc("instellingen/walsen").set({[veld]:clean,bijgewerkt:Date.now()},{merge:true}); }
     catch(e){error="Opslaan mislukt. Probeer het opnieuw.";renderSetup(el);return}
-    walsen=clean; mode="dag"; error="";
+    walsCfg[setupLak]=clean; mode="dag"; error="";syncWalsen();
     if(!draft)newDay(); else render();
   };
 }
@@ -1203,8 +1224,8 @@ function saveErr(e){return e&&e.code==="permission-denied"?"Je hebt geen rechten
 
 // ===================== LAMPEN =====================
 let lampRows=[], lampEdits={}, lampNew=[], lampDirty=false, lampSaving=false, lampSaved=false, lampErr="", lampDel=null, lampLoaded=false;
-const LAMP_VELDEN=["datum","l12","l16","l24","l24w","l28","tijd","sterkte"];
-function blankLampRows(){return [0,1,2].map(()=>({_k:uid(),datum:"",l12:null,l16:null,l24:false,l24w:null,l28:null,tijd:"",sterkte:null}))}
+const LAMP_VELDEN=["datum","lak","l12","l16","l24","l24w","l28","tijd","sterkte"];
+function blankLampRows(){return [0,1,2].map(()=>({_k:uid(),datum:"",lak:null,l12:null,l16:null,l24:false,l24w:null,l28:null,tijd:"",sterkte:null}))}
 lampNew=blankLampRows();
 function lampHas(r){return !!(r.datum||r.l12!=null||r.l16!=null||r.l24||r.l24w!=null||r.l28!=null||r.tijd||r.sterkte!=null)}
 function lampSorted(){return lampRows.slice().sort((a,b)=>(a.datum||"").localeCompare(b.datum||"")||(a.aangemaakt||0)-(b.aangemaakt||0))}
@@ -1219,7 +1240,7 @@ function renderLampen(){
   const saved=lampSorted().map(r=>({key:r.id,r:{...r,...(lampEdits[r.id]||{})},nieuw:false}));
   const rows=saved.concat(lampNew.map(r=>({key:"n:"+r._k,r,nieuw:true})));
   const tr=({key,r,nieuw})=>`<tr data-k="${esc(key)}"${nieuw&&!lampHas(r)?' class="leeg"':""}>
-    <td class="c-dat"><span class="dtxt">${r.datum?esc(paperDate(r.datum)):'<span class="ph">datum kiezen</span>'}</span><input type="date" data-f="datum" value="${esc(r.datum||"")}" aria-label="Datum"></td>
+    <td class="c-dat"><span class="dtxt">${r.datum?esc(paperDate(r.datum)):'<span class="ph">datum kiezen</span>'}</span><input type="date" data-f="datum" value="${esc(r.datum||"")}" aria-label="Datum"><button type="button" class="lampLak lakmini-${r.lak||"geen"}" aria-label="Lak: ${r.lak?LAKKEN[r.lak]:"nog niet gekozen"}" title="Tik om wit/zwart te wisselen">${r.lak==="zwart"?"Zwart":r.lak==="wit"?"Wit":"Lak?"}</button></td>
     <td class="c-num"><input data-f="l12" inputmode="decimal" autocomplete="off" value="${esc(fmt(r.l12))}" aria-label="Lamp 12"></td>
     <td class="c-num"><input data-f="l16" inputmode="decimal" autocomplete="off" value="${esc(fmt(r.l16))}" aria-label="Lamp 16"></td>
     <td class="c-num"><span class="l24"><input data-f="l24w" inputmode="decimal" autocomplete="off" value="${esc(fmt(r.l24w))}" aria-label="Lamp 24"><button type="button" class="xbtn" data-f="l24" aria-pressed="${!!r.l24}" aria-label="Lamp 24 aangekruist" title="Kruisje aan/uit">${r.l24?"X":"x"}</button></span></td>
@@ -1268,6 +1289,7 @@ function renderLampen(){
         inp.onblur=()=>{const o=lampRowObj(k);if(o&&o[f]!=null)inp.value=fmt(o[f])};
       }
     });
+    const lk=row.querySelector(".lampLak");lk.onclick=()=>{const o=lampRowObj(k);o.lak=o.lak==="wit"?"zwart":"wit";lk.textContent=o.lak==="zwart"?"Zwart":"Wit";lk.className="lampLak lakmini-"+o.lak;row.classList.remove("leeg");touch();grow()};
     const x=row.querySelector(".xbtn");x.onclick=()=>{const o=lampRowObj(k);o.l24=!o.l24;x.textContent=o.l24?"X":"x";x.setAttribute("aria-pressed",String(o.l24));touch();grow()};
     const d=row.querySelector("[data-del]");if(d)d.onclick=()=>{lampDel=k;renderLampen()};
     const nee=row.querySelector("[data-nee]");if(nee)nee.onclick=()=>{lampDel=null;renderLampen()};
@@ -1284,7 +1306,7 @@ async function saveLampen(){
   try{
     for(const t of todo){
       const base=t.id?lampRows.find(r=>r.id===t.id):null;
-      const rec={datum:t.r.datum,l12:t.r.l12??null,l16:t.r.l16??null,l24:!!t.r.l24,l24w:t.r.l24w??null,l28:t.r.l28??null,tijd:t.r.tijd||"",sterkte:t.r.sterkte??null,aangemaakt:base?.aangemaakt||Date.now(),bijgewerkt:Date.now()};
+      const rec={datum:t.r.datum,lak:t.r.lak||null,l12:t.r.l12??null,l16:t.r.l16??null,l24:!!t.r.l24,l24w:t.r.l24w??null,l28:t.r.l28??null,tijd:t.r.tijd||"",sterkte:t.r.sterkte??null,aangemaakt:base?.aangemaakt||Date.now(),bijgewerkt:Date.now()};
       const id=t.id||DOC_ID("lamp_");
       await db.collection("instellingen").doc(id).set(rec);
       lampRows=lampRows.filter(r=>r.id!==id).concat([{id,...rec}]);
@@ -1523,6 +1545,7 @@ function gelijkenis(d,T,H){let s=0;
   if(H!=null&&d.luchtvochtigheid!=null)s+=((d.luchtvochtigheid-H)/10)**2;
   return Math.exp(-s/2)}
 function analyse(cur){
+  syncWalsen(cur.lak);
   const rated=dagen.filter(d=>d.id!==cur.id&&d.tevredenheid!=null&&d.lak===cur.lak);
   const goed=rated.filter(d=>d.tevredenheid>=4), slecht=rated.filter(d=>d.tevredenheid<=2);
   const T=cur.temperatuur,H=cur.luchtvochtigheid,metWeer=T!=null||H!=null;
@@ -1718,7 +1741,7 @@ async function maakLogboekPdf(meld,opt){
   // lampen
   if(deel("lampen")){meld("Lampen…");kop1("Lampen");const lr=fLamp;
   if(!lr.length)alinea("Nog geen lampregels opgeslagen.");
-  else tabel([["Dag / datum","Lamp 12","Lamp 16","Lamp 24","Lamp 28 = variabel 28 + 29","Tijd","Sterkte lamp 28"],...lr.map(r=>[paperDate(r.datum),{t:fmt(r.l12),align:"right"},{t:fmt(r.l16),align:"right"},{t:[r.l24w!=null?fmt(r.l24w):"",r.l24?"X":""].filter(Boolean).join("  "),align:"center"},{t:fmt(r.l28),align:"right"},{t:r.tijd||"",align:"center"},{t:r.sterkte!=null?fmt(r.sterkte)+" %":"",align:"right"}])],[26,17,17,15,29,15,20],{header:true,sz:9.5});}
+  else tabel([["Dag / datum","Lak","Lamp 12","Lamp 16","Lamp 24","Lamp 28 = variabel 28 + 29","Tijd","Sterkte lamp 28"],...lr.map(r=>[paperDate(r.datum),r.lak==="zwart"?"Zwart":r.lak==="wit"?"Wit":"",{t:fmt(r.l12),align:"right"},{t:fmt(r.l16),align:"right"},{t:[r.l24w!=null?fmt(r.l24w):"",r.l24?"X":""].filter(Boolean).join("  "),align:"center"},{t:fmt(r.l28),align:"right"},{t:r.tijd||"",align:"center"},{t:r.sterkte!=null?fmt(r.sterkte)+" %":"",align:"right"}])],[26,12,17,17,15,29,15,20],{header:true,sz:9.5});}
   // registratiebladen
   if(deel("registratie")){meld("Registratiebladen…");kop1("Registratiebladen");const rs=fReg.slice().reverse();
   if(!rs.length)alinea("Nog geen registratiebladen opgeslagen.");
@@ -2209,7 +2232,8 @@ async function start(user){
   showOnly("app"); $("#btnUsers").hidden=!isAdmin;
   render();
   unsubs.push(db.doc("instellingen/walsen").onSnapshot(s=>{
-    walsen=(s.exists&&Array.isArray(s.data().walsen))?s.data().walsen.map(w=>({id:w.id,naam:w.naam})):[];
+    const sd=s.exists?s.data():{},lijst=a=>Array.isArray(a)?a.map(w=>({id:w.id,naam:w.naam})):null;
+    walsCfg={basis:lijst(sd.walsen)||[],wit:lijst(sd.walsenWit),zwart:lijst(sd.walsenZwart)};syncWalsen();
     walsenLoaded=true; if(mode==="dag"&&!dirty)renderSheet();
   },()=>{$("#offline").hidden=false}));
   unsubs.push(db.collection("lakdagen").onSnapshot(s=>{
