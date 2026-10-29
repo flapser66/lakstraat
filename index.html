@@ -556,6 +556,7 @@ input,textarea,select,.inp{transition:border-color .18s,box-shadow .18s,backgrou
         <button type="button" data-tab="registratie" aria-selected="false">Registratieblad</button>
         <button type="button" data-tab="materialen" aria-selected="false">Materialen</button>
         <button type="button" data-tab="storingen" aria-selected="false">Storingen</button>
+        <button type="button" data-tab="punten" aria-selected="false">Punten van aandacht</button>
       </nav>
       <div class="top-actions" id="topActions">
         <span class="top-actions" id="walsActions">
@@ -592,6 +593,7 @@ input,textarea,select,.inp{transition:border-color .18s,box-shadow .18s,backgrou
   <section id="lampenView" hidden></section>
 
   <section id="storView" hidden></section>
+  <section id="puntView" hidden></section>
 
   <div class="layout" id="matLayout" hidden>
     <aside class="list" aria-label="Materialen per lakdag">
@@ -722,7 +724,7 @@ const SCHRIK_SVG=`<svg class="schrik" viewBox="0 0 120 140" aria-hidden="true">
     <path class="sk-lijf" d="M60 70 L60 108 M60 108 L46 134 M60 108 L74 134"/>
     <path class="sk-arm sk-arm-l" d="M60 80 L36 64 L28 46"/><path class="sk-arm sk-arm-r" d="M60 80 L84 64 L92 46"/>
   </g></svg>`;
-const SAVERS={walsen:()=>save(),lampen:()=>saveLampen(),registratie:()=>saveReg(),materialen:()=>saveMat(),storingen:()=>saveStoring()};
+const SAVERS={walsen:()=>save(),lampen:()=>saveLampen(),registratie:()=>saveReg(),materialen:()=>saveMat(),storingen:()=>saveStoring(),punten:()=>savePunt()};
 // "Good job"-afbeelding na elke geslaagde opslag
 function toonOpgeslagen(){
   const oud=document.querySelector(".goedjob");if(oud)oud.remove();
@@ -733,7 +735,7 @@ function toonOpgeslagen(){
   d.onclick=weg;setTimeout(weg,3000);
 }
 const metFeest=(fn,t)=>async(...a)=>{const voor=tabDirty(t);const r=await fn(...a);if(voor&&!tabDirty(t))toonOpgeslagen();return r};
-save=metFeest(save,"walsen");saveLampen=metFeest(saveLampen,"lampen");saveReg=metFeest(saveReg,"registratie");saveMat=metFeest(saveMat,"materialen");saveStoring=metFeest(saveStoring,"storingen");
+save=metFeest(save,"walsen");saveLampen=metFeest(saveLampen,"lampen");saveReg=metFeest(saveReg,"registratie");saveMat=metFeest(saveMat,"materialen");saveStoring=metFeest(saveStoring,"storingen");savePunt=metFeest(savePunt,"punten");
 function vraagOpslaan(t,opnieuw){
   const m=$("#modal");
   m.innerHTML=`<div class="modal-box onopg" role="alertdialog" aria-modal="true" aria-labelledby="onT">
@@ -1198,7 +1200,7 @@ let authView="login", authMsg="", authOk="";
 function showOnly(which){
   $("#authBox").hidden=which!=="auth"; $("#toolRow").hidden=which!=="app"; $("#who").hidden=which==="auth";
   if(which==="app") renderTabs();
-  else {$("#appLayout").hidden=true;$("#lampenView").hidden=true;$("#regLayout").hidden=true;$("#storView").hidden=true;$("#matLayout").hidden=true;warn("")}
+  else {$("#appLayout").hidden=true;$("#lampenView").hidden=true;$("#regLayout").hidden=true;$("#storView").hidden=true;$("#puntView").hidden=true;$("#matLayout").hidden=true;warn("")}
 }
 function renderAuth(){
   const box=$("#authBox"); showOnly("auth");
@@ -1250,11 +1252,12 @@ function renderAuth(){
 // ===================== TABBLADEN =====================
 let tab="walsen", tabArmed=false;
 function warn(msg){const n=$("#leaveWarn");if(msg){n.textContent=msg;n.hidden=false}else n.hidden=true}
-function tabDirty(t){return t==="walsen"?dirty:t==="lampen"?lampDirty:t==="storingen"?stDirty:t==="materialen"?matDirty:regDirty}
+function tabDirty(t){return t==="walsen"?dirty:t==="lampen"?lampDirty:t==="storingen"?stDirty:t==="punten"?paDirty:t==="materialen"?matDirty:regDirty}
 function discardTab(t){
   if(t==="walsen"){dirty=false;mode="dag";if(draft&&!draft.id){draft=null;selectedId=null}else if(draft){const r=dagen.find(x=>x.id===draft.id);draft=r?draftFrom(r):null}}
   if(t==="lampen"){lampEdits={};lampNew=blankLampRows();lampDirty=false;lampDel=null}
   if(t==="storingen"){stEdit=null;stDirty=false;stDel=false;stErr=""}
+  if(t==="punten"){paEdit=null;paDirty=false;paDel=false;paErr=""}
   if(t==="materialen"){matDirty=false;matDel=false;if(matDraft&&!matDraft.id){matDraft=null;matSel=null}else if(matDraft){const r=matRows.find(x=>x.id===matDraft.id);matDraft=r?matFrom(r):null}}
   if(t==="registratie"){regDirty=false;regDel=false;if(regDraft&&!regDraft.id){regDraft=null;regSel=null}else if(regDraft){const r=regSheets.find(x=>x.id===regDraft.id);regDraft=r?regFrom(r):null}}
 }
@@ -1265,13 +1268,14 @@ function setTab(t){
 }
 function renderTabs(){
   document.querySelectorAll("#tabs [data-tab]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===tab)));
-  $("#appLayout").hidden=tab!=="walsen"; $("#lampenView").hidden=tab!=="lampen"; $("#regLayout").hidden=tab!=="registratie"; $("#storView").hidden=tab!=="storingen"; $("#matLayout").hidden=tab!=="materialen"; $("#matActions").hidden=tab!=="materialen";
+  $("#appLayout").hidden=tab!=="walsen"; $("#lampenView").hidden=tab!=="lampen"; $("#regLayout").hidden=tab!=="registratie"; $("#storView").hidden=tab!=="storingen"; $("#puntView").hidden=tab!=="punten"; $("#matLayout").hidden=tab!=="materialen"; $("#matActions").hidden=tab!=="materialen";
   $("#walsActions").hidden=tab!=="walsen"; $("#regActions").hidden=tab!=="registratie";
-  {const v=$({walsen:"#appLayout",lampen:"#lampenView",registratie:"#regLayout",storingen:"#storView",materialen:"#matLayout"}[tab]);if(v){v.classList.remove("anim-in");void v.offsetWidth;v.classList.add("anim-in");clearTimeout(v._at);v._at=setTimeout(()=>v.classList.remove("anim-in"),900)}}
+  {const v=$({walsen:"#appLayout",lampen:"#lampenView",registratie:"#regLayout",storingen:"#storView",punten:"#puntView",materialen:"#matLayout"}[tab]);if(v){v.classList.remove("anim-in");void v.offsetWidth;v.classList.add("anim-in");clearTimeout(v._at);v._at=setTimeout(()=>v.classList.remove("anim-in"),900)}}
   if(tab==="walsen")render();
   if(tab==="lampen")renderLampen();
   if(tab==="registratie"){renderRegList();renderRegSheet()}
   if(tab==="storingen")renderStoringen();
+  if(tab==="punten")renderPunten();
   if(tab==="materialen"){renderMatList();renderMatSheet()}
 }
 document.querySelectorAll("#tabs [data-tab]").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
@@ -1742,7 +1746,7 @@ function pdfBytes(pages,imgs,W,H){
   const out=new Uint8Array(len);let p=0;for(const b of parts){out.set(b,p);p+=b.length}
   return out;
 }
-async function maakStoringPdf(s,fotos){
+async function maakStoringPdf(s,fotos,T={kop:"Storingsmelding",l1:"Oorzaak",l2:"Oplossing"}){
   const W=595,H=842,M=48,CW=W-2*M;const pages=[];let ops=[],y;
   const nieuwePagina=()=>{if(ops.length)pages.push(ops);ops=[];y=H-M};
   const txt=(t,x,yy,size,bold,kleur)=>{ops.push(`${kleur||"0.08 0.11 0.15"} rg BT /${bold?"F2":"F1"} ${size} Tf ${x.toFixed(1)} ${yy.toFixed(1)} Td ${pdfStr(t)} Tj ET`)};
@@ -1751,7 +1755,7 @@ async function maakStoringPdf(s,fotos){
   // kopband
   ops.push(`0.055 0.298 0.573 rg 0 ${H-86} ${W} 86 re f`);
   txt("HOUTINDUSTRIE IDEAAL · LAKSTRAAT",M,H-36,9,true,"0.85 0.9 1");
-  txt("Storingsmelding",M,H-64,24,true,"1 1 1");
+  txt(T.kop,M,H-64,24,true,"1 1 1");
   y=H-86-30;
   for(const l of wrap(s.titel||"(zonder titel)",18,true,CW)){ruimte(24);txt(l,M,y,18,true);y-=24}
   y-=6;
@@ -1759,7 +1763,7 @@ async function maakStoringPdf(s,fotos){
   rij("Wals / onderdeel",s.onderdeel);rij("Datum",s.datum?longDate(s.datum):"");rij("Trefwoorden",s.trefwoorden);
   const blok=(kop,tekst,kleur)=>{y-=10;ruimte(40);ops.push(`${kleur} rg ${M} ${y-4} 4 18 re f`);txt(kop.toUpperCase(),M+12,y,11,true,"0.34 0.39 0.48");y-=20;
     for(const l of wrap(tekst||"Niet ingevuld.",11.5,false,CW-12)){ruimte(16);txt(l,M+12,y,11.5,false);y-=16}};
-  blok("Oorzaak",s.oorzaak,"0.6 0.36 0");blok("Oplossing",s.oplossing,"0.055 0.298 0.573");
+  blok(T.l1,s.oorzaak,"0.6 0.36 0");blok(T.l2,s.oplossing,"0.055 0.298 0.573");
   // foto's
   const imgs=[];
   if(fotos.length){y-=14;ruimte(30);txt(`FOTO'S (${fotos.length})`,M,y,11,true,"0.34 0.39 0.48");y-=12;
@@ -1774,7 +1778,7 @@ async function maakStoringPdf(s,fotos){
 // ===================== LOGBOEK ALS PDF =====================
 async function maakLogboekPdf(meld,opt){
   const inR=r=>{const d=r.datum||"";return d>=opt.van&&d<=opt.tot},deel=k=>opt.delen.includes(k);
-  const fDagen=sorted().filter(inR),fLamp=lampSorted().filter(inR),fReg=regSorted().filter(inR),fMat=matSorted().filter(inR),fSt=stSorted().filter(inR);
+  const fDagen=sorted().filter(inR),fLamp=lampSorted().filter(inR),fReg=regSorted().filter(inR),fMat=matSorted().filter(inR),fSt=stSorted().filter(inR),fPa=paSorted().filter(inR);
   const periode=opt.van===opt.tot?longDate(opt.van):`${longDate(opt.van)} t/m ${longDate(opt.tot)}`;
   const W=842,H=595,M=36,CW=W-2*M;const pages=[],imgs=[];let ops=[],y;
   const BLAUW="0.055 0.298 0.573",GRIJS="0.34 0.39 0.48",DONKER="0.08 0.11 0.15",ROOD="0.75 0.15 0.18";
@@ -1805,7 +1809,7 @@ async function maakLogboekPdf(meld,opt){
   const tijd=t=>new Date(t).toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"});
   // voorblad
   nieuwePagina();y-=60;txt("Lakstraat logboek",M,y,34,true,BLAUW);y-=28;txt("Periode: "+periode,M,y,13,true);y-=20;txt("Houtindustrie Ideaal · gemaakt op "+longDate(today()),M,y,11,false,GRIJS);y-=36;
-  [["Lakdagen",fDagen.length,"walsen"],["Lampregels",fLamp.length,"lampen"],["Registratiebladen",fReg.length,"registratie"],["Materialenbladen",fMat.length,"materialen"],["Storingen",fSt.length,"storingen"]].filter(x=>deel(x[2])).forEach(([a,b])=>{txt(a,M,y,12,true);txt(String(b),M+170,y,12,false);y-=20});
+  [["Lakdagen",fDagen.length,"walsen"],["Lampregels",fLamp.length,"lampen"],["Registratiebladen",fReg.length,"registratie"],["Materialenbladen",fMat.length,"materialen"],["Storingen",fSt.length,"storingen"],["Punten van aandacht",fPa.length,"punten"]].filter(x=>deel(x[2])).forEach(([a,b])=>{txt(a,M,y,12,true);txt(String(b),M+170,y,12,false);y-=20});
   // lakdagen
   if(deel("walsen")){meld("Lakdagen…");kop1("Walsen (lakdagen)");
   const ld=fDagen.slice().reverse();if(!ld.length)alinea("Nog geen lakdagen opgeslagen.");
@@ -1848,19 +1852,28 @@ async function maakLogboekPdf(meld,opt){
     alinea("Oplossing:",9.5,true,BLAUW);alinea(s.oplossing||"Niet ingevuld.");
     if(s.fotos&&s.fotos.length)await fotoRij(s.fotos,3,230);
     y-=6;ruimte(10);ops.push(`0.85 0.87 0.9 rg ${M} ${y} ${CW} 0.8 re f`);y-=12}}
+  // punten van aandacht, met foto's
+  if(deel("punten")){kop1("Punten van aandacht");const st=fPa;
+  if(!st.length)alinea("Nog geen punten van aandacht vastgelegd.");
+  for(const s of st){meld("Punt "+(s.titel||"")+"…");kop2(s.titel||"(zonder titel)");
+    regel([["Datum",s.datum?longDate(s.datum):"–"],["Wals / onderdeel",s.onderdeel||"–"]].concat(s.trefwoorden?[["Trefwoorden",s.trefwoorden]]:[]));
+    alinea("Omschrijving:",9.5,true,"0.6 0.36 0");alinea(s.oorzaak||"Niet ingevuld.");
+    alinea("Actie / afspraak:",9.5,true,BLAUW);alinea(s.oplossing||"Niet ingevuld.");
+    if(s.fotos&&s.fotos.length)await fotoRij(s.fotos,3,230);
+    y-=6;ruimte(10);ops.push(`0.85 0.87 0.9 rg ${M} ${y} ${CW} 0.8 re f`);y-=12}}
   ruimte(20);alinea("Opbrengst in gr/m2. \"(buiten)\" betekent dat de waarde buiten het middengebied van het registratieblad valt.",8,false,GRIJS);
   pages.push(ops);
   pages.forEach((pg,i)=>pg.push(`0.55 0.58 0.63 rg BT /F1 8 Tf ${M} 18 Td ${pdfStr(`Lakstraat Logboek · ${periode} · pagina ${i+1} van ${pages.length}`)} Tj ET`));
   meld("PDF opslaan…");
   return pdfBytes(pages,imgs,W,H);
 }
-const PDF_DELEN=[["walsen","Lakdagen (walsen)"],["lampen","Lampen"],["registratie","Registratiebladen"],["materialen","Materialen"],["storingen","Storingen"]];
+const PDF_DELEN=[["walsen","Lakdagen (walsen)"],["lampen","Lampen"],["registratie","Registratiebladen"],["materialen","Materialen"],["storingen","Storingen"],["punten","Punten van aandacht"]];
 function exportPdf(){
   const m=$("#modal"),t=today(),mk=t.slice(0,7);
   const maandEind=k=>{const [j,mm]=k.split("-").map(Number);return k+"-"+String(new Date(j,mm,0).getDate()).padStart(2,"0")};
   const vorig=(()=>{const d=new Date(+mk.slice(0,4),+mk.slice(5)-2,1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")})();
   const open=(tab==="walsen"&&draft&&draft.id&&draft.datum)?draft.datum:null;
-  const alles=[...dagen,...lampRows,...regSheets,...matRows,...storingen].map(r=>r.datum).filter(Boolean).sort();
+  const alles=[...dagen,...lampRows,...regSheets,...matRows,...storingen,...punten].map(r=>r.datum).filter(Boolean).sort();
   const snel=[open?["Deze lakdag",open,open]:null,["Vandaag",t,t],["Deze maand",mk+"-01",maandEind(mk)],["Vorige maand",vorig+"-01",maandEind(vorig)],["Alles",alles[0]||t,alles[alles.length-1]||t]].filter(Boolean);
   const start=open?[open,open]:[mk+"-01",maandEind(mk)];
   m.innerHTML=`<div class="modal-box check" role="dialog" aria-modal="true" aria-labelledby="pdfT">
@@ -1933,9 +1946,9 @@ const msKlaar=(async()=>{ // terugkomst van de Microsoft-aanmelding
   lsS("ms_ver",null);lsS("ms_state",null);
 })();
 function naarB64(bytes){let s="";for(let i=0;i<bytes.length;i+=0x8000)s+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000));return btoa(s)}
-async function msVerstuur(s,bytes,naam,onderwerp,tekst,token){
+async function msVerstuur(s,bytes,naam,onderwerp,tekst,token,aan=tdMail){
   const r=await fetch("https://graph.microsoft.com/v1.0/me/sendMail",{method:"POST",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
-    body:JSON.stringify({saveToSentItems:true,message:{subject:onderwerp,body:{contentType:"Text",content:tekst},toRecipients:[{emailAddress:{address:tdMail}}],
+    body:JSON.stringify({saveToSentItems:true,message:{subject:onderwerp,body:{contentType:"Text",content:tekst},toRecipients:[{emailAddress:{address:aan}}],
       attachments:[{"@odata.type":"#microsoft.graph.fileAttachment",name:naam,contentType:"application/pdf",contentBytes:naarB64(bytes)}]}})});
   if(r.status===401){lsS("ms_tok",null);return "login"}
   if(!r.ok){let m="";try{m=(await r.json()).error.message}catch(e){}throw new Error(m||("fout "+r.status))}
@@ -1966,6 +1979,8 @@ async function verstuurStoring(id,knop,bevestigd){
 async function msHervat(){ // na aanmelding de storing alsnog versturen
   await msKlaar;msTerug=false;const id=lsG("ms_pending");
   if(msFout){if(tab!=="storingen")setTab("storingen");const el=$("#tdMail");if(el)el.insertAdjacentHTML("beforeend",`<span class="err" style="flex-basis:100%">Microsoft-aanmelding mislukt: ${esc(msFout)}</span>`);msFout="";return}
+  if(id&&id.startsWith("pva_")){if(!paLoaded)return;const s=punten.find(x=>x.id===id);lsS("ms_pending",null);if(!s)return;
+    if(tab!=="punten")setTab("punten");paOpen=id;renderPaLijst();const b=document.querySelector(`[data-send="${CSS.escape(id)}"]`);if(b)verstuurPunt(id,b,true);return}
   if(!id||!stLoaded)return;const s=storingen.find(x=>x.id===id);lsS("ms_pending",null);if(!s)return;
   if(tab!=="storingen")setTab("storingen");stOpen=id;renderStLijst();
   const b=document.querySelector(`[data-send="${CSS.escape(id)}"]`);if(b)verstuurStoring(id,b,true);
@@ -2122,6 +2137,186 @@ function renderStoringen(){
   const q=$("#stQ");q.oninput=()=>{stQ=q.value;renderStLijst()};
   $("#stNew").onclick=()=>{if(stEdit&&!stGuard(()=>$("#stNew").click()))return;stEdit={...ST_LEEG(),fotos:[]};stDirty=false;stErr="";stDel=false;renderStForm();$("#st-titel").focus()};
 }
+// ===================== PUNTEN VAN AANDACHT =====================
+const PA_PDF={kop:"Punt van aandacht",l1:"Omschrijving",l2:"Actie / afspraak"};
+function puntTekst(s){return [`Punt van aandacht: ${s.titel||""}`,s.onderdeel?`Wals / onderdeel: ${s.onderdeel}`:"",s.datum?`Datum: ${longDate(s.datum)}`:"","",
+  "Omschrijving:",s.oorzaak||"Niet ingevuld.","","Actie / afspraak:",s.oplossing||"Niet ingevuld.",s.trefwoorden?`\nTrefwoorden: ${s.trefwoorden}`:"",
+  (s.fotos&&s.fotos.length)?`\nIn de bijgevoegde PDF staan ${s.fotos.length} foto${s.fotos.length===1?"":"'s"}.`:"","","Verstuurd vanuit het Lakstraat Logboek."].filter(x=>x!=="").join("\n").replace(/\n{3,}/g,"\n\n")}
+function puntBestand(s){return ("Punt van aandacht "+(s.datum||"")+" "+(s.titel||"")).replace(/[\\/:*?"<>|]+/g,"").replace(/\s+/g," ").trim().slice(0,80)+".pdf"}
+let paMail="peter@ideaal.nl";
+
+let punten=[], paLoaded=false, paQ="", paOpen=null, paEdit=null, paDirty=false, paSaving=false, paErr="", paDel=false;
+const PA_LEEG=()=>({id:null,titel:"",onderdeel:"",datum:today(),oorzaak:"",oplossing:"",trefwoorden:""});
+const paZoekWoorden=()=>norm(paQ).split(/[\s,]+/).filter(Boolean);
+function paSorted(){return punten.slice().sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||(b.bijgewerkt||0)-(a.bijgewerkt||0))}
+function paFilter(){const w=paZoekWoorden();const all=paSorted();if(!w.length)return all;
+  return all.filter(s=>{const t=norm([s.titel,s.onderdeel,s.oorzaak,s.oplossing,s.trefwoorden].join(" "));return w.every(x=>t.includes(x))})}
+function paHl(text){ // escapen en zoekwoorden markeren
+  const t=String(text||""),w=paZoekWoorden();if(!w.length)return esc(t).replace(/\n/g,"<br>");
+  const n=norm(t);if(n.length!==t.length)return esc(t).replace(/\n/g,"<br>");
+  const on=new Array(t.length).fill(false);
+  for(const x of w){let i=n.indexOf(x);while(i>=0){for(let k=i;k<i+x.length;k++)on[k]=true;i=n.indexOf(x,i+x.length)}}
+  let out="",open=false;for(let i=0;i<t.length;i++){if(on[i]&&!open){out+="<mark>";open=true}if(!on[i]&&open){out+="</mark>";open=false}out+=t[i]==="\n"?"<br>":esc(t[i])}
+  return out+(open?"</mark>":"");
+}
+function paItemHtml(s,open){
+  const tags=String(s.trefwoorden||"").split(",").map(x=>x.trim()).filter(Boolean);
+  return `<article class="st-item${open?" open":""}">
+    <button type="button" class="st-kop" data-open="${esc(s.id)}" aria-expanded="${open}">
+      <span class="st-t">${paHl(s.titel)||"(zonder titel)"}</span>
+      <span class="st-meta">${s.onderdeel?paHl(s.onderdeel)+" · ":""}${esc(s.datum?shortDate(s.datum):"")}</span>
+    </button>
+    ${open?`<div class="st-body">
+      <div class="st-blk oorz"><h4>Omschrijving</h4><p>${paHl(s.oorzaak)||"<span class='hint'>Niet ingevuld</span>"}</p></div>
+      <div class="st-blk opl"><h4>Actie / afspraak</h4><p>${paHl(s.oplossing)||"<span class='hint'>Niet ingevuld</span>"}</p></div>
+      ${s.fotos&&s.fotos.length?`<div class="st-fotos">${s.fotos.map(id=>`<button type="button" class="st-thumb" data-foto="${esc(id)}" aria-label="Foto vergroten"><span class="hint">laden…</span></button>`).join("")}</div>`:""}
+      ${tags.length?`<div class="st-tags">${tags.map(x=>`<span>${paHl(x)}</span>`).join("")}</div>`:""}
+      <div class="st-acties"><button class="btn" type="button" data-edit="${esc(s.id)}">Bewerken</button><button class="btn primary" type="button" data-send="${esc(s.id)}">Versturen</button></div>
+    </div>`:""}
+  </article>`;
+}
+function renderPaLijst(){
+  const box=$("#paLijst");if(!box)return;
+  const lijst=paFilter(),q=paZoekWoorden().length;
+  $("#paCount").textContent=!paLoaded?"Laden…":q?`${lijst.length} van ${punten.length} punten gevonden`:`${punten.length} ${punten.length===1?"punt":"punten"}`;
+  if(!paLoaded){box.innerHTML="";return}
+  if(!punten.length){box.innerHTML='<p class="st-leeg">Nog geen punten van aandacht vastgelegd. Klik op <b>+ Nieuw punt</b> om het eerste toe te voegen.</p>';}
+  else if(!lijst.length){box.innerHTML=`<p class="st-leeg">Niets gevonden voor "${esc(paQ)}". Probeer een ander of korter woord.</p>`}
+  else box.innerHTML=lijst.map(s=>paItemHtml(s,q>0||paOpen===s.id)).join("");
+  box.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{if(paZoekWoorden().length)return;paOpen=paOpen===b.dataset.open?null:b.dataset.open;renderPaLijst()});
+  box.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{if(paDirty&&!paGuard(()=>b.click()))return;const s=punten.find(x=>x.id===b.dataset.edit);paEdit={...PA_LEEG(),...s,fotos:[],fotosLaden:!!(s.fotos&&s.fotos.length)};paDirty=false;paErr="";paDel=false;renderPunten();$("#pa-titel")?.focus();
+    if(s.fotos&&s.fotos.length)laadFotos(s.fotos).then(f=>{if(paEdit&&paEdit.id===s.id){paEdit.fotos=f;paEdit.fotosLaden=false;renderPaForm()}})});
+  vulThumbs(box);
+  box.querySelectorAll("[data-send]").forEach(b=>b.onclick=()=>verstuurPunt(b.dataset.send,b));
+}
+let paArmed=false;
+function paGuard(opnieuw){if(!paDirty)return true;vraagOpslaan("punten",opnieuw);return false}
+function paFormHtml(){
+  if(!paEdit)return "";
+  const e=paEdit,isNew=!e.id;
+  return `<div class="st-form" id="paForm">
+    <div class="st-form-h">${isNew?"Nieuw punt van aandacht":"Punt van aandacht bewerken"}</div>
+    <div class="fgrid">
+      <div class="field"><label for="pa-titel">Punt van aandacht</label><div class="inp"><input id="pa-titel" data-f="titel" value="${esc(e.titel)}" placeholder="Bijv. lak loopt uit bij wals 3"></div></div>
+      <div class="field"><label for="pa-onderdeel">Wals / onderdeel</label><div class="inp"><input id="pa-onderdeel" data-f="onderdeel" list="pa-onderdelen" value="${esc(e.onderdeel)}" placeholder="Bijv. Wals 2"></div>
+        <datalist id="pa-onderdelen">${walsen.map(w=>`<option value="${esc(w.naam)}"></option>`).join("")}<option value="Lampen"></option><option value="Lakstraat algemeen"></option></datalist></div>
+      <div class="field"><label for="pa-datum">Datum</label><div class="inp"><input id="pa-datum" type="date" data-f="datum" value="${esc(e.datum)}"></div></div>
+      <div class="field full"><label for="pa-oorzaak">Omschrijving</label><textarea id="pa-oorzaak" data-f="oorzaak" placeholder="Wat valt op en waarom is het belangrijk?">${esc(e.oorzaak)}</textarea></div>
+      <div class="field full"><label for="pa-oplossing">Actie / afspraak</label><textarea id="pa-oplossing" data-f="oplossing" placeholder="Wat moet er gebeuren of wat is afgesproken?">${esc(e.oplossing)}</textarea></div>
+      <div class="field full"><label for="pa-tref">Trefwoorden</label><div class="inp"><input id="pa-tref" data-f="trefwoorden" value="${esc(e.trefwoorden)}" placeholder="Gescheiden door komma's, bijv. strepen, rakel, vuil"></div><span class="hint" style="font-family:var(--f-body)">Woorden waarop je dit punt later wilt terugvinden.</span></div>
+      <div class="field full"><label>Foto's <span class="hint" style="font-family:var(--f-body)">(maximaal ${MAX_FOTOS})</span></label>
+        <div class="st-fotos">${(e.fotos||[]).map((f,i)=>`<div class="st-thumb edit"><img src="${f.data}" alt="Foto ${i+1}" data-groot="${i}"><button type="button" class="st-fx" data-weg="${i}" aria-label="Foto ${i+1} verwijderen">×</button></div>`).join("")}
+          ${e.fotosLaden?'<span class="hint">Foto\'s laden…</span>':""}${e.fotoBezig?'<span class="hint">Foto verwerken…</span>':""}
+          ${(e.fotos||[]).length<MAX_FOTOS&&!e.fotosLaden?`<label class="st-add" for="pa-cam">Foto maken<br><span>camera</span></label><label class="st-add" for="pa-file">Foto kiezen<br><span>uit galerij</span></label>`:""}</div>
+        <input type="file" id="pa-cam" accept="image/*" capture="environment" hidden>
+        <input type="file" id="pa-file" accept="image/*" multiple hidden></div>
+    </div>
+    <div class="foot">
+      <div class="grp">${isNew?"":paDel?`<span class="confirm">Dit punt verwijderen? <button class="btn danger-solid" type="button" id="paDelYes">Ja, verwijderen</button><button class="btn" type="button" id="paDelNo">Annuleren</button></span>`:`<button class="btn danger" type="button" id="paDelBtn">Verwijderen</button>`}</div>
+      <div class="grp">${paErr?`<span class="err">${esc(paErr)}</span>`:""}<button class="btn" type="button" id="paCancel">Annuleren</button><button class="btn primary" type="button" id="paSave" ${paSaving||!paDirty?"disabled":""}>Opslaan</button></div>
+    </div>
+  </div>`;
+}
+function renderPaForm(){
+  const holder=$("#paFormHolder");if(!holder)return;holder.innerHTML=paFormHtml();if(!paEdit)return;
+  holder.querySelectorAll("[data-f]").forEach(inp=>{const ev=inp.type==="date"?"onchange":"oninput";inp[ev]=()=>{paEdit[inp.dataset.f]=inp.value;if(!paDirty){paDirty=true;paErr="";const s=$("#paSave");if(s)s.disabled=false}}});
+  const markeer=()=>{paDirty=true;paErr=""};
+  const fotoInvoer=async fi=>{const files=[...fi.files].slice(0,MAX_FOTOS-(paEdit.fotos||[]).length);fi.value="";if(!files.length)return;
+    paEdit.fotoBezig=true;renderPaForm();
+    for(const f of files){try{const data=await verklein(f);if(!paEdit)return;paEdit.fotos.push({id:null,data});markeer()}catch(err){paErr=err.message||"Foto kon niet worden gelezen."}}
+    if(paEdit){paEdit.fotoBezig=false;renderPaForm()}};
+  ["#pa-cam","#pa-file"].forEach(sel=>{const fi=$(sel);if(fi)fi.onchange=()=>fotoInvoer(fi)});
+  holder.querySelectorAll("[data-weg]").forEach(b=>b.onclick=()=>{paEdit.fotos.splice(+b.dataset.weg,1);markeer();renderPaForm()});
+  holder.querySelectorAll("[data-groot]").forEach(im=>im.onclick=()=>toonFoto(im.src));
+  $("#paCancel").onclick=()=>{paEdit=null;paDirty=false;paErr="";paDel=false;renderPaForm()};
+  $("#paSave").onclick=savePunt;
+  const d=$("#paDelBtn");if(d)d.onclick=()=>{paDel=true;renderPaForm()};
+  const dn=$("#paDelNo");if(dn)dn.onclick=()=>{paDel=false;renderPaForm()};
+  const dy=$("#paDelYes");if(dy)dy.onclick=async()=>{try{const oud=punten.find(x=>x.id===paEdit.id);for(const fid of (oud&&oud.fotos)||[]){try{await db.collection("instellingen").doc(fid).delete()}catch(e){}}await db.collection("instellingen").doc(paEdit.id).delete();punten=punten.filter(x=>x.id!==paEdit.id)}catch(e){paErr="Verwijderen mislukt.";paDel=false;return renderPaForm()}
+    paEdit=null;paDirty=false;paDel=false;renderPunten()};
+}
+async function savePunt(){
+  const e=paEdit;if(!e.titel.trim()){paErr="Vul in wat het punt van aandacht is.";return renderPaForm()}
+  paSaving=true;paErr="";renderPaForm();
+  try{
+    const id=e.id||DOC_ID("pva_");
+    const ids=[];
+    for(const f of e.fotos||[]){if(f.id){ids.push(f.id);continue}
+      const fid=DOC_ID("foto_pva_"+id.slice(4)+"_");await db.collection("instellingen").doc(fid).set({punt:id,data:f.data,aangemaakt:Date.now()});fotoCache[fid]=f.data;f.id=fid;ids.push(fid)}
+    const oud=punten.find(x=>x.id===id);
+    for(const fid of (oud&&oud.fotos)||[])if(!ids.includes(fid)){try{await db.collection("instellingen").doc(fid).delete()}catch(x){}delete fotoCache[fid]}
+    const rec={titel:e.titel.trim(),onderdeel:(e.onderdeel||"").trim(),datum:e.datum||"",oorzaak:(e.oorzaak||"").trim(),oplossing:(e.oplossing||"").trim(),trefwoorden:(e.trefwoorden||"").trim(),fotos:ids,bijgewerkt:Date.now()};
+    await db.collection("instellingen").doc(id).set(rec);
+    punten=punten.filter(x=>x.id!==id).concat([{id,...rec}]);
+    paEdit=null;paDirty=false;paOpen=id;
+  }catch(err){paErr=saveErr(err)}
+  paSaving=false;renderPunten();
+}
+function renderPunten(){
+  const el=$("#puntView");
+  el.innerHTML=`<main class="sheet solo">
+    <div class="sheet-head"><div><div class="title">Punten van aandacht</div><div class="sub">Wat opvalt, wat beter kan en wat er is afgesproken</div></div><button class="btn primary" type="button" id="paNew">+ Nieuw punt</button></div>
+    <div class="td-mail" id="paMail"></div>
+    <div class="st-zoek"><div class="inp"><span class="unit" aria-hidden="true">Zoek</span><input id="paQ" type="search" placeholder="Trefwoorden, bijv. lak wals 3" value="${esc(paQ)}" autocomplete="off" aria-label="Zoeken in punten van aandacht"></div><span class="hint" id="paCount"></span></div>
+    <div id="paFormHolder"></div>
+    <div class="st-lijst" id="paLijst"></div>
+  </main>`;
+  renderPaForm();renderPaLijst();renderPaMail();
+  const q=$("#paQ");q.oninput=()=>{paQ=q.value;renderPaLijst()};
+  $("#paNew").onclick=()=>{if(paEdit&&!paGuard(()=>$("#paNew").click()))return;paEdit={...PA_LEEG(),fotos:[]};paDirty=false;paErr="";paDel=false;renderPaForm();$("#pa-titel").focus()};
+}
+async function verstuurPunt(id,knop,bevestigd){
+  const s=punten.find(x=>x.id===id);if(!s)return;
+  if(!paMail||!navigator.onLine)return deelPunt(id,knop);
+  const oud="Versturen";
+  if(!bevestigd){knop.textContent="Tik nog eens: mail naar "+paMail;knop.onclick=()=>verstuurPunt(id,knop,true);
+    setTimeout(()=>{if(knop.isConnected&&!knop.disabled){knop.textContent=oud;knop.onclick=()=>verstuurPunt(id,knop)}},6000);return}
+  knop.disabled=true;knop.onclick=()=>verstuurPunt(id,knop);
+  try{
+    let token=await msToken();
+    if(!token){knop.textContent="Aanmelden bij Microsoft…";return msLogin(id)}
+    knop.textContent="PDF maken…";
+    const fotos=await laadFotos(s.fotos||[]),bytes=await maakStoringPdf(s,fotos,PA_PDF);
+    if(bytes.length>3000000){knop.disabled=false;knop.textContent=oud;return deelPunt(id,knop)} // te groot voor automatisch
+    knop.textContent="Verzenden…";
+    const res=await msVerstuur(s,bytes,puntBestand(s),"Punt van aandacht lakstraat: "+(s.titel||""),puntTekst(s),token,paMail);
+    if(res==="login"){knop.textContent="Aanmelden bij Microsoft…";return msLogin(id)}
+    knop.textContent="Verstuurd ✓";renderPaMail();setTimeout(()=>{if(knop.isConnected){knop.textContent=oud;knop.disabled=false}},4000);
+  }catch(e){
+    knop.disabled=false;knop.textContent="Automatisch mislukt: tik om te delen";knop.title=String(e.message||e);
+    knop.onclick=()=>{knop.textContent=oud;knop.onclick=()=>verstuurPunt(id,knop);deelPunt(id,knop)};
+  }
+}
+async function deelPunt(id,knop){
+  const s=punten.find(x=>x.id===id);if(!s)return;
+  const oud=knop.textContent;knop.disabled=true;knop.textContent="PDF maken…";
+  try{
+    const fotos=await laadFotos(s.fotos||[]);
+    const bytes=await maakStoringPdf(s,fotos,PA_PDF);
+    const file=new File([bytes],puntBestand(s),{type:"application/pdf"});
+    const tekst=puntTekst(s),onderwerp="Punt van aandacht lakstraat: "+(s.titel||"");
+    const deel=async()=>{await navigator.share({files:[file],title:onderwerp,text:(paMail?`Aan: ${paMail}\n\n`:"")+tekst})};
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      try{await deel();knop.textContent=oud}
+      catch(e){if(e&&e.name==="AbortError"){knop.textContent=oud}
+        else{knop.textContent="Klaar: tik om te delen";knop.disabled=false;knop.onclick=async()=>{try{await deel()}catch(x){}knop.textContent=oud;knop.onclick=()=>verstuurPunt(id,knop)};return}}
+    } else {
+      const a=document.createElement("a");a.href=URL.createObjectURL(file);a.download=file.name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);
+      location.href=`mailto:${encodeURIComponent(paMail||"")}?subject=${encodeURIComponent(onderwerp)}&body=${encodeURIComponent(tekst+"\n\n(De PDF is gedownload. Voeg hem als bijlage toe.)")}`;
+      knop.textContent=oud;
+    }
+  }catch(e){knop.textContent="Versturen mislukt";setTimeout(()=>{knop.textContent=oud},3000)}
+  knop.disabled=false;
+}
+function renderPaMail(){const el=$("#paMail");if(!el)return;
+  el.innerHTML=`<span>Versturen naar: <b>${paMail?esc(paMail):"nog geen e-mailadres"}</b></span><button type="button" class="linkbtn" id="paEdit">${paMail?"Wijzigen":"Instellen"}</button>`
+  if(paMail)el.insertAdjacentHTML("beforeend",msTok()?`<span class="hint" style="font-family:var(--f-body)">Wordt automatisch verstuurd via jouw Outlook.</span><button type="button" class="linkbtn" id="paMsUit">Afmelden Microsoft</button>`:`<span class="hint" style="font-family:var(--f-body)">Bij de eerste keer versturen meld je je één keer aan bij Microsoft.</span>`);
+  const mu=$("#paMsUit");if(mu)mu.onclick=()=>{lsS("ms_tok",null);renderPaMail()};
+  $("#paEdit").onclick=()=>{el.innerHTML=`<div class="inp" style="max-width:320px"><input id="paInp" type="email" value="${esc(paMail)}" placeholder="peter@ideaal.nl" style="font-family:var(--f-body);font-size:15px;padding:6px 10px" aria-label="E-mailadres punten van aandacht"></div><button type="button" class="btn primary" id="paOk">Opslaan</button><button type="button" class="btn" id="paNee">Annuleren</button>`;
+    $("#paInp").focus();$("#paNee").onclick=renderPaMail;
+    $("#paOk").onclick=async()=>{const v=$("#paInp").value.trim();if(v&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){$("#paInp").style.outline="2px solid var(--danger)";return}
+      try{await db.collection("instellingen").doc("pamail").set({email:v,bijgewerkt:Date.now()});paMail=v}catch(e){}renderPaMail()}}}
+
 // ===================== MATERIALEN =====================
 const MATS=[
   {k:"primer",naam:"Primer",sub:"blik 25 kg",eenheid:"blik",meer:"blikken",stap:0.5,groep:"lak"},
@@ -2335,6 +2530,8 @@ async function start(user){
     lampRows=docs.filter(d=>d.id.startsWith("lamp_")); regSheets=docs.filter(d=>d.id.startsWith("reg_"));
     storingen=docs.filter(d=>d.id.startsWith("stor_")); const tdd=docs.find(d=>d.id==="tdmail"); tdMail=(tdd&&tdd.email)||""; if(tab==="storingen")renderTdMail(); matRows=docs.filter(d=>d.id.startsWith("mat_")); matLoaded=true;
     if(tab==="materialen"){renderMatList();if(!matDirty&&!matSaving){if(matDraft&&matDraft.id){const r=matRows.find(x=>x.id===matDraft.id);matDraft=r?matFrom(r):null;if(!r)matSel=null}renderMatSheet()}}
+    punten=docs.filter(d=>d.id.startsWith("pva_")); const pam=docs.find(d=>d.id==="pamail"); paMail=(pam&&pam.email!=null)?pam.email:"peter@ideaal.nl"; paLoaded=true;
+    if(tab==="punten"){if(!$("#paLijst"))renderPunten();else{renderPaLijst();renderPaMail()}}
     lampLoaded=true; regLoaded=true; stLoaded=true;
     if(tab==="storingen"){if(!$("#stLijst"))renderStoringen();else renderStLijst()}
     if(lsG("ms_pending")||msTerug)msHervat();
@@ -2367,7 +2564,7 @@ $("#btnExport").onclick=exportPdf;
 
 $("#btnUsers").onclick=()=>{if(tab!=="walsen"){setTab("walsen");if(tab!=="walsen")return}mode="users";renderUsers($("#sheet"))};
 $("#btnLogout").onclick=()=>{dagen=[];walsen=[];draft=null;selectedId=null;dirty=false;mode="dag";
-  lampRows=[];lampEdits={};lampNew=blankLampRows();lampDirty=false;storingen=[];stEdit=null;stDirty=false;stQ="";matRows=[];matDraft=null;matSel=null;matDirty=false;regSheets=[];regDraft=null;regSel=null;regDirty=false;tab="walsen";
+  lampRows=[];lampEdits={};lampNew=blankLampRows();lampDirty=false;storingen=[];stEdit=null;stDirty=false;stQ="";punten=[];paEdit=null;paDirty=false;paQ="";matRows=[];matDraft=null;matSel=null;matDirty=false;regSheets=[];regDraft=null;regSel=null;regDirty=false;tab="walsen";
   firebase.auth().signOut()};
 
 if(!window.firebase||!window.LAKSTRAAT_FIREBASE){$("#authBox").hidden=false;$("#authBox").innerHTML="<h2>Niet ingesteld</h2><p>De koppeling met de database ontbreekt (config.js).</p>"}
