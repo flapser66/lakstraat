@@ -532,6 +532,9 @@ input,textarea,select,.inp{transition:border-color .18s,box-shadow .18s,backgrou
 .mat-lakf{padding:0 0 8px;border:0;margin-bottom:6px}
 .adv-uitleg{font-weight:400;text-transform:none;letter-spacing:0;font-family:var(--f-body);color:var(--muted)}
 .adv-melding{margin-bottom:10px;padding:10px 12px;border-radius:8px;background:color-mix(in srgb,#22a447 14%,transparent);border:1px solid #22a447;font-weight:600;animation:slideDown .25s ease-out both}
+.slot-banner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px;padding:12px 14px;border-radius:8px;background:var(--sunk);border:1px solid var(--line);font-weight:600;animation:slideDown .25s ease-out both}
+.vergrendeld .section input,.vergrendeld .section textarea{opacity:.85}
+.vergrendeld .st-fx,.vergrendeld .st-add,.vergrendeld .adv-dagen,.vergrendeld #advNeem{display:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -835,6 +838,7 @@ function statusPill(){
 function renderSheet(){
   if(mode!=="setup")syncWalsen();
   const el=$("#sheet");
+  el.classList.remove("vergrendeld");
   if(mode==="setup")return renderSetup(el);
   if(mode==="users")return renderUsers(el);
   if(!draft){
@@ -1023,7 +1027,16 @@ ${BEOORDELINGEN.map(b=>beoordelingHtml(b)).join("")}
   const dn=$("#delNo"); if(dn)dn.onclick=()=>{confirmDel=false;renderSheet()};
   const dy=$("#delYes"); if(dy)dy.onclick=removeDay;
   const rv=$("#revert"); if(rv)rv.onclick=()=>{const rec=dagen.find(r=>r.id===draft.id);if(rec){draft=draftFrom(rec);dirty=false;error="";render()}};
+  // bescherming: opgeslagen lakdagen van vóór vandaag openen alleen-lezen
+  if(isVergrendeld()){
+    el.classList.add("vergrendeld");
+    el.querySelector(".sheet-head").insertAdjacentHTML("afterend",`<div class="slot-banner"><span>🔒 Dit is een opgeslagen lakdag van ${esc(shortDate(draft.datum))}. Je kunt hem alleen bekijken, zodat er niet per ongeluk iets verandert.</span><button class="btn" type="button" id="ontgrendel">Toch bewerken</button></div>`);
+    el.querySelectorAll("input,textarea,select,button").forEach(x=>{if(x.closest(".nav")||x.id==="ontgrendel"||x.classList.contains("st-thumb"))return;x.disabled=true});
+    $("#ontgrendel").onclick=()=>{ontgrendeld.add(draft.id);renderSheet()};
+  } else el.classList.remove("vergrendeld");
 }
+const ontgrendeld=new Set();
+function isVergrendeld(){return !!(mode==="dag"&&draft&&draft.id&&draft.datum&&draft.datum<today()&&!dirty&&!ontgrendeld.has(draft.id))}
 function stepFor(v){return 0.5}
 function refreshHead(){
   const sub=document.querySelector(".sheet-head .sub"); if(!sub)return;
@@ -2255,7 +2268,7 @@ function slotHerinnering(){
   </div>`;
   m.hidden=false;
   const sluit=()=>{m.hidden=true;m.innerHTML="";try{sessionStorage.setItem("slotHerinnerd",today())}catch(e){}};
-  const ga=id=>{sluit();if(tab!=="walsen"){setTab("walsen");if(tab!=="walsen")return}select(id);setTimeout(()=>{const el=$("#f-slot");if(el)el.scrollIntoView({block:"center"})},50)};
+  const ga=id=>{sluit();ontgrendeld.add(id);if(tab!=="walsen"){setTab("walsen");if(tab!=="walsen")return}select(id);setTimeout(()=>{const el=$("#f-slot");if(el)el.scrollIntoView({block:"center"})},50)};
   $("#modalGo").onclick=()=>ga(open[0].id);
   $("#modalLater").onclick=sluit;
   m.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>ga(b.dataset.open));
