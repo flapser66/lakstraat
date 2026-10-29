@@ -530,6 +530,8 @@ input,textarea,select,.inp{transition:border-color .18s,box-shadow .18s,backgrou
 .reg-head:has(.reg-meta){grid-template-columns:96px minmax(0,1fr) auto}
 .reg-meta{display:grid;grid-template-columns:auto auto;gap:4px 18px;font-size:14px;color:#333;align-self:start;white-space:nowrap}
 .mat-lakf{padding:0 0 8px;border:0;margin-bottom:6px}
+.adv-uitleg{font-weight:400;text-transform:none;letter-spacing:0;font-family:var(--f-body);color:var(--muted)}
+.adv-melding{margin-bottom:10px;padding:10px 12px;border-radius:8px;background:color-mix(in srgb,#22a447 14%,transparent);border:1px solid #22a447;font-weight:600;animation:slideDown .25s ease-out both}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -635,7 +637,10 @@ function walsVoor(lak){
   if(lak){const vorige=sorted().find(d=>d.lak===lak&&(d.walsen||[]).length);if(vorige)return vorige.walsen.map(w=>({id:w.id,naam:w.naam}))}
   return walsCfg.basis;
 }
-function syncWalsen(lak){walsen=walsVoor(lak===undefined?(draft&&draft.lak):lak)}
+function syncWalsen(lak){
+  if(lak!==undefined){walsen=walsVoor(lak);return}
+  const cfg=walsVoor(draft&&draft.lak),eigen=draft&&draft.walsVolgorde;
+  walsen=eigen&&eigen.length?eigen.concat(cfg.filter(w=>!eigen.some(e=>e.id===w.id))):cfg}
 let walsenLoaded=false;
 let dagen=[];             // [{id, ...data}]
 let dagenLoaded=false;
@@ -681,7 +686,8 @@ function blankDraft(){
 }
 function draftFrom(rec){
   const w={};(rec.walsen||[]).forEach(x=>{const o={naam:x.naam};VELDEN.forEach(f=>{if(x[f]!=null)o[f]=x[f]});w[x.id]=o});
-  return {id:rec.id,datum:rec.datum||"",temperatuur:rec.temperatuur??null,luchtvochtigheid:rec.luchtvochtigheid??null,walsen:w,bijzonderheden:rec.bijzonderheden||"",tevredenheid:rec.tevredenheid??null,slotgaten:rec.slotgaten??null,fotos:(rec.fotos&&rec.fotos.length)?null:[],fotoIds:rec.fotos||[],slotOpmerking:rec.slotOpmerking||"",charge:chObj(rec.charge),checklist:rec.checklist||null,lak:rec.lak||null};
+  const vg=(rec.walsen||[]).map(x=>({id:x.id,naam:x.naam}));
+  return {walsVolgorde:vg.length?vg:null,id:rec.id,datum:rec.datum||"",temperatuur:rec.temperatuur??null,luchtvochtigheid:rec.luchtvochtigheid??null,walsen:w,bijzonderheden:rec.bijzonderheden||"",tevredenheid:rec.tevredenheid??null,slotgaten:rec.slotgaten??null,fotos:(rec.fotos&&rec.fotos.length)?null:[],fotoIds:rec.fotos||[],slotOpmerking:rec.slotOpmerking||"",charge:chObj(rec.charge),checklist:rec.checklist||null,lak:rec.lak||null};
 }
 function sorted(){return dagen.slice().sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||(b.bijgewerkt||0)-(a.bijgewerkt||0))}
 function previousOf(d){
@@ -790,7 +796,8 @@ function newDay(){
   dirty=true; render();
 }
 function vulVorigeStanden(){
-  draft.walsen={};const prev=sorted().find(d=>!draft.lak||d.lak===draft.lak);
+  draft.walsen={};draft.walsVolgorde=null;const prev=sorted().find(d=>!draft.lak||d.lak===draft.lak);
+  if(prev&&(prev.walsen||[]).length)draft.walsVolgorde=prev.walsen.map(x=>({id:x.id,naam:x.naam}));
   if(prev){(prev.walsen||[]).forEach(x=>{const o={naam:x.naam};if(x.stand!=null)o.stand=x.stand;if(x.hoogte!=null)o.hoogte=x.hoogte;if(o.stand!=null||o.hoogte!=null)draft.walsen[x.id]=o})}
 }
 
@@ -1575,7 +1582,7 @@ function gelijkenis(d,T,H){let s=0;
   if(H!=null&&d.luchtvochtigheid!=null)s+=((d.luchtvochtigheid-H)/10)**2;
   return Math.exp(-s/2)}
 function analyse(cur){
-  syncWalsen(cur.lak);
+  syncWalsen(cur===draft?undefined:cur.lak);
   const rated=dagen.filter(d=>d.id!==cur.id&&d.tevredenheid!=null&&d.lak===cur.lak);
   const goed=rated.filter(d=>d.tevredenheid>=4), slecht=rated.filter(d=>d.tevredenheid<=2);
   const T=cur.temperatuur,H=cur.luchtvochtigheid,metWeer=T!=null||H!=null;
@@ -1633,15 +1640,21 @@ function renderAdvies(){
       <p class="adv-basis">${A.metWeer?`Gebaseerd op de ${A.vergelijkbaar.length} lakdag${A.vergelijkbaar.length===1?"":"en"} met ${lakNaam} lak en een 4 of 5 waarvan de temperatuur en luchtvochtigheid het meest lijken op die van deze lakdag${T!=null?` (${fmt(T)} °C`:" ("}${H!=null?`${T!=null?", ":""}${fmt(H)} %`:""}).`:`Gebaseerd op de ${A.vergelijkbaar.length} meest recente lakdag${A.vergelijkbaar.length===1?"":"en"} met ${lakNaam} lak en een 4 of 5. Vul temperatuur en luchtvochtigheid in om te vergelijken met dagen met hetzelfde weer.`} Er is gekeken waar de walsen aan het eind van die dagen stonden. Een 5 telt twee keer zo zwaar als een 4.</p>
       <div><button class="btn" type="button" id="advNeem">Advies overnemen als beginwaarden</button></div>`;
     if(A.vergelijkbaar.length){
-      h+=`<div class="adv-sub">Gebruikt voor dit advies</div><div class="adv-dagen">${A.vergelijkbaar.map(({d})=>`<button type="button" data-open="${esc(d.id)}">${esc(shortDate(d.datum))} · ${d.temperatuur!=null?fmt(d.temperatuur)+" °C":"–"} · ${d.luchtvochtigheid!=null?fmt(d.luchtvochtigheid)+" %":"–"} · ${d.tevredenheid}/5</button>`).join("")}</div>`}
+      h+=`<div class="adv-sub">Gebruikt voor dit advies <span class="adv-uitleg">· tik op een dag om de beginwaarden en walsnamen van die dag hier over te nemen. Je blijft op deze lakdag.</span></div><div class="adv-dagen">${A.vergelijkbaar.map(({d})=>`<button type="button" data-neem="${esc(d.id)}">⇩ ${esc(shortDate(d.datum))} · ${d.temperatuur!=null?fmt(d.temperatuur)+" °C":"–"} · ${d.luchtvochtigheid!=null?fmt(d.luchtvochtigheid)+" %":"–"} · ${d.tevredenheid}/5</button>`).join("")}</div>`}
   }
   if(A.tips.length)h+=`<div class="adv-sub">Inzichten</div><ul class="adv-tips">${A.tips.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>`;
-  box.innerHTML=h;
+  box.innerHTML='<div class="adv-melding" id="advMelding" hidden></div>'+h;
   const nb=$("#advNeem");if(nb)nb.onclick=()=>{
     for(const w of walsen){const a=A.adv[w.id]||{};if(!a.stand&&!a.hoogte)continue;const cur=draft.walsen[w.id]||{naam:w.naam};
       if(a.stand)cur.stand=a.stand.v;if(a.hoogte)cur.hoogte=a.hoogte.v;cur.naam=w.naam;draft.walsen[w.id]=cur}
-    dirty=true;justSaved=false;renderSheet()};
-  box.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>select(b.dataset.open));
+    dirty=true;justSaved=false;renderSheet();const m=$("#advMelding");if(m){m.textContent="✓ Advies overgenomen als beginwaarden in deze lakdag.";m.hidden=false}};
+  box.querySelectorAll("[data-neem]").forEach(b=>b.onclick=()=>{const d=dagen.find(x=>x.id===b.dataset.neem);if(!d)return;
+    const oud=draft.walsen,nieuw={};
+    draft.walsVolgorde=(d.walsen||[]).map(x=>({id:x.id,naam:x.naam}));
+    (d.walsen||[]).forEach(x=>{const o={naam:x.naam},s=x.stand??x.eind,hg=x.hoogte??x.hoogteEind;if(s!=null)o.stand=s;if(hg!=null)o.hoogte=hg;
+      const e=oud[x.id];if(e){if(e.eind!=null)o.eind=e.eind;if(e.hoogteEind!=null)o.hoogteEind=e.hoogteEind}nieuw[x.id]=o});
+    draft.walsen=nieuw;dirty=true;justSaved=false;renderSheet();
+    const m=$("#advMelding");if(m){m.textContent=`✓ Beginwaarden en walsnamen van ${shortDate(d.datum)} overgenomen in deze lakdag.`;m.hidden=false}});
 }
 // ===================== FOTO'S BIJ STORINGEN =====================
 const fotoCache={}, MAX_FOTOS=4;
