@@ -515,6 +515,20 @@ input,textarea,select,.inp{transition:border-color .18s,box-shadow .18s,backgrou
 .lampLak{display:block;margin-top:3px;font:600 11px var(--f-mono,monospace);padding:2px 8px;border-radius:99px;border:1px solid #999;background:#fff;color:#222;cursor:pointer}
 .lampLak.lakmini-zwart{background:#151515;color:#fff;border-color:#151515}
 .lampLak.lakmini-geen{background:transparent;color:#888;border-style:dashed}
+.reg-filter{display:flex;gap:4px;padding:8px 10px;border-bottom:1px solid var(--line)}
+.reg-filter button{flex:1;border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:6px 4px;font-size:13px;font-weight:600;color:var(--muted)}
+.reg-filter button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.ralb{display:inline-block;font-family:var(--f-mono);font-size:11px;font-weight:700;padding:1px 7px;border-radius:99px;border:1px solid #999}
+.ralb.ral-9005{background:#151515;color:#fff;border-color:#151515}.ralb.ral-9010{background:#f4f4f1;color:#222}
+.reg-kies{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 12px}
+.reg-kies>span{font-weight:600}
+.ralk{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:10px;border:2px solid var(--line);background:var(--panel);color:var(--fg);font-weight:700;font-size:15px}
+.ralk-bol{width:20px;height:20px;border-radius:50%;border:2px solid #888}
+.ral-9010 .ralk-bol{background:#f4f4f1}.ral-9005 .ralk-bol{background:#151515;border-color:#151515}
+.ralk[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+.ralk[aria-pressed="true"].ral-9005{background:#1d1f23;color:#fff}
+.reg-head:has(.reg-meta){grid-template-columns:96px minmax(0,1fr) auto}
+.reg-meta{display:grid;grid-template-columns:auto auto;gap:4px 18px;font-size:14px;color:#333;align-self:start;white-space:nowrap}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -586,6 +600,7 @@ input,textarea,select,.inp{transition:border-color .18s,box-shadow .18s,backgrou
   <div class="layout" id="regLayout" hidden>
     <aside class="list" aria-label="Registratiebladen">
       <h2><span>Registratiebladen</span><span id="regCount">–</span></h2>
+      <div class="reg-filter" id="regFilter"></div>
       <ul id="regList"><li class="empty">Laden…</li></ul>
     </aside>
     <main class="sheet" id="regSheet"></main>
@@ -1317,39 +1332,51 @@ async function saveLampen(){
 }
 
 // ===================== REGISTRATIEBLAD =====================
+let regFilter="alle";
 let regSheets=[], regSel=null, regDraft=null, regDirty=false, regSaving=false, regSaved=false, regErr="", regDel=false, regArmed=false, regLoaded=false;
 const SCHALEN=[
   {k:"L",links:"L. Zwart",rechts:"Wit",lo:[92.6,92.7],mid:[92.8,93.8],hi:[93.9,94.0]},
   {k:"a",links:"A. Groen",rechts:"Rood",lo:[-1.4,-1.3],mid:[-1.2,-0.2],hi:[-0.1,0.0]},
   {k:"b",links:"B. Blauw",rechts:"Geel",lo:[5.3,5.4],mid:[5.5,6.5],hi:[6.6,6.7]}];
-function reeks(a,b){const o=[];for(let i=Math.round(a*10);i<=Math.round(b*10);i++)o.push(i/10);return o}
+function reeks(a,b){const o=[];const st=a<=b?1:-1;for(let i=Math.round(a*10);st>0?i<=Math.round(b*10):i>=Math.round(b*10);i+=st)o.push(i/10);return o}
+SCHALEN.forEach(s=>{s.loV=reeks(...s.lo);s.midV=reeks(...s.mid);s.hiV=reeks(...s.hi);s.maj=[0,5,10]});
+const SCHALEN_9005=[
+  {k:"L",links:"L. Zwart",rechts:"Wit",loV:[],midV:reeks(11.5,12.5),hiV:reeks(12.6,12.7),mid:[11.5,12.5],maj:[5]},
+  {k:"a",links:"A. Groen",rechts:"Rood",loV:[-0.6],midV:reeks(-0.5,0.5),hiV:reeks(0.6,0.7),mid:[-0.5,0.5],maj:[5]},
+  {k:"b",links:"B. Blauw",rechts:"Geel",loV:[-0.8,-0.9],midV:reeks(-1.0,-2.0),hiV:reeks(-2.1,-2.2),mid:[-2.0,-1.0],maj:[5]}];
+const REG_BLAD={
+  "9010":{kleur:"9010",schalen:SCHALEN,opbr:[10,13,22,25],info:""},
+  "9005":{kleur:"9005",schalen:SCHALEN_9005,opbr:[9,14,21,26],info:"Versienummer 2 · Document Nr. 21.17 · Blad 1 van 1 · Datum 14-04-2023"}};
+const regBlad=k=>REG_BLAD[String(k||"").replace(/\D/g,"")==="9005"?"9005":"9010"];
 const cijfer=v=>String(Math.abs(Math.round(v*10))%10);
-const MEET_LEEG=()=>({tijd:"",charge:"",hoek:60,glans:null,L:null,a:null,b:null,o10:null,o13:null,o22:null,o25:null});
+const MEET_LEEG=()=>({tijd:"",charge:"",hoek:60,glans:null,L:null,a:null,b:null,o10:null,o13:null,o22:null,o25:null,o9:null,o14:null,o21:null,o26:null});
 function regBlank(){return {id:null,datum:today(),kleur:"9010",paraaf:"",metingen:[0,1,2,3,4].map(MEET_LEEG)}}
 function regFrom(r){return {id:r.id,datum:r.datum||"",kleur:r.kleur||"9010",paraaf:r.paraaf||"",metingen:[0,1,2,3,4].map(i=>({...MEET_LEEG(),...((r.metingen||[])[i]||{})}))}}
 function regSorted(){return regSheets.slice().sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||(b.bijgewerkt||0)-(a.bijgewerkt||0))}
-function meetGevuld(m){return !!(m.tijd||m.charge||m.glans!=null||m.L!=null||m.a!=null||m.b!=null||m.o10!=null||m.o13!=null||m.o22!=null||m.o25!=null)}
+function meetGevuld(m){return !!(m.tijd||m.charge||m.glans!=null||m.L!=null||m.a!=null||m.b!=null||[10,13,22,25,9,14,21,26].some(n=>m["o"+n]!=null))}
 function regGuard(opnieuw){if(!regDirty)return true;vraagOpslaan("registratie",opnieuw);return false}
 function regOpen(id){if(!regGuard(()=>regOpen(id)))return;const r=regSheets.find(x=>x.id===id);regSel=id;regDraft=r?regFrom(r):null;regDirty=false;regSaved=false;regErr="";regDel=false;renderRegList();renderRegSheet()}
 function regNew(){if(!regGuard(regNew))return;regSel="__new";regDraft=regBlank();regDirty=true;regSaved=false;regErr="";regDel=false;renderRegList();renderRegSheet()}
 function renderRegList(){
   const ul=$("#regList");$("#regCount").textContent=regLoaded?String(regSheets.length):"–";
+  const fb=$("#regFilter");fb.innerHTML=[["alle","Alle"],["9005","RAL 9005"],["9010","RAL 9010"]].map(([k,t])=>`<button type="button" data-rf="${k}" aria-pressed="${regFilter===k}">${t}</button>`).join("");
+  fb.querySelectorAll("[data-rf]").forEach(b=>b.onclick=()=>{regFilter=b.dataset.rf;renderRegList()});
   if(!regLoaded){ul.innerHTML='<li class="empty">Laden…</li>';return}
   let h="";
   if(regSel==="__new")h+=`<li><button type="button" aria-current="true"><span><span class="d">Nieuw blad</span><br><span class="wd">nog niet opgeslagen</span></span><span class="cond"></span></button></li>`;
-  const rows=regSorted();
-  if(!rows.length&&regSel!=="__new")h+='<li class="empty">Nog geen registratiebladen. Klik op <b>+ Nieuw registratieblad</b>.</li>';
+  const rows=regSorted().filter(r=>regFilter==="alle"||regBlad(r.kleur).kleur===regFilter);
+  if(!rows.length&&regSel!=="__new")h+=regSheets.length?'<li class="empty">Geen bladen met deze kleur.</li>':'<li class="empty">Nog geen registratiebladen. Klik op <b>+ Nieuw registratieblad</b>.</li>';
   for(const r of rows){const d=parseDate(r.datum);const n=(r.metingen||[]).filter(meetGevuld).length;
-    h+=`<li><button type="button" data-id="${esc(r.id)}" aria-current="${r.id===regSel}"><span><span class="d">${esc(shortDate(r.datum))}</span><br><span class="wd">${d?DAGEN[d.getDay()]:""}</span></span><span class="cond">RAL ${esc(r.kleur||"")}<br>${n} meting${n===1?"":"en"}</span></button></li>`}
+    h+=`<li><button type="button" data-id="${esc(r.id)}" aria-current="${r.id===regSel}"><span><span class="d">${esc(shortDate(r.datum))}</span><br><span class="wd">${d?DAGEN[d.getDay()]:""}</span></span><span class="cond"><span class="ralb ral-${regBlad(r.kleur).kleur}">RAL ${regBlad(r.kleur).kleur}</span><br>${n} meting${n===1?"":"en"}</span></button></li>`}
   ul.innerHTML=h;ul.querySelectorAll("button[data-id]").forEach(b=>b.onclick=()=>regOpen(b.dataset.id));
 }
-function schaalHtml(i,m){
-  return `<table class="scale">${SCHALEN.map(s=>{
-    const lo=reeks(...s.lo),mid=reeks(...s.mid),hi=reeks(...s.hi);
+function schaalHtml(i,m,schalen){
+  return `<table class="scale">${schalen.map(s=>{
+    const lo=s.loV,mid=s.midV,hi=s.hiV,pad=Math.max(0,2-lo.length);
     const btn=(v,uit)=>`<button type="button" class="dg${m[s.k]!=null&&Math.abs(m[s.k]-v)<1e-9?" on":""}${uit?" uit":""}" data-m="${i}" data-s="${s.k}" data-v="${v}" aria-pressed="${m[s.k]!=null&&Math.abs(m[s.k]-v)<1e-9}" aria-label="${s.links.split(" ")[0]} ${fmt(v)}">${cijfer(v)}</button>`;
-    const maj=[0,5,10];
+    const maj=s.maj;
     return `<tr class="top"><td class="nm side" colspan="2">${esc(s.links)}</td>${mid.map((v,j)=>`<td class="${j===0?"g":""}">${maj.includes(j)?v.toFixed(1).replace(".",","):""}</td>`).join("")}<td class="nm r side g" colspan="2">${esc(s.rechts)}</td></tr>
-      <tr>${lo.map(v=>`<td class="side side-l">${btn(v,true)}</td>`).join("")}${mid.map((v,j)=>`<td class="${j===0?"g":""}">${btn(v,false)}</td>`).join("")}${hi.map((v,j)=>`<td class="side side-r${j===0?" g":""}">${btn(v,true)}</td>`).join("")}</tr>
+      <tr>${'<td class="side side-l"></td>'.repeat(pad)}${lo.map(v=>`<td class="side side-l">${btn(v,true)}</td>`).join("")}${mid.map((v,j)=>`<td class="${j===0?"g":""}">${btn(v,false)}</td>`).join("")}${hi.map((v,j)=>`<td class="side side-r${j===0?" g":""}">${btn(v,true)}</td>`).join("")}</tr>
       <tr class="vw"><td colspan="15"><div class="vwr" data-m="${i}" data-s="${s.k}"><label for="v-${i}-${s.k}">Waarde ${esc(s.links.split(" ")[0])}</label><input id="v-${i}-${s.k}" class="vin" inputmode="decimal" autocomplete="off" value="${esc(fmt(m[s.k]))}" placeholder="bijv. ${String(s.mid[0]+(s.mid[1]-s.mid[0])/2).replace(".",",")}" aria-label="${esc(s.links)} tot ${esc(s.rechts)}, waarde"><span class="vst"></span></div></td></tr>`}).join("")}</table>`;
 }
 function renderRegSheet(){
@@ -1358,22 +1385,24 @@ function renderRegSheet(){
     el.innerHTML=`<div class="blank"><strong>${regLoaded?"Kies een registratieblad":"Laden…"}</strong><span>Selecteer links een blad, of begin een nieuw registratieblad.</span><button class="btn primary" type="button" id="regBlankNew">+ Nieuw registratieblad</button></div>`;
     $("#regBlankNew").onclick=regNew;return;
   }
-  const r=regDraft,isNew=!r.id;
-  el.innerHTML=`<div class="sheet-head"><div><div class="title">Registratieblad ${esc(r.datum?shortDate(r.datum):"")}</div><div class="sub">${isNew?"Nieuw blad":"RAL "+esc(r.kleur)} ${statusHtml(regSaving,regDirty,regSaved)}</div></div></div>
+  const r=regDraft,isNew=!r.id,BL=regBlad(r.kleur);
+  el.innerHTML=`<div class="sheet-head"><div><div class="title">Registratieblad ${esc(r.datum?shortDate(r.datum):"")}</div><div class="sub">${isNew?"Nieuw blad":"RAL "+BL.kleur} ${statusHtml(regSaving,regDirty,regSaved)}</div></div></div>
+  ${isNew?`<div class="reg-kies"><span>Kleur van dit blad:</span>${["9010","9005"].map(k=>`<button type="button" class="ralk ral-${k}" data-ral="${k}" aria-pressed="${BL.kleur===k}"><span class="ralk-bol"></span>RAL ${k}</button>`).join("")}</div>`:""}
   <div class="paper-wrap"><div class="paper reg">
     <div class="reg-head">
       <div class="reg-logo"><div class="emb"><img src="logo-embleem.png" alt=""></div><span>IDEAAL</span></div>
-      <div class="reg-title"><b>REGISTRATIEBLAD LAKSTRAAT</b><div class="kl">Kleur RAL <input id="reg-kleur" data-h="kleur" value="${esc(r.kleur)}" aria-label="Kleur RAL"></div></div>
+      <div class="reg-title"><b>REGISTRATIEBLAD LAKSTRAAT</b><div class="kl">Kleur RAL ${BL.kleur}</div></div>
+      ${BL.info?`<div class="reg-meta">${BL.info.split(" · ").map(x=>`<span>${esc(x)}</span>`).join("")}</div>`:""}
     </div>
     <div class="reg-sub"><label>Paraaf <input id="reg-paraaf" data-h="paraaf" value="${esc(r.paraaf)}" style="width:120px" aria-label="Paraaf"></label><label>Lakdatum <input id="reg-datum" type="date" data-h="datum" value="${esc(r.datum)}" aria-label="Lakdatum"></label></div>
     ${r.metingen.map((m,i)=>`<div class="meet">
       <div class="meet-tijd">tijdstip meting <input type="time" id="m${i}-tijd" data-m="${i}" data-f="tijd" value="${esc(m.tijd)}" aria-label="Tijdstip meting ${i+1}"></div>
       <div class="meet-charge">Charge <input id="m${i}-charge" data-m="${i}" data-f="charge" value="${esc(m.charge)}" aria-label="Charge meting ${i+1}"></div>
-      ${schaalHtml(i,m)}
+      ${schaalHtml(i,m,BL.schalen)}
       <div class="meet-side">
         <div class="gl">Glansgraad bij <input class="hoek" id="m${i}-hoek" data-m="${i}" data-f="hoek" data-n="1" inputmode="decimal" value="${esc(fmt(m.hoek))}" aria-label="Hoek glansmeting ${i+1}">*<input id="m${i}-glans" data-m="${i}" data-f="glans" data-n="1" inputmode="decimal" value="${esc(fmt(m.glans))}" aria-label="Glansgraad meting ${i+1}"></div>
         <div class="opb-h">opbrengst</div>
-        ${[10,13,22,25].map(n=>`<label class="opr"><span>${n} =</span><input id="m${i}-o${n}" data-m="${i}" data-f="o${n}" data-n="1" inputmode="decimal" value="${esc(fmt(m["o"+n]))}" aria-label="Opbrengst ${n} meting ${i+1}"><span>gr/m2</span></label>`).join("")}
+        ${BL.opbr.map(n=>`<label class="opr"><span>${n} =</span><input id="m${i}-o${n}" data-m="${i}" data-f="o${n}" data-n="1" inputmode="decimal" value="${esc(fmt(m["o"+n]))}" aria-label="Opbrengst ${n} meting ${i+1}"><span>gr/m2</span></label>`).join("")}
       </div>
     </div>`).join("")}
   </div></div>
@@ -1389,7 +1418,8 @@ function renderRegSheet(){
   el.querySelectorAll("input[data-m]").forEach(inp=>{const m=r.metingen[+inp.dataset.m],f=inp.dataset.f;
     if(inp.dataset.n){inp.oninput=()=>{m[f]=num(inp.value);touch()};inp.onblur=()=>{if(f==="hoek"&&m[f]==null){m[f]=60;touch()}if(m[f]!=null)inp.value=fmt(m[f])}}
     else inp.oninput=()=>{m[f]=inp.value;touch()}});
-  const upd=(i,k,vanVak)=>{const m=r.metingen[i],v=m[k],s=SCHALEN.find(x=>x.k===k);
+  el.querySelectorAll("[data-ral]").forEach(b=>b.onclick=()=>{r.kleur=b.dataset.ral;touch();renderRegSheet()});
+  const upd=(i,k,vanVak)=>{const m=r.metingen[i],v=m[k],s=BL.schalen.find(x=>x.k===k);
     el.querySelectorAll(`.dg[data-m="${i}"][data-s="${k}"]`).forEach(x=>{const on=v!=null&&Math.abs(v-Number(x.dataset.v))<1e-9;x.classList.toggle("on",on);x.setAttribute("aria-pressed",String(on))});
     const w=el.querySelector(`.vwr[data-m="${i}"][data-s="${k}"]`),inp=w.querySelector(".vin"),st=w.querySelector(".vst");
     const uit=v!=null&&(v<s.mid[0]-1e-9||v>s.mid[1]+1e-9);
@@ -1412,7 +1442,7 @@ async function saveReg(){
   const r=regDraft; if(!r.datum){regErr="Vul een lakdatum in.";return renderRegSheet()}
   regSaving=true;regErr="";renderRegSheet();
   try{
-    const rec={datum:r.datum,kleur:(r.kleur||"").trim(),paraaf:(r.paraaf||"").trim(),metingen:r.metingen.map(m=>({...m})),bijgewerkt:Date.now()};
+    const rec={datum:r.datum,kleur:regBlad(r.kleur).kleur,paraaf:(r.paraaf||"").trim(),metingen:r.metingen.map(m=>({...m})),bijgewerkt:Date.now()};
     const id=r.id||DOC_ID("reg_");
     await db.collection("instellingen").doc(id).set(rec);
     r.id=id;regSel=id;regSheets=regSheets.filter(x=>x.id!==id).concat([{id,...rec}]);
@@ -1499,15 +1529,14 @@ function buildWordBody(){
   B.push(wP("Registratiebladen",{style:"Kop1",pageBreak:true}));
   const rs=regSorted().slice().reverse();
   if(!rs.length)B.push(wP("Nog geen registratiebladen opgeslagen."));
-  const schaal=k=>SCHALEN.find(s=>s.k===k);
+  for(const r of rs){const BL=regBlad(r.kleur);const schaal=k=>BL.schalen.find(s=>s.k===k);
   const lab=(k,v)=>{if(v==null)return {t:""};const s=schaal(k);const uit=v<s.mid[0]-1e-9||v>s.mid[1]+1e-9;return {t:fmt(v)+(uit?" (buiten)":""),align:"right",color:uit?"C0262D":undefined,b:uit}};
-  for(const r of rs){
     B.push(wP("Registratieblad "+longDate(r.datum),{style:"Kop2"}));
     B.push(wP([wRun("Kleur RAL ",{b:true}),wRun(r.kleur||"–"),wRun("     Paraaf: ",{b:true}),wRun(r.paraaf||"–")]));
     const ms=(r.metingen||[]).map((m,i)=>({...m,nr:i+1})).filter(meetGevuld);
     if(!ms.length){B.push(wP("Geen metingen ingevuld."));continue}
-    B.push(wTable([["Nr.","Tijdstip","Charge","L","A","B","Glansgraad","Opbr. 10","Opbr. 13","Opbr. 22","Opbr. 25"],
-      ...ms.map(m=>[{t:String(m.nr),align:"center"},{t:m.tijd||"",align:"center"},m.charge||"",lab("L",m.L),lab("a",m.a),lab("b",m.b),{t:m.glans!=null?fmt(m.glans)+" (bij "+fmt(m.hoek??60)+"°)":"",align:"right"},{t:fmt(m.o10),align:"right"},{t:fmt(m.o13),align:"right"},{t:fmt(m.o22),align:"right"},{t:fmt(m.o25),align:"right"}])],
+    B.push(wTable([["Nr.","Tijdstip","Charge","L","A","B","Glansgraad",...BL.opbr.map(n=>"Opbr. "+n)],
+      ...ms.map(m=>[{t:String(m.nr),align:"center"},{t:m.tijd||"",align:"center"},m.charge||"",lab("L",m.L),lab("a",m.a),lab("b",m.b),{t:m.glans!=null?fmt(m.glans)+" (bij "+fmt(m.hoek??60)+"°)":"",align:"right"},...BL.opbr.map(n=>({t:fmt(m["o"+n]),align:"right"}))])],
       [700,1200,1800,1500,1500,1500,1700,1300,1300,1300,1300],{header:true}));
   }
   B.push(wP("Materialen",{style:"Kop1",pageBreak:true}));
@@ -1745,12 +1774,11 @@ async function maakLogboekPdf(meld,opt){
   // registratiebladen
   if(deel("registratie")){meld("Registratiebladen…");kop1("Registratiebladen");const rs=fReg.slice().reverse();
   if(!rs.length)alinea("Nog geen registratiebladen opgeslagen.");
-  const schaal=k=>SCHALEN.find(s=>s.k===k);
-  const lab=(k,v)=>{if(v==null)return {t:""};const s=schaal(k);const uit=v<s.mid[0]-1e-9||v>s.mid[1]+1e-9;return {t:fmt(v)+(uit?" (buiten)":""),align:"right",color:uit?ROOD:undefined,b:uit}};
-  for(const r of rs){kop2("Registratieblad "+longDate(r.datum));regel([["Kleur RAL",r.kleur||"–"],["Paraaf",r.paraaf||"–"]]);
+  for(const r of rs){const BL=regBlad(r.kleur);const schaal=k=>BL.schalen.find(s=>s.k===k);
+  const lab=(k,v)=>{if(v==null)return {t:""};const s=schaal(k);const uit=v<s.mid[0]-1e-9||v>s.mid[1]+1e-9;return {t:fmt(v)+(uit?" (buiten)":""),align:"right",color:uit?ROOD:undefined,b:uit}};kop2("Registratieblad "+longDate(r.datum));regel([["Kleur RAL",BL.kleur],["Paraaf",r.paraaf||"–"]]);
     const ms=(r.metingen||[]).map((m,i)=>({...m,nr:i+1})).filter(meetGevuld);
     if(!ms.length){alinea("Geen metingen ingevuld.");continue}
-    tabel([["Nr.","Tijdstip","Charge","L","A","B","Glansgraad","Opbr. 10","Opbr. 13","Opbr. 22","Opbr. 25"],...ms.map(m=>[{t:String(m.nr),align:"center"},{t:m.tijd||"",align:"center"},m.charge||"",lab("L",m.L),lab("a",m.a),lab("b",m.b),{t:m.glans!=null?fmt(m.glans)+" (bij "+fmt(m.hoek??60)+"°)":"",align:"right"},{t:fmt(m.o10),align:"right"},{t:fmt(m.o13),align:"right"},{t:fmt(m.o22),align:"right"},{t:fmt(m.o25),align:"right"}])],[7,12,18,15,15,15,17,13,13,13,13],{header:true})}}
+    tabel([["Nr.","Tijdstip","Charge","L","A","B","Glansgraad",...BL.opbr.map(n=>"Opbr. "+n)],...ms.map(m=>[{t:String(m.nr),align:"center"},{t:m.tijd||"",align:"center"},m.charge||"",lab("L",m.L),lab("a",m.a),lab("b",m.b),{t:m.glans!=null?fmt(m.glans)+" (bij "+fmt(m.hoek??60)+"°)":"",align:"right"},...BL.opbr.map(n=>({t:fmt(m["o"+n]),align:"right"}))])],[7,12,18,15,15,15,17,13,13,13,13],{header:true})}}
   // materialen
   if(deel("materialen")){meld("Materialen…");kop1("Materialen");const mr=fMat.slice().reverse();
   if(!mr.length)alinea("Nog geen materialen ingevuld.");
