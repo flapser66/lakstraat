@@ -1046,10 +1046,11 @@ ${BEOORDELINGEN.map(b=>beoordelingHtml(b)).join("")}
   } else el.classList.remove("vergrendeld");
 }
 const ontgrendeld=new Set();
-function vergrendelBlad(el,sleutel,datum,vuil,opnieuw,wat){
-  const slot=!!(sleutel&&datum&&datum<today()&&!vuil&&!ontgrendeld.has(sleutel));
+function nieuwerBlad(rows,r){const rec=rows.find(x=>x.id===r.id)||r;return rows.find(x=>x.id!==rec.id&&((x.datum||"")>(rec.datum||"")||((x.datum||"")===(rec.datum||"")&&dagTijd(x)>dagTijd(rec))))||null}
+function vergrendelBlad(el,sleutel,datum,vuil,opnieuw,wat,nieuwer){
+  const slot=!!(sleutel&&!vuil&&!ontgrendeld.has(sleutel)&&((datum&&datum<today())||nieuwer));
   el.classList.toggle("vergrendeld",slot);if(!slot)return;
-  const kop=el.querySelector(".sheet-head");if(kop)kop.insertAdjacentHTML("afterend",`<div class="slot-banner"><span>🔒 Dit ${wat} van ${esc(shortDate(datum))} is opgeslagen. Je kunt het alleen bekijken, zodat er niet per ongeluk iets verandert.</span><button class="btn" type="button" data-ontgrendel>Toch bewerken</button></div>`);
+  const kop=el.querySelector(".sheet-head");if(kop)kop.insertAdjacentHTML("afterend",`<div class="slot-banner"><span>🔒 ${nieuwer?`Er is al een nieuwer ${wat}${nieuwer.datum===datum?" op dezelfde dag":""}${nieuwer.lak?` (${nieuwer.lak==="wit"?"witte":"zwarte"} lak)`:""}, daarom staat dit ${wat} van ${esc(shortDate(datum))} op slot.`:`Dit ${wat} van ${esc(shortDate(datum))} is opgeslagen.`} Je kunt het alleen bekijken, zodat er niet per ongeluk iets verandert.</span><button class="btn" type="button" data-ontgrendel>Toch bewerken</button></div>`);
   el.querySelectorAll("input,textarea,select,button").forEach(x=>{if(x.hasAttribute("data-ontgrendel"))return;x.disabled=true});
   el.querySelector("[data-ontgrendel]").onclick=()=>{ontgrendeld.add(sleutel);opnieuw()};
 }
@@ -1480,13 +1481,13 @@ function renderRegSheet(){
   const dy=$("#regDelYes");if(dy)dy.onclick=async()=>{
     if(r.id){try{await db.collection("instellingen").doc(r.id).delete();regSheets=regSheets.filter(x=>x.id!==r.id)}catch(e){regErr="Verwijderen mislukt.";regDel=false;return renderRegSheet()}}
     regDraft=null;regSel=null;regDirty=false;regDel=false;renderRegList();renderRegSheet()};
-  vergrendelBlad(el,r.id,r.datum,regDirty,renderRegSheet,"registratieblad");
+  vergrendelBlad(el,r.id,r.datum,regDirty,renderRegSheet,"registratieblad",r.id&&nieuwerBlad(regSheets,r));
 }
 async function saveReg(){
   const r=regDraft; if(!r.datum){regErr="Vul een lakdatum in.";return renderRegSheet()}
   regSaving=true;regErr="";renderRegSheet();
   try{
-    const rec={datum:r.datum,kleur:regBlad(r.kleur).kleur,paraaf:(r.paraaf||"").trim(),metingen:r.metingen.map(m=>({...m})),bijgewerkt:Date.now()};
+    const oudR=r.id&&regSheets.find(x=>x.id===r.id);const rec={aangemaakt:(oudR&&(oudR.aangemaakt||oudR.bijgewerkt))||Date.now(),datum:r.datum,kleur:regBlad(r.kleur).kleur,paraaf:(r.paraaf||"").trim(),metingen:r.metingen.map(m=>({...m})),bijgewerkt:Date.now()};
     const id=r.id||DOC_ID("reg_");
     await db.collection("instellingen").doc(id).set(rec);
     r.id=id;regSel=id;regSheets=regSheets.filter(x=>x.id!==id).concat([{id,...rec}]);
@@ -2255,13 +2256,13 @@ function renderMatSheet(){
   const dy=$("#matDelYes");if(dy)dy.onclick=async()=>{
     if(r.id){try{await db.collection("instellingen").doc(r.id).delete();matRows=matRows.filter(x=>x.id!==r.id)}catch(e){matErr="Verwijderen mislukt.";matDel=false;return renderMatSheet()}}
     matDraft=null;matSel=null;matDirty=false;matDel=false;renderMatList();renderMatSheet()};
-  vergrendelBlad(el,r.id,r.datum,matDirty,renderMatSheet,"materialenblad");
+  vergrendelBlad(el,r.id,r.datum,matDirty,renderMatSheet,"materialenblad",r.id&&nieuwerBlad(matRows,r));
 }
 async function saveMat(){
   const r=matDraft;if(!r.datum){matErr="Vul een datum in.";return renderMatSheet()}
   matSaving=true;matErr="";renderMatSheet();
   try{const ch=chObj(r.charge,true);
-    const rec={datum:r.datum,lak:r.lak||matLak(r),opmerking:(r.opmerking||"").trim(),charge:ch,bijgewerkt:Date.now()};MATS.forEach(m=>rec[m.k]=r[m.k]??null);LAK_K.forEach(k=>rec[k+"B"]=r[k+"B"]??null);
+    const oudM=r.id&&matRows.find(x=>x.id===r.id);const rec={aangemaakt:(oudM&&(oudM.aangemaakt||oudM.bijgewerkt))||Date.now(),datum:r.datum,lak:r.lak||matLak(r),opmerking:(r.opmerking||"").trim(),charge:ch,bijgewerkt:Date.now()};MATS.forEach(m=>rec[m.k]=r[m.k]??null);LAK_K.forEach(k=>rec[k+"B"]=r[k+"B"]??null);
     const id=r.id||DOC_ID("mat_");await db.collection("instellingen").doc(id).set(rec);
     const ld=lakdagOp(r.datum,r.lak);
     if(ld&&CH_K.some(k=>((ld.charge&&ld.charge[k])||"")!==ch[k])){await db.collection("lakdagen").doc(ld.id).update({charge:ch});ld.charge=ch;
