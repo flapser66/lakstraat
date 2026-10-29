@@ -802,7 +802,7 @@ function newDay(){
   if(dirty && !confirmLeave(newDay))return;
   mode="dag"; selectedId="__new"; confirmDel=false; error=""; justSaved=false;
   draft=blankDraft();draft.lak=nieuweLak;nieuweLak=null;
-  const mt=matRows.find(m=>m.datum===draft.datum&&chHas(m.charge));if(mt)draft.charge=chObj(mt.charge);
+  const mt=matRows.find(m=>m.datum===draft.datum&&(!draft.lak||matLak(m)===draft.lak)&&chHas(m.charge));if(mt)draft.charge=chObj(mt.charge);
   // standen van vorige lakdag voorinvullen
   vulVorigeStanden();
   dirty=true; render();
@@ -977,10 +977,10 @@ ${BEOORDELINGEN.map(b=>beoordelingHtml(b)).join("")}
   });
   $("#f-datum").onchange=e=>{draft.datum=e.target.value;
     const leeg=!chHas(draft.charge);
-    const mt=matRows.find(m=>m.datum===draft.datum&&chHas(m.charge));
+    const mt=matRows.find(m=>m.datum===draft.datum&&(!draft.lak||matLak(m)===draft.lak)&&chHas(m.charge));
     if(leeg&&mt)draft.charge=chObj(mt.charge);
     touch();renderSheetKeepFocus("f-datum")};
-  document.querySelectorAll("[data-lak]").forEach(b=>b.onclick=()=>{if(draft.lak===b.dataset.lak)return;draft.lak=b.dataset.lak;if(!draft.id)vulVorigeStanden();touch();renderSheet()});
+  document.querySelectorAll("[data-lak]").forEach(b=>b.onclick=()=>{if(draft.lak===b.dataset.lak)return;draft.lak=b.dataset.lak;if(!draft.id){vulVorigeStanden();const mt=matRows.find(m=>m.datum===draft.datum&&matLak(m)===draft.lak&&chHas(m.charge));draft.charge=mt?chObj(mt.charge):chObj({})}touch();renderSheet()});
   $("#f-temp").oninput=e=>{draft.temperatuur=num(e.target.value);touch()};
   $("#f-rv").oninput=e=>{draft.luchtvochtigheid=num(e.target.value);touch()};
   $("#f-bijz").oninput=e=>{draft.bijzonderheden=e.target.value;touch()};
@@ -2134,8 +2134,9 @@ const MATS=[
   {k:"p100",naam:"Schuurpapier P100",sub:"",eenheid:"",meer:"",stap:1,groep:"schuur"}];
 let matRows=[],matLoaded=false,matSel=null,matDraft=null,matDirty=false,matSaving=false,matSaved=false,matErr="",matDel=false,matArmed=false;
 const LAK_K=["primer","grondlak","deklak"];
-function lakdagOp(datum){return datum?dagen.find(d=>d.datum===datum)||null:null}
-function chargeVoor(r,k){const ld=lakdagOp(r.datum);const c=ld&&ld.charge&&ld.charge[k];return (c&&String(c).trim())||(r.charge&&r.charge[k])||""}
+function lakdagOp(datum,lak){if(!datum)return null;const c=dagen.filter(d=>d.datum===datum).sort((a,b)=>dagTijd(b)-dagTijd(a));
+  if(!lak)return c[0]||null;return c.find(d=>d.lak===lak)||c.find(d=>!d.lak)||null}
+function chargeVoor(r,k){const ld=lakdagOp(r.datum,r.lak||null);const c=ld&&ld.charge&&ld.charge[k];return (c&&String(c).trim())||(r.charge&&r.charge[k])||""}
 function chargesVoor(r){const o={};CH_K.forEach(k=>o[k]=chargeVoor(r,k));return o}
 function perCharge(rows){const map={};
   const tel=(r,m,c,v)=>{const key=m.k+"|"+c;const o=map[key]||(map[key]={soort:m.naam,k:m.k,charge:c,blik:0,dagen:0,van:r.datum,tot:r.datum});o.blik+=v;o.dagen++;if(r.datum<o.van)o.van=r.datum;if(r.datum>o.tot)o.tot=r.datum};
@@ -2192,7 +2193,7 @@ function renderMatSheet(){
     el.innerHTML=`<div class="blank"><strong>${matLoaded?"Kies een dag":"Laden…"}</strong><span>Selecteer links een dag, of vul de materialen van een nieuwe lakdag in.</span><button class="btn primary" type="button" id="matBlankNew">+ Materialen invullen</button></div>`;
     $("#matBlankNew").onclick=matNew;return}
   const r=matDraft,isNew=!r.id;
-  const dubbel=matRows.some(x=>x.id!==r.id&&x.datum===r.datum);
+  const dubbel=matRows.some(x=>x.id!==r.id&&x.datum===r.datum&&matLak(x)===r.lak);
   const stp=(k,naam,cls)=>`<div class="stepper ${cls}">
           <button type="button" data-step="-1" data-k="${k}" aria-label="${naam} minder">−</button>
           <input id="mat-${k}" data-k="${k}" inputmode="decimal" autocomplete="off" value="${esc(fmt(r[k]))}" placeholder="0" aria-label="${naam}">
@@ -2224,10 +2225,10 @@ function renderMatSheet(){
     </div>`;
   el.innerHTML=`<div class="sheet-head"><div><div class="title">Materialen ${esc(r.datum?longDate(r.datum):"")}</div><div class="sub">${isNew?"Nieuwe dag":"Opgeslagen dag"} ${statusHtml(matSaving,matDirty,matSaved)}</div></div></div>
     <div class="section"><h3>Lakdag</h3>
-      <div class="field lak-veld"><label>Gebruikte lak</label>${lakKeuze(r.lak,"mlak")}${!r.lak?'<span class="hint" style="color:var(--warn);font-family:var(--f-body)">Kies wit of zwart.</span>':lakdagOp(r.datum)&&lakdagOp(r.datum).lak===r.lak?'<span class="hint" style="font-family:var(--f-body)">Gelijk aan de lakdag van deze datum.</span>':""}</div>
+      <div class="field lak-veld"><label>Gebruikte lak</label>${lakKeuze(r.lak,"mlak")}${!r.lak?'<span class="hint" style="color:var(--warn);font-family:var(--f-body)">Kies wit of zwart.</span>':lakdagOp(r.datum,r.lak)&&lakdagOp(r.datum,r.lak).lak===r.lak?'<span class="hint" style="font-family:var(--f-body)">Gelijk aan de lakdag van deze datum.</span>':""}</div>
       <div class="conds" style="grid-template-columns:minmax(0,260px)"><div class="field"><label for="mat-datum">Datum</label><div class="inp"><input id="mat-datum" type="date" value="${esc(r.datum)}" style="font-size:16px"></div>
-      ${dubbel?'<span class="hint" style="color:var(--warn);font-family:var(--f-body)">Er is al een materialenblad voor deze datum.</span>':""}
-      <span class="hint" style="font-family:var(--f-body)">${lakdagOp(r.datum)?"Charges komen uit de lakdag van deze datum. Pas je ze hier aan, dan wordt de lakdag ook bijgewerkt.":"Er is nog geen lakdag op deze datum. De charges worden bij dit materialenblad bewaard en komen mee als je de lakdag later aanmaakt."}</span></div></div></div>
+      ${dubbel?'<span class="hint" style="color:var(--warn);font-family:var(--f-body)">Er is al een materialenblad voor deze datum en deze lak.</span>':""}
+      <span class="hint" style="font-family:var(--f-body)">${lakdagOp(r.datum,r.lak)?"Charges komen uit de lakdag van deze datum en lak. Pas je ze hier aan, dan wordt de lakdag ook bijgewerkt.":"Er is nog geen lakdag op deze datum. De charges worden bij dit materialenblad bewaard en komen mee als je de lakdag later aanmaakt."}</span></div></div></div>
     <div class="section"><h3>Lak</h3><div class="mat-grid een">${MATS.filter(m=>m.groep==="lak").map(kaart).join("")}</div></div>
     <div class="section"><h3>Verdunner</h3><div class="mat-grid drie">${MATS.filter(m=>m.groep==="verdunner").map(kaart).join("")}</div></div>
     <div class="section"><h3>Schuurpapier</h3><div class="mat-grid vier">${MATS.filter(m=>m.groep==="schuur").map(kaart).join("")}</div></div>
@@ -2237,9 +2238,9 @@ function renderMatSheet(){
       <div class="grp">${matErr?`<span class="err">${esc(matErr)}</span>`:""}<button class="btn primary" type="button" id="matSave" ${matSaving||!matDirty?"disabled":""}>Opslaan</button></div>
     </div>`;
   const touch=()=>{matDirty=true;matSaved=false;matErr="";const sub=el.querySelector(".sheet-head .sub");sub.innerHTML=sub.innerHTML.replace(/<span class="status[^"]*">[^<]*<\/span>/,"")+statusHtml(matSaving,matDirty,matSaved);const s=$("#matSave");if(s)s.disabled=false};
-  const dt=$("#mat-datum");dt.onclick=()=>{try{dt.showPicker()}catch(e){}};dt.onchange=()=>{r.datum=dt.value;if(!r.lakGekozen){const ld=lakdagOp(r.datum);if(ld&&ld.lak)r.lak=ld.lak}if(!r.chargeAangepast)r.charge=chargesVoor({datum:r.datum,charge:{}});touch();renderMatSheet();renderMatList()};
+  const dt=$("#mat-datum");dt.onclick=()=>{try{dt.showPicker()}catch(e){}};dt.onchange=()=>{r.datum=dt.value;if(!r.lakGekozen){const ld=lakdagOp(r.datum);if(ld&&ld.lak)r.lak=ld.lak}if(!r.chargeAangepast)r.charge=chargesVoor({datum:r.datum,lak:r.lak,charge:{}});touch();renderMatSheet();renderMatList()};
   el.querySelectorAll("[data-ch]").forEach(inp=>inp.oninput=()=>{r.charge=r.charge||{};r.charge[inp.dataset.ch]=inp.value;r.chargeAangepast=true;touch()});
-  el.querySelectorAll("[data-mlak]").forEach(b=>b.onclick=()=>{r.lak=b.dataset.mlak;r.lakGekozen=true;touch();renderMatSheet();renderMatList()});
+  el.querySelectorAll("[data-mlak]").forEach(b=>b.onclick=()=>{r.lak=b.dataset.mlak;r.lakGekozen=true;if(!r.chargeAangepast)r.charge=chargesVoor({datum:r.datum,lak:r.lak,charge:{}});touch();renderMatSheet();renderMatList()});
   $("#mat-opm").oninput=e=>{r.opmerking=e.target.value;touch()};
   el.querySelectorAll(".mat-card input[data-k]").forEach(inp=>{const k=inp.dataset.k;
     inp.oninput=()=>{r[k]=inp.value.trim()===""?null:num(inp.value);touch()};inp.onblur=()=>{inp.value=fmt(r[k])}});
@@ -2262,7 +2263,7 @@ async function saveMat(){
   try{const ch=chObj(r.charge,true);
     const rec={datum:r.datum,lak:r.lak||matLak(r),opmerking:(r.opmerking||"").trim(),charge:ch,bijgewerkt:Date.now()};MATS.forEach(m=>rec[m.k]=r[m.k]??null);LAK_K.forEach(k=>rec[k+"B"]=r[k+"B"]??null);
     const id=r.id||DOC_ID("mat_");await db.collection("instellingen").doc(id).set(rec);
-    const ld=lakdagOp(r.datum);
+    const ld=lakdagOp(r.datum,r.lak);
     if(ld&&CH_K.some(k=>((ld.charge&&ld.charge[k])||"")!==ch[k])){await db.collection("lakdagen").doc(ld.id).update({charge:ch});ld.charge=ch;
       if(draft&&draft.id===ld.id&&!dirty)draft.charge={...ch}}
     r.chargeAangepast=false;
