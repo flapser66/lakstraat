@@ -1040,7 +1040,7 @@ ${BEOORDELINGEN.map(b=>beoordelingHtml(b)).join("")}
   // bescherming: opgeslagen lakdagen van vóór vandaag openen alleen-lezen
   if(isVergrendeld()){
     el.classList.add("vergrendeld");
-    el.querySelector(".sheet-head").insertAdjacentHTML("afterend",`<div class="slot-banner"><span>🔒 Dit is een opgeslagen lakdag van ${esc(shortDate(draft.datum))}. Je kunt hem alleen bekijken, zodat er niet per ongeluk iets verandert.</span><button class="btn" type="button" id="ontgrendel">Toch bewerken</button></div>`);
+    el.querySelector(".sheet-head").insertAdjacentHTML("afterend",`<div class="slot-banner"><span>🔒 ${(()=>{const n=nieuwereLakdag(dagen.find(x=>x.id===draft.id)||draft);return n?`Er is al een nieuwere lakdag${n.datum===draft.datum?" op dezelfde dag":""}${n.lak?` (${n.lak==="wit"?"witte":"zwarte"} lak)`:""}, daarom staat deze lakdag van ${esc(shortDate(draft.datum))} op slot.`:`Dit is een opgeslagen lakdag van ${esc(shortDate(draft.datum))}.`})()} Je kunt hem alleen bekijken, zodat er niet per ongeluk iets verandert.</span><button class="btn" type="button" id="ontgrendel">Toch bewerken</button></div>`);
     el.querySelectorAll("input,textarea,select,button").forEach(x=>{if(x.closest(".nav")||x.id==="ontgrendel"||x.classList.contains("st-thumb"))return;x.disabled=true});
     $("#ontgrendel").onclick=()=>{ontgrendeld.add(draft.id);renderSheet()};
   } else el.classList.remove("vergrendeld");
@@ -1054,7 +1054,10 @@ function vergrendelBlad(el,sleutel,datum,vuil,opnieuw,wat){
   el.querySelector("[data-ontgrendel]").onclick=()=>{ontgrendeld.add(sleutel);opnieuw()};
 }
 
-function isVergrendeld(){return !!(mode==="dag"&&draft&&draft.id&&draft.datum&&draft.datum<today()&&!dirty&&!ontgrendeld.has(draft.id))}
+const dagTijd=d=>d.aangemaakt||d.bijgewerkt||0;
+function nieuwereLakdag(d){return dagen.find(x=>x.id!==d.id&&((x.datum||"")>(d.datum||"")||((x.datum||"")===(d.datum||"")&&dagTijd(x)>dagTijd(d))))||null}
+function isVergrendeld(){if(!(mode==="dag"&&draft&&draft.id&&!dirty&&!ontgrendeld.has(draft.id)))return false;
+  const rec=dagen.find(x=>x.id===draft.id)||draft;return !!((draft.datum&&draft.datum<today())||nieuwereLakdag(rec))}
 function stepFor(v){return 0.5}
 function refreshHead(){
   const sub=document.querySelector(".sheet-head .sub"); if(!sub)return;
@@ -1087,6 +1090,7 @@ async function save(){
         rec.fotos=ids;draft.fotoIds=ids}
       else rec.fotos=draft.fotoIds||[];
       const ref=draft.id?db.collection("lakdagen").doc(draft.id):db.collection("lakdagen").doc();
+      {const oud=draft.id&&dagen.find(r=>r.id===draft.id);rec.aangemaakt=(oud&&(oud.aangemaakt||oud.bijgewerkt))||Date.now()}
       await ref.set(rec);
       draft.id=ref.id; selectedId=ref.id;
       if(!dagen.find(r=>r.id===ref.id))dagen.push({id:ref.id,...rec}); else dagen=dagen.map(r=>r.id===ref.id?{id:ref.id,...rec}:r);
