@@ -764,9 +764,18 @@ function toonDuim(){
   const weg=()=>{if(d.classList.contains("weg"))return;d.classList.add("weg");setTimeout(()=>d.remove(),350)};
   d.onclick=weg;setTimeout(weg,2800);
 }
-function startChecklist(){
+function startChecklist(toch){
   if(dirty && !confirmLeave(startChecklist))return;
   const m=$("#modal");
+  const vandaag=dagen.find(d=>d.datum===today());
+  if(vandaag&&toch!==true){
+    m.innerHTML=`<div class="modal-box check" role="dialog" aria-modal="true" aria-labelledby="vdT"><h2 id="vdT">Er is al een lakdag van vandaag</h2>
+      <p>Vandaag is al een lakdag aangemaakt${vandaag.lak?` met <b>${vandaag.lak==="wit"?"witte":"zwarte"} lak</b>`:""}. Wil je die openen, of begin je bewust een tweede lakdag (bijvoorbeeld omdat je van lak wisselt)?</p>
+      <div class="row"><button class="btn primary" type="button" id="vdOpen">Lakdag van vandaag openen</button><button class="btn" type="button" id="vdNieuw">Toch nieuwe lakdag</button></div></div>`;
+    m.hidden=false;m.onclick=e=>{if(e.target===m){m.hidden=true;m.innerHTML=""}};
+    $("#vdOpen").onclick=()=>{m.hidden=true;m.innerHTML="";select(vandaag.id)};
+    $("#vdNieuw").onclick=()=>startChecklist(true);
+    return}
   m.innerHTML=`<div class="modal-box check" role="dialog" aria-modal="true" aria-labelledby="ckT">
     <h2 id="ckT">Checklist voor de start</h2>
     <p><b>Welke lak gebruik je vandaag?</b></p>
@@ -846,7 +855,7 @@ function renderSheet(){
     el.innerHTML=first
       ? `<div class="blank"><strong>Welkom bij het logboek</strong><span>Stel eerst de walsen van de lakstraat in (namen en volgorde). Daarna vul je per lakdag de standen en hoogtes, temperatuur, luchtvochtigheid en bijzonderheden in.</span><div class="top-actions"><button class="btn" type="button" id="blankSetup">Walsen instellen</button><button class="btn primary" type="button" id="blankNew">+ Nieuwe lakdag</button></div></div>`
       : `<div class="blank"><strong>${dagenLoaded?"Kies een lakdag":"Laden…"}</strong><span>Selecteer links een dag, of begin een nieuw blad.</span><button class="btn primary" type="button" id="blankNew">+ Nieuwe lakdag</button></div>`;
-    $("#blankNew").onclick=startChecklist; const bs=$("#blankSetup"); if(bs)bs.onclick=openSetup; return;
+    $("#blankNew").onclick=()=>startChecklist(); const bs=$("#blankSetup"); if(bs)bs.onclick=openSetup; return;
   }
   const rows=sorted();
   const idx=rows.findIndex(r=>r.id===draft.id);
@@ -901,6 +910,7 @@ function renderSheet(){
         <div class="field">
           <label for="f-datum">Datum lakken</label>
           <div class="inp"><input id="f-datum" type="date" value="${esc(draft.datum)}" style="font-size:16px"></div>
+          ${dagen.some(d=>d.id!==draft.id&&d.datum===draft.datum)?'<span class="hint" style="color:var(--warn);font-family:var(--f-body)">Let op: er is al een lakdag op deze datum.</span>':""}
         </div>
         <div class="field">
           <label for="f-temp">Temperatuur</label>
@@ -1036,6 +1046,14 @@ ${BEOORDELINGEN.map(b=>beoordelingHtml(b)).join("")}
   } else el.classList.remove("vergrendeld");
 }
 const ontgrendeld=new Set();
+function vergrendelBlad(el,sleutel,datum,vuil,opnieuw,wat){
+  const slot=!!(sleutel&&datum&&datum<today()&&!vuil&&!ontgrendeld.has(sleutel));
+  el.classList.toggle("vergrendeld",slot);if(!slot)return;
+  const kop=el.querySelector(".sheet-head");if(kop)kop.insertAdjacentHTML("afterend",`<div class="slot-banner"><span>🔒 Dit ${wat} van ${esc(shortDate(datum))} is opgeslagen. Je kunt het alleen bekijken, zodat er niet per ongeluk iets verandert.</span><button class="btn" type="button" data-ontgrendel>Toch bewerken</button></div>`);
+  el.querySelectorAll("input,textarea,select,button").forEach(x=>{if(x.hasAttribute("data-ontgrendel"))return;x.disabled=true});
+  el.querySelector("[data-ontgrendel]").onclick=()=>{ontgrendeld.add(sleutel);opnieuw()};
+}
+
 function isVergrendeld(){return !!(mode==="dag"&&draft&&draft.id&&draft.datum&&draft.datum<today()&&!dirty&&!ontgrendeld.has(draft.id))}
 function stepFor(v){return 0.5}
 function refreshHead(){
@@ -1317,7 +1335,7 @@ function renderLampen(){
       const f=inp.dataset.f;
       if(f==="datum"){
         inp.onclick=()=>{try{inp.showPicker()}catch(e){}};
-        inp.onchange=()=>{const o=lampRowObj(k);o.datum=inp.value;row.querySelector(".dtxt").innerHTML=inp.value?esc(paperDate(inp.value)):'<span class="ph">datum kiezen</span>';row.classList.remove("leeg");touch();grow()};
+        inp.onchange=()=>{const o=lampRowObj(k);o.datum=inp.value;if(!o.lak){const ld=dagen.find(d=>d.datum===inp.value);if(ld&&ld.lak){o.lak=ld.lak;const lk=row.querySelector(".lampLak");lk.textContent=o.lak==="zwart"?"Zwart":"Wit";lk.className="lampLak lakmini-"+o.lak}}row.querySelector(".dtxt").innerHTML=inp.value?esc(paperDate(inp.value)):'<span class="ph">datum kiezen</span>';row.classList.remove("leeg");touch();grow()};
       } else if(f==="tijd"){
         inp.oninput=()=>{const o=lampRowObj(k);o.tijd=inp.value;touch();grow()};
       } else {
@@ -1371,7 +1389,7 @@ const REG_BLAD={
 const regBlad=k=>REG_BLAD[String(k||"").replace(/\D/g,"")==="9005"?"9005":"9010"];
 const cijfer=v=>String(Math.abs(Math.round(v*10))%10);
 const MEET_LEEG=()=>({tijd:"",charge:"",hoek:60,glans:null,L:null,a:null,b:null,o10:null,o13:null,o22:null,o25:null,o9:null,o14:null,o21:null,o26:null});
-function regBlank(){return {id:null,datum:today(),kleur:"9010",paraaf:"",metingen:[0,1,2,3,4].map(MEET_LEEG)}}
+function regBlank(){const ld=dagen.find(d=>d.datum===today());return {id:null,datum:today(),kleur:ld&&ld.lak==="zwart"?"9005":"9010",paraaf:"",metingen:[0,1,2,3,4].map(MEET_LEEG)}}
 function regFrom(r){return {id:r.id,datum:r.datum||"",kleur:r.kleur||"9010",paraaf:r.paraaf||"",metingen:[0,1,2,3,4].map(i=>({...MEET_LEEG(),...((r.metingen||[])[i]||{})}))}}
 function regSorted(){return regSheets.slice().sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||(b.bijgewerkt||0)-(a.bijgewerkt||0))}
 function meetGevuld(m){return !!(m.tijd||m.charge||m.glans!=null||m.L!=null||m.a!=null||m.b!=null||[10,13,22,25,9,14,21,26].some(n=>m["o"+n]!=null))}
@@ -1458,6 +1476,7 @@ function renderRegSheet(){
   const dy=$("#regDelYes");if(dy)dy.onclick=async()=>{
     if(r.id){try{await db.collection("instellingen").doc(r.id).delete();regSheets=regSheets.filter(x=>x.id!==r.id)}catch(e){regErr="Verwijderen mislukt.";regDel=false;return renderRegSheet()}}
     regDraft=null;regSel=null;regDirty=false;regDel=false;renderRegList();renderRegSheet()};
+  vergrendelBlad(el,r.id,r.datum,regDirty,renderRegSheet,"registratieblad");
 }
 async function saveReg(){
   const r=regDraft; if(!r.datum){regErr="Vul een lakdatum in.";return renderRegSheet()}
@@ -2231,6 +2250,7 @@ function renderMatSheet(){
   const dy=$("#matDelYes");if(dy)dy.onclick=async()=>{
     if(r.id){try{await db.collection("instellingen").doc(r.id).delete();matRows=matRows.filter(x=>x.id!==r.id)}catch(e){matErr="Verwijderen mislukt.";matDel=false;return renderMatSheet()}}
     matDraft=null;matSel=null;matDirty=false;matDel=false;renderMatList();renderMatSheet()};
+  vergrendelBlad(el,r.id,r.datum,matDirty,renderMatSheet,"materialenblad");
 }
 async function saveMat(){
   const r=matDraft;if(!r.datum){matErr="Vul een datum in.";return renderMatSheet()}
@@ -2319,7 +2339,7 @@ async function start(user){
   if(isAdmin) unsubs.push(db.collection("leden").onSnapshot(s=>{leden=s.docs.map(d=>d.id).sort();if(mode==="users")renderUsers($("#sheet"))},()=>{}));
 }
 
-$("#btnNew").onclick=startChecklist;
+$("#btnNew").onclick=()=>startChecklist();
 $("#btnSetup").onclick=openSetup;
 $("#btnExport").onclick=exportPdf;
 // zwevende opslaanknop (tablet/mobiel): zichtbaar zolang er niet-opgeslagen wijzigingen zijn
