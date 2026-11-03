@@ -577,9 +577,9 @@ input.landt{animation:landt .7s cubic-bezier(.2,1.4,.4,1) both}
 .confetti{position:fixed;inset:0;pointer-events:none;z-index:95;overflow:hidden}
 .confetti i{position:absolute;top:-12px;width:9px;height:14px;border-radius:2px;animation:valt linear forwards}
 @keyframes valt{to{transform:translate(var(--x),105vh) rotate(var(--r))}}
-.list li.empty::before,.st-leeg::before,.blank::before{display:block;font-size:30px;margin-bottom:6px;animation:dobber 2.4s ease-in-out infinite}
+.list li.empty::before,.blank::before{display:block;font-size:30px;margin-bottom:6px;animation:dobber 2.4s ease-in-out infinite}
 .list li.empty::before{content:"💡";flex-basis:100%;width:100%}
-.list li.empty{flex-wrap:wrap;text-align:center}.st-leeg::before{content:"🔧"}.blank::before{content:"🎨"}
+.list li.empty{flex-wrap:wrap;text-align:center}.blank::before{content:"🎨"}
 @keyframes dobber{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-6px) rotate(-8deg)}}
 /* ===== status, overzicht, grafieken, herinnering, offline, tikvlakken, onderbalk ===== */
 .stl{display:inline-block;font:600 11px var(--f-mono);padding:1px 8px;border-radius:99px;vertical-align:2px;margin-right:4px}
@@ -635,6 +635,22 @@ input.landt{animation:landt .7s cubic-bezier(.2,1.4,.4,1) both}
   body:has(input:focus,textarea:focus) .tabs{display:none}
   body:has(input:focus,textarea:focus) .fab-save{bottom:calc(16px + env(safe-area-inset-bottom) + var(--kb,0px))}
 }
+.mannetje{position:relative;width:min(280px,80%);height:100px;margin:10px auto 0;border-bottom:2px dashed var(--line)}
+.mannetje svg{position:absolute;bottom:1px;left:0;width:60px;height:92px;overflow:visible;animation:mnLoop 8s linear infinite;filter:drop-shadow(0 3px 3px rgba(0,0,0,.15))}
+@keyframes mnLoop{0%{left:0;transform:scaleX(1)}47%{left:calc(100% - 60px);transform:scaleX(1)}50%{left:calc(100% - 60px);transform:scaleX(-1)}97%{left:0;transform:scaleX(-1)}100%{left:0;transform:scaleX(1)}}
+.mn-schaduw{fill:rgba(0,0,0,.22);transform-box:fill-box;transform-origin:center;animation:mnSchaduw .5s ease-in-out infinite}
+@keyframes mnSchaduw{50%{transform:scaleX(.82);opacity:.7}}
+.mn-lijf{animation:mnBob .5s ease-in-out infinite}
+@keyframes mnBob{50%{transform:translateY(-2px)}}
+.mn-been{transform-box:view-box;transform-origin:30px 53px}
+.mn-arm{transform-box:view-box;transform-origin:30.2px 35px}
+.mn-been1{animation:mnStap 1s ease-in-out infinite alternate}.mn-been2{animation:mnStap 1s ease-in-out infinite alternate-reverse}
+.mn-arm1{animation:mnZwaai 1s ease-in-out infinite alternate-reverse}.mn-arm2{animation:mnZwaai 1s ease-in-out infinite alternate}
+@keyframes mnStap{from{transform:rotate(-24deg)}to{transform:rotate(24deg)}}
+@keyframes mnZwaai{from{transform:rotate(-28deg)}to{transform:rotate(26deg)}}
+.mn-sleutel{transform-box:view-box;transform-origin:30.5px 52px;animation:mnDraai 2s ease-in-out infinite}
+@keyframes mnDraai{0%,70%,100%{transform:rotate(0)}80%{transform:rotate(-25deg)}90%{transform:rotate(15deg)}}
+.st-leeg{text-align:center}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -1187,6 +1203,41 @@ document.addEventListener("pointerdown",e=>{const b=e.target.closest(".btn,.tabs
 // getallen tellen op bij materialen-totalen
 const vorigeTot=new Map();
 function telTotalen(root){root.querySelectorAll("dl").forEach((dl,di)=>dl.querySelectorAll("dd").forEach((dd,i)=>{const k=di+":"+i,naar=num(dd.textContent)??0,van=vorigeTot.get(k)??0;vorigeTot.set(k,naar);if(van!==naar)telOp(dd,van,naar,true)}))}
+const MANNETJE=`<div class="mannetje" aria-hidden="true"><svg viewBox="0 0 60 92">
+<defs>
+ <radialGradient id="mnHuid" cx=".38" cy=".35" r=".75"><stop offset="0" stop-color="#ffe6cc"/><stop offset=".6" stop-color="#f6c39b"/><stop offset="1" stop-color="#d9946a"/></radialGradient>
+ <radialGradient id="mnHelm" cx=".35" cy=".25" r=".9"><stop offset="0" stop-color="#fff3a6"/><stop offset=".45" stop-color="#ffc928"/><stop offset="1" stop-color="#d48f00"/></radialGradient>
+ <linearGradient id="mnPak" x1="0" x2="1"><stop offset="0" stop-color="#5a95e6"/><stop offset=".55" stop-color="#2d66c4"/><stop offset="1" stop-color="#173e86"/></linearGradient>
+ <linearGradient id="mnPakA" x1="0" x2="1"><stop offset="0" stop-color="#2f5fae"/><stop offset="1" stop-color="#16376f"/></linearGradient>
+ <linearGradient id="mnBroek" x1="0" x2="1"><stop offset="0" stop-color="#3a6fc8"/><stop offset="1" stop-color="#1a3f80"/></linearGradient>
+ <linearGradient id="mnBroekA" x1="0" x2="1"><stop offset="0" stop-color="#244c93"/><stop offset="1" stop-color="#122d5e"/></linearGradient>
+ <linearGradient id="mnSchoen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6b5a4a"/><stop offset="1" stop-color="#2b211a"/></linearGradient>
+ <linearGradient id="mnMetaal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4f7fa"/><stop offset=".45" stop-color="#9aa6b6"/><stop offset=".7" stop-color="#d7dde5"/><stop offset="1" stop-color="#6f7b8c"/></linearGradient>
+</defs>
+<ellipse class="mn-schaduw" cx="30" cy="89" rx="15" ry="2.8"/>
+<g class="mn-lijf">
+ <g class="mn-been mn-been2"><rect x="25.5" y="52" width="8" height="28" rx="4" fill="url(#mnBroekA)"/><ellipse cx="31.5" cy="81.5" rx="6.5" ry="3.6" fill="url(#mnSchoen)"/></g>
+ <g class="mn-arm mn-arm2"><rect x="27" y="33" width="6.5" height="19" rx="3.2" fill="url(#mnPakA)"/><circle cx="30.2" cy="53" r="3.3" fill="url(#mnHuid)"/></g>
+ <rect x="19" y="30" width="22" height="27" rx="10" fill="url(#mnPak)"/>
+ <path d="M23 33h14v9a7 7 0 0 1-14 0z" fill="#ffffff" opacity=".13"/>
+ <rect x="27.5" y="41" width="5" height="4" rx="1" fill="#ffc928" opacity=".9"/>
+ <path d="M21 34q2-3 5-3M39 34q-2-3-5-3" stroke="#173e86" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+ <g class="mn-been mn-been1"><rect x="26" y="52" width="8.5" height="28" rx="4.2" fill="url(#mnBroek)"/><rect x="27.5" y="54" width="2" height="22" rx="1" fill="#fff" opacity=".18"/><ellipse cx="32.5" cy="81.5" rx="7" ry="3.8" fill="url(#mnSchoen)"/><ellipse cx="31" cy="80.3" rx="3" ry="1" fill="#fff" opacity=".22"/></g>
+ <circle cx="30" cy="20" r="10.5" fill="url(#mnHuid)"/>
+ <ellipse cx="22.8" cy="21" rx="2" ry="2.8" fill="#e9a77a"/>
+ <ellipse cx="34.5" cy="19.5" rx="2.2" ry="2.6" fill="#fff"/><circle cx="35.2" cy="19.8" r="1.3" fill="#1d2430"/><circle cx="35.6" cy="19.3" r=".45" fill="#fff"/>
+ <circle cx="38.6" cy="22" r="1.5" fill="#e59a72"/>
+ <ellipse cx="34" cy="24.6" rx="2.6" ry="1.2" fill="#ef8c8c" opacity=".5"/>
+ <path d="M33 26.5q2.5 1.8 5 0" stroke="#8a4a32" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+ <path d="M18.5 17a11.5 11 0 0 1 23 0z" fill="url(#mnHelm)"/>
+ <ellipse cx="31" cy="17.2" rx="14" ry="2.4" fill="#e0a300"/>
+ <path d="M23 10.5q4-3.5 9-2.8" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" opacity=".7"/>
+ <rect x="28.8" y="6.2" width="2.6" height="10.5" rx="1.3" fill="#f0b400"/>
+ <g class="mn-arm mn-arm1"><rect x="26.8" y="33" width="7" height="19" rx="3.5" fill="url(#mnPak)"/><rect x="28.2" y="35" width="1.6" height="14" rx=".8" fill="#fff" opacity=".2"/>
+  <g class="mn-sleutel"><rect x="29" y="50" width="3.6" height="19" rx="1.8" fill="url(#mnMetaal)" stroke="#5d6878" stroke-width=".5"/>
+   <path d="M30.8 70.5a5.2 5.2 0 1 1-.1 0zm-1.8 1.2h3.6v4h-3.6z" fill="url(#mnMetaal)" stroke="#5d6878" stroke-width=".5" fill-rule="evenodd"/></g>
+  <circle cx="30.3" cy="53" r="3.6" fill="url(#mnHuid)"/></g>
+</g></svg></div>`;
 // ===== status (storingen / punten van aandacht) =====
 const STATUSSEN=[["open","Open"],["bezig","Mee bezig"],["opgelost","Opgelost"]];
 function statusVan(s){return s.status||((s.oplossing||"").trim()?"opgelost":"open")}
@@ -2286,8 +2337,8 @@ function renderStLijst(){
   const lijst=stFilter(),q=zoekWoorden().length;
   $("#stCount").textContent=!stLoaded?"Laden…":q?`${lijst.length} van ${storingen.length} storingen gevonden`:`${storingen.length} storingen`;
   if(!stLoaded){box.innerHTML="";return}
-  if(!storingen.length){box.innerHTML='<p class="st-leeg">Nog geen storingen vastgelegd. Klik op <b>+ Nieuwe storing</b> om de eerste toe te voegen.</p>';}
-  else if(!lijst.length){box.innerHTML=`<p class="st-leeg">Niets gevonden voor "${esc(stQ)}". Probeer een ander of korter woord.</p>`}
+  if(!storingen.length){box.innerHTML=MANNETJE+'<p class="st-leeg">Nog geen storingen vastgelegd. Klik op <b>+ Nieuwe storing</b> om de eerste toe te voegen.</p>';}
+  else if(!lijst.length){box.innerHTML=MANNETJE+(String(stQ).trim()?`<p class="st-leeg">Niets gevonden voor "${esc(stQ)}"${stStatus!=="alle"?` met status ${STATUSSEN.find(x=>x[0]===stStatus)[1].toLowerCase()}`:""}. Probeer een ander of korter woord.</p>`:`<p class="st-leeg">Geen storingen met status <b>${STATUSSEN.find(x=>x[0]===stStatus)?.[1]||""}</b>. Kies hierboven een andere status.</p>`)}
   else box.innerHTML=lijst.map(s=>stItemHtml(s,q>0||stOpen===s.id)).join("");
   box.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{if(zoekWoorden().length)return;stOpen=stOpen===b.dataset.open?null:b.dataset.open;renderStLijst()});
   box.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{if(stDirty&&!stGuard(()=>b.click()))return;const s=storingen.find(x=>x.id===b.dataset.edit);stEdit={...ST_LEEG(),...s,fotos:[],fotosLaden:!!(s.fotos&&s.fotos.length)};stDirty=false;stErr="";stDel=false;renderStoringen();$("#st-titel")?.focus();
@@ -2424,8 +2475,8 @@ function renderPaLijst(){
   const lijst=paFilter(),q=paZoekWoorden().length;
   $("#paCount").textContent=!paLoaded?"Laden…":q?`${lijst.length} van ${punten.length} punten gevonden`:`${punten.length} ${punten.length===1?"punt":"punten"}`;
   if(!paLoaded){box.innerHTML="";return}
-  if(!punten.length){box.innerHTML='<p class="st-leeg">Nog geen punten van aandacht vastgelegd. Klik op <b>+ Nieuw punt</b> om het eerste toe te voegen.</p>';}
-  else if(!lijst.length){box.innerHTML=`<p class="st-leeg">Niets gevonden voor "${esc(paQ)}". Probeer een ander of korter woord.</p>`}
+  if(!punten.length){box.innerHTML=MANNETJE+'<p class="st-leeg">Nog geen punten van aandacht vastgelegd. Klik op <b>+ Nieuw punt</b> om het eerste toe te voegen.</p>';}
+  else if(!lijst.length){box.innerHTML=MANNETJE+(String(paQ).trim()?`<p class="st-leeg">Niets gevonden voor "${esc(paQ)}"${paStatus!=="alle"?` met status ${STATUSSEN.find(x=>x[0]===paStatus)[1].toLowerCase()}`:""}. Probeer een ander of korter woord.</p>`:`<p class="st-leeg">Geen punten van aandacht met status <b>${STATUSSEN.find(x=>x[0]===paStatus)?.[1]||""}</b>. Kies hierboven een andere status.</p>`)}
   else box.innerHTML=lijst.map(s=>paItemHtml(s,q>0||paOpen===s.id)).join("");
   box.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{if(paZoekWoorden().length)return;paOpen=paOpen===b.dataset.open?null:b.dataset.open;renderPaLijst()});
   box.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{if(paDirty&&!paGuard(()=>b.click()))return;const s=punten.find(x=>x.id===b.dataset.edit);paEdit={...PA_LEEG(),...s,fotos:[],fotosLaden:!!(s.fotos&&s.fotos.length)};paDirty=false;paErr="";paDel=false;renderPunten();$("#pa-titel")?.focus();
@@ -2804,9 +2855,11 @@ const TAB_KORT={start:"Start",registratie:"Registratie",materialen:"Materiaal",p
 document.querySelectorAll("#tabs [data-tab]").forEach(b=>{const ic=TAB_ICON[b.dataset.tab],lang=b.textContent.trim(),kort=TAB_KORT[b.dataset.tab]||lang;
   b.innerHTML=`${ic?`<svg viewBox="0 0 24 24" aria-hidden="true">${ic}</svg>`:""}<span class="tl">${lang}</span><span class="tk">${kort}</span>`});
 const tabPil=document.createElement("span");tabPil.className="tab-pil";tabPil.setAttribute("aria-hidden","true");$("#tabs").prepend(tabPil);
-function zetPil(){const b=document.querySelector('#tabs [aria-selected="true"]'),t=$("#tabs");if(!b||!t||!t.offsetParent)return;
+let pilVorig="";
+function zetPil(){const b=document.querySelector('#tabs [aria-selected="true"]'),t=$("#tabs");if(!b||!t||!t.getClientRects().length)return;const sl=b.offsetLeft+","+b.offsetTop+","+b.offsetWidth+","+b.offsetHeight;if(sl===pilVorig)return;pilVorig=sl;
   tabPil.style.width=b.offsetWidth+"px";tabPil.style.height=b.offsetHeight+"px";tabPil.style.transform=`translate(${b.offsetLeft}px,${b.offsetTop}px)`}
-window.addEventListener("resize",zetPil);new ResizeObserver(zetPil).observe($("#tabs"));
+window.addEventListener("resize",zetPil);{const ro=new ResizeObserver(()=>zetPil());ro.observe($("#tabs"));document.querySelectorAll("#tabs [data-tab]").forEach(b=>ro.observe(b))}
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(zetPil);
 function huidigeLak(){
   if(tab==="walsen"&&mode==="dag"&&draft)return draft.lak||null;
   if(tab==="materialen"&&matDraft)return matDraft.lak||null;
@@ -2825,7 +2878,7 @@ function zetThema(){const lak=huidigeLak();
   function zetAttr(){if(lak==="zwart")r.setAttribute("data-theme","dark");else if(lak==="wit")r.setAttribute("data-theme","light");else r.removeAttribute("data-theme");
   }
   const mc=document.querySelector('meta[name="theme-color"]');if(mc)mc.content=lak==="zwart"?"#0F141B":"#0E4C92"}
-setInterval(()=>{zetThema()},700);
+setInterval(()=>{zetThema();zetPil()},700);
 
 // zwevende opslaanknop (tablet/mobiel): zichtbaar zolang er niet-opgeslagen wijzigingen zijn
 (function(){const f=$("#fabSave"),t=f.querySelector("span");let bezig=false,okTot=0;
