@@ -939,7 +939,7 @@ function renderSheet(){
 
     <div class="section">
       <h3>Charge lakblikken</h3>
-      <div class="charges">${[["primer","Primer"],["grondlak","Grondlak"],["deklak","Deklak"]].map(([k,n])=>`<div class="field"><label for="ch-${k}">${n}</label><div class="ch2"><div class="inp"><input id="ch-${k}" data-ch="${k}" autocomplete="off" value="${esc(draft.charge?.[k]||"")}" placeholder="charge 1" aria-label="${n} charge 1"></div><div class="inp"><input id="ch-${k}2" data-ch="${k}2" autocomplete="off" value="${esc(draft.charge?.[k+"2"]||"")}" placeholder="charge 2" aria-label="${n} charge 2"></div></div><span class="hint">${prev&&chTekst(prev.charge,k)?"vorige: "+esc(chTekst(prev.charge,k)):"&nbsp;"}</span></div>`).join("")}</div>
+      <div class="charges">${[["primer","Primer"],["grondlak","Grondlak"],["deklak","Deklak"]].map(([k,n])=>`<div class="field"><label for="ch-${k}">${n}</label><div class="ch2"><div class="inp"><input id="ch-${k}" data-ch="${k}" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${esc(draft.charge?.[k]||"")}" placeholder="charge 1" aria-label="${n} charge 1"></div><div class="inp"><input id="ch-${k}2" data-ch="${k}2" autocomplete="off" value="${esc(draft.charge?.[k+"2"]||"")}" placeholder="charge 2" aria-label="${n} charge 2"></div></div><span class="hint">${prev&&chTekst(prev.charge,k)?"vorige: "+esc(chTekst(prev.charge,k)):"&nbsp;"}</span></div>`).join("")}</div>
     </div>
 
     <div class="section">
@@ -1445,7 +1445,7 @@ function renderRegSheet(){
     <div class="reg-sub"><label>Paraaf <input id="reg-paraaf" data-h="paraaf" value="${esc(r.paraaf)}" style="width:120px" aria-label="Paraaf"></label><label>Lakdatum <input id="reg-datum" type="date" data-h="datum" value="${esc(r.datum)}" aria-label="Lakdatum"></label></div>
     ${r.metingen.map((m,i)=>`<div class="meet">
       <div class="meet-tijd">tijdstip meting <input type="time" id="m${i}-tijd" data-m="${i}" data-f="tijd" value="${esc(m.tijd)}" aria-label="Tijdstip meting ${i+1}"></div>
-      <div class="meet-charge">Charge <input id="m${i}-charge" data-m="${i}" data-f="charge" value="${esc(m.charge)}" aria-label="Charge meting ${i+1}"></div>
+      <div class="meet-charge">Charge <input id="m${i}-charge" data-m="${i}" data-f="charge" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${esc(m.charge)}" aria-label="Charge meting ${i+1}"></div>
       ${schaalHtml(i,m,BL.schalen)}
       <div class="meet-side">
         <div class="gl">Glansgraad bij <input class="hoek" id="m${i}-hoek" data-m="${i}" data-f="hoek" data-n="1" inputmode="decimal" value="${esc(fmt(m.hoek))}" aria-label="Hoek glansmeting ${i+1}">*<input id="m${i}-glans" data-m="${i}" data-f="glans" data-n="1" inputmode="decimal" value="${esc(fmt(m.glans))}" aria-label="Glansgraad meting ${i+1}"></div>
@@ -2397,8 +2397,8 @@ function renderMatSheet(){
   const lakKaart=m=>`<div class="mat-card lak">
       <div class="mat-nm"><b>${esc(m.naam)}</b><span>${esc(m.sub)}</span></div>
       <div class="mc-head"><span>Chargenummer</span><span>Blikken gebruikt</span></div>
-      <div class="mc-row"><span class="mc-lbl">Charge 1</span><div class="inp"><input id="mch-${m.k}" data-ch="${m.k}" autocomplete="off" value="${esc(r.charge?.[m.k]||"")}" placeholder="chargenummer" aria-label="${esc(m.naam)} charge 1"></div>${stp(m.k,esc(m.naam)+" blikken van charge 1","")}</div>
-      <div class="mc-row"><span class="mc-lbl">Charge 2</span><div class="inp"><input id="mch-${m.k}2" data-ch="${m.k}2" autocomplete="off" value="${esc(r.charge?.[m.k+"2"]||"")}" placeholder="nieuwe charge" aria-label="${esc(m.naam)} charge 2"></div>${stp(m.k+"B",esc(m.naam)+" blikken van charge 2","eind")}</div>
+      <div class="mc-row"><span class="mc-lbl">Charge 1</span><div class="inp"><input id="mch-${m.k}" data-ch="${m.k}" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${esc(r.charge?.[m.k]||"")}" placeholder="chargenummer" aria-label="${esc(m.naam)} charge 1"></div>${stp(m.k,esc(m.naam)+" blikken van charge 1","")}</div>
+      <div class="mc-row"><span class="mc-lbl">Charge 2</span><div class="inp"><input id="mch-${m.k}2" data-ch="${m.k}2" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${esc(r.charge?.[m.k+"2"]||"")}" placeholder="nieuwe charge" aria-label="${esc(m.naam)} charge 2"></div>${stp(m.k+"B",esc(m.naam)+" blikken van charge 2","eind")}</div>
       <span class="hint mc-tot">Totaal ${esc(m.naam.toLowerCase())}: <b id="mtot-${m.k}">${fmt(matTot(r,m.k))}</b> ${m.meer} · halve blikken mag (0,5)</span>
     </div>`;
   const kaart=m=>LAK_K.includes(m.k)?lakKaart(m):`<div class="mat-card">
@@ -2417,7 +2417,7 @@ function renderMatSheet(){
         </div>
         <span class="hint">blikken van charge 2 · totaal <b id="mtot-${m.k}">${fmt(matTot(r,m.k))}</b></span>
       </div>`:""}
-      ${LAK_K.includes(m.k)?`<div class="mat-ch"><label for="mch-${m.k}">Charge</label><div class="ch2"><div class="inp"><input id="mch-${m.k}" data-ch="${m.k}" autocomplete="off" value="${esc(r.charge?.[m.k]||"")}" placeholder="charge 1" aria-label="${esc(m.naam)} charge 1"></div><div class="inp"><input id="mch-${m.k}2" data-ch="${m.k}2" autocomplete="off" value="${esc(r.charge?.[m.k+"2"]||"")}" placeholder="charge 2" aria-label="${esc(m.naam)} charge 2"></div></div></div>`:""}
+      ${LAK_K.includes(m.k)?`<div class="mat-ch"><label for="mch-${m.k}">Charge</label><div class="ch2"><div class="inp"><input id="mch-${m.k}" data-ch="${m.k}" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${esc(r.charge?.[m.k]||"")}" placeholder="charge 1" aria-label="${esc(m.naam)} charge 1"></div><div class="inp"><input id="mch-${m.k}2" data-ch="${m.k}2" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${esc(r.charge?.[m.k+"2"]||"")}" placeholder="charge 2" aria-label="${esc(m.naam)} charge 2"></div></div></div>`:""}
     </div>`;
   el.innerHTML=`<div class="sheet-head"><div><div class="title">Materialen ${esc(r.datum?longDate(r.datum):"")}</div><div class="sub">${isNew?"Nieuwe dag":"Opgeslagen dag"} ${statusHtml(matSaving,matDirty,matSaved)}</div></div></div>
     <div class="section"><h3>Lakdag</h3>
