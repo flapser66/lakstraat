@@ -2657,7 +2657,7 @@ function huidigeLak(){
 let laatsteThema;
 function zetThema(){const lak=huidigeLak();
   const g=$("#groet");if(g){const u=new Date().getHours(),dl=u<12?"Goedemorgen":u<18?"Goedemiddag":"Goedenavond";const d=parseDate(today());
-    g.innerHTML=`<span>${dl} · ${d?DAGEN[d.getDay()]+" "+d.getDate()+" "+MAANDEN[d.getMonth()]:""}</span>${lak?`<span class="lakchip ${lak}"><i></i>${lak==="wit"?"Witte lak":"Zwarte lak"}</span>`:""}`}
+    const html=`<span>${dl} · ${d?DAGEN[d.getDay()]+" "+d.getDate()+" "+MAANDEN[d.getMonth()]:""}</span>${lak?`<span class="lakchip ${lak}"><i></i>${lak==="wit"?"Witte lak":"Zwarte lak"}</span>`:""}`;if(g._html!==html){g._html=html;g.innerHTML=html}}
   if(lak===laatsteThema)return;const eerste=laatsteThema===undefined;laatsteThema=lak;
   const r=document.documentElement;
   if(!eerste&&lak&&!matchMedia("(prefers-reduced-motion: reduce)").matches){const g=document.createElement("div");g.className="verfgolf "+(lak==="zwart"?"donker":"licht");document.body.appendChild(g);
