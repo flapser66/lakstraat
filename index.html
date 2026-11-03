@@ -535,6 +535,27 @@ input,textarea,select,.inp{transition:border-color .18s,box-shadow .18s,backgrou
 .slot-banner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px;padding:12px 14px;border-radius:8px;background:var(--sunk);border:1px solid var(--line);font-weight:600;animation:slideDown .25s ease-out both}
 .vergrendeld .section input,.vergrendeld .section textarea{opacity:.85}
 .vergrendeld .st-fx,.vergrendeld .st-add,.vergrendeld .adv-dagen,.vergrendeld #advNeem{display:none}
+/* ===== frisse look (A) + lak-thema (C) ===== */
+body{background:radial-gradient(1200px 600px at 10% -10%,color-mix(in srgb,var(--accent) 10%,transparent),transparent 60%),radial-gradient(900px 500px at 110% 10%,color-mix(in srgb,var(--accent) 7%,transparent),transparent 60%),var(--bg);background-attachment:fixed;transition:background-color .4s,color .4s}
+header.top{background:linear-gradient(120deg,#0A3A70 0%,#0E4C92 45%,#1D6CC8 100%);border-radius:18px;padding:16px 22px;box-shadow:0 10px 30px rgba(14,76,146,.28)}
+.groet{font-size:13px;color:rgba(255,255,255,.85);margin-top:6px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.lakchip{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:99px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);font-weight:600;font-size:12px;animation:popIn .3s ease-out both}
+.lakchip i{width:10px;height:10px;border-radius:50%;display:inline-block;border:1px solid rgba(255,255,255,.7)}
+.lakchip.wit i{background:#fff}.lakchip.zwart i{background:#111}
+aside.list,main.sheet{border-radius:16px;border-color:color-mix(in srgb,var(--line) 70%,transparent);box-shadow:0 6px 24px rgba(16,40,80,.08);transition:background-color .4s,border-color .4s}
+.btn{border-radius:10px}
+.btn.primary{background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 75%,#2A8BFF));border-color:transparent}
+.st-item,.mat-card,.wals,.modal-box{border-radius:14px}
+.inp,input,textarea{border-radius:10px}
+.tabs{position:relative;border-radius:14px;padding:5px;gap:2px;background:color-mix(in srgb,var(--sunk) 85%,transparent);backdrop-filter:blur(6px)}
+.tabs button{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;border-radius:10px;transition:color .25s}
+.tabs button svg{width:17px;height:17px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;opacity:.85}
+.tabs button[aria-selected="true"]{background:transparent;box-shadow:none;color:var(--accent-fg);animation:none}
+.tab-pil{position:absolute;z-index:0;top:0;left:0;height:0;border-radius:10px;background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 75%,#2A8BFF));box-shadow:0 4px 14px color-mix(in srgb,var(--accent) 40%,transparent);transition:transform .35s cubic-bezier(.3,1.3,.5,1),width .35s cubic-bezier(.3,1.3,.5,1),height .2s}
+.voortgang{margin:12px 0 14px;padding:0 18px}
+.voortgang-bar{height:8px;border-radius:99px;background:var(--sunk);overflow:hidden}
+.voortgang-bar span{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),#22a447);transition:width .5s cubic-bezier(.3,1.2,.5,1)}
+.voortgang-t{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px;font-family:var(--f-mono)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -545,6 +566,7 @@ input,textarea,select,.inp{transition:border-color .18s,box-shadow .18s,backgrou
     <div class="brand">
       <div class="eyebrow">Lakstraat</div>
       <h1>Walsinstellingen logboek</h1>
+      <div class="groet" id="groet"></div>
     </div>
   </header>
   <div class="toolbar">
@@ -904,6 +926,7 @@ function renderSheet(){
         <button class="btn" type="button" id="navNewer" ${isNew||idx<=0?"disabled":""} aria-label="Nieuwere lakdag">Nieuwer →</button>
       </div>
     </div>
+    <div class="voortgang" id="voortgang"><div class="voortgang-t"></div><div class="voortgang-bar"><span style="width:0"></span></div></div>
 
     <div class="section">
       <h3>Algemeen</h3>
@@ -1039,6 +1062,7 @@ ${BEOORDELINGEN.map(b=>beoordelingHtml(b)).join("")}
   const dn=$("#delNo"); if(dn)dn.onclick=()=>{confirmDel=false;renderSheet()};
   const dy=$("#delYes"); if(dy)dy.onclick=removeDay;
   const rv=$("#revert"); if(rv)rv.onclick=()=>{const rec=dagen.find(r=>r.id===draft.id);if(rec){draft=draftFrom(rec);dirty=false;error="";render()}};
+  requestAnimationFrame(zetVoortgang);
   // bescherming: opgeslagen lakdagen van vóór vandaag openen alleen-lezen
   if(isVergrendeld()){
     el.classList.add("vergrendeld");
@@ -1062,7 +1086,14 @@ function nieuwereLakdag(d){return dagen.find(x=>x.id!==d.id&&((x.datum||"")>(d.d
 function isVergrendeld(){if(!(mode==="dag"&&draft&&draft.id&&!dirty&&!ontgrendeld.has(draft.id)))return false;
   const rec=dagen.find(x=>x.id===draft.id)||draft;return !!((draft.datum&&draft.datum<today())||nieuwereLakdag(rec))}
 function stepFor(v){return 0.5}
+function voortgangInfo(){if(!draft)return null;let n=0,t=0;const tel=v=>{t++;if(v!=null&&v!=="")n++};
+  tel(draft.lak);tel(draft.temperatuur);tel(draft.luchtvochtigheid);
+  for(const w of walsen){const x=draft.walsen[w.id]||{};tel(x.stand);tel(x.hoogte);tel(x.eind);tel(x.hoogteEind)}
+  tel(draft.tevredenheid);return {n,t,p:t?Math.round(n/t*100):0}}
+function zetVoortgang(){const v=voortgangInfo(),el=$("#voortgang");if(!v||!el)return;
+  el.querySelector(".voortgang-t").innerHTML=`<span>Ingevuld</span><span>${v.n} van ${v.t} · ${v.p}%</span>`;el.querySelector(".voortgang-bar span").style.width=v.p+"%"}
 function refreshHead(){
+  zetVoortgang();
   const sub=document.querySelector(".sheet-head .sub"); if(!sub)return;
   sub.innerHTML=sub.innerHTML.replace(/<span class="status[^"]*">[^<]*<\/span>/,"")+statusPill();
   const s=$("#save"); if(s)s.disabled=saving||!dirty;
@@ -1268,6 +1299,7 @@ function setTab(t){
 }
 function renderTabs(){
   document.querySelectorAll("#tabs [data-tab]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===tab)));
+  if(typeof zetPil==="function")requestAnimationFrame(zetPil);
   $("#appLayout").hidden=tab!=="walsen"; $("#lampenView").hidden=tab!=="lampen"; $("#regLayout").hidden=tab!=="registratie"; $("#storView").hidden=tab!=="storingen"; $("#puntView").hidden=tab!=="punten"; $("#matLayout").hidden=tab!=="materialen"; $("#matActions").hidden=tab!=="materialen";
   $("#walsActions").hidden=tab!=="walsen"; $("#regActions").hidden=tab!=="registratie";
   {const v=$({walsen:"#appLayout",lampen:"#lampenView",registratie:"#regLayout",storingen:"#storView",punten:"#puntView",materialen:"#matLayout"}[tab]);if(v){v.classList.remove("anim-in");void v.offsetWidth;v.classList.add("anim-in");clearTimeout(v._at);v._at=setTimeout(()=>v.classList.remove("anim-in"),900)}}
@@ -2545,6 +2577,27 @@ async function start(user){
 $("#btnNew").onclick=()=>startChecklist();
 $("#btnSetup").onclick=openSetup;
 $("#btnExport").onclick=exportPdf;
+// ===== frisse look: tab-iconen, schuivende pil, groet, lak-thema =====
+const TAB_ICON={walsen:'<circle cx="7" cy="12" r="4"/><circle cx="17" cy="12" r="4"/><path d="M3 18h18"/>',lampen:'<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/>',registratie:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v3h6V3M9 11h6M9 15h4"/>',materialen:'<path d="M5 7h14v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zM4 7h16M9 3h6v4H9z"/>',storingen:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>',punten:'<path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17.5v.5"/>'};
+document.querySelectorAll("#tabs [data-tab]").forEach(b=>{const ic=TAB_ICON[b.dataset.tab];if(ic)b.insertAdjacentHTML("afterbegin",`<svg viewBox="0 0 24 24" aria-hidden="true">${ic}</svg>`)});
+const tabPil=document.createElement("span");tabPil.className="tab-pil";tabPil.setAttribute("aria-hidden","true");$("#tabs").prepend(tabPil);
+function zetPil(){const b=document.querySelector('#tabs [aria-selected="true"]'),t=$("#tabs");if(!b||!t||!t.offsetParent)return;
+  tabPil.style.width=b.offsetWidth+"px";tabPil.style.height=b.offsetHeight+"px";tabPil.style.transform=`translate(${b.offsetLeft}px,${b.offsetTop}px)`}
+window.addEventListener("resize",zetPil);new ResizeObserver(zetPil).observe($("#tabs"));
+function huidigeLak(){
+  if(tab==="walsen"&&mode==="dag"&&draft)return draft.lak||null;
+  if(tab==="materialen"&&matDraft)return matDraft.lak||null;
+  if(tab==="registratie"&&regDraft)return regBlad(regDraft.kleur).kleur==="9005"?"zwart":"wit";
+  return null}
+let laatsteThema;
+function zetThema(){const lak=huidigeLak();
+  const g=$("#groet");if(g){const u=new Date().getHours(),dl=u<12?"Goedemorgen":u<18?"Goedemiddag":"Goedenavond";const d=parseDate(today());
+    g.innerHTML=`<span>${dl} · ${d?DAGEN[d.getDay()]+" "+d.getDate()+" "+MAANDEN[d.getMonth()]:""}</span>${lak?`<span class="lakchip ${lak}"><i></i>${lak==="wit"?"Witte lak":"Zwarte lak"}</span>`:""}`}
+  if(lak===laatsteThema)return;laatsteThema=lak;
+  const r=document.documentElement;if(lak==="zwart")r.setAttribute("data-theme","dark");else if(lak==="wit")r.setAttribute("data-theme","light");else r.removeAttribute("data-theme");
+  const mc=document.querySelector('meta[name="theme-color"]');if(mc)mc.content=lak==="zwart"?"#0F141B":"#0E4C92"}
+setInterval(()=>{zetThema()},700);
+
 // zwevende opslaanknop (tablet/mobiel): zichtbaar zolang er niet-opgeslagen wijzigingen zijn
 (function(){const f=$("#fabSave"),t=f.querySelector("span");let bezig=false,okTot=0;
   setInterval(()=>{if(bezig)return;const vuil=!!(typeof tab!=="undefined"&&tabDirty(tab))&&$("#modal").hidden;
