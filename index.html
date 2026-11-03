@@ -405,7 +405,7 @@ header.top{position:relative;overflow:hidden}
 header.top::after{content:"";position:absolute;top:0;bottom:0;left:0;width:22%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.15) 30%,rgba(255,255,255,.75) 50%,rgba(255,255,255,.15) 70%,transparent);transform:translateX(-150%) skewX(-20deg);animation:glint 6s 1s ease-in-out infinite!important;z-index:1;pointer-events:none}
 .brand-logo{animation:slideLeft .6s ease-out both}
 .brand{animation:slideLeft .6s .12s ease-out both}
-.wrap>*{animation:fadeUp .6s ease-out both}
+.wrap>*{animation:fadeUp .6s ease-out backwards}
 .wrap>*:nth-child(2){animation-delay:.06s}.wrap>*:nth-child(3){animation-delay:.12s}.wrap>*:nth-child(4){animation-delay:.18s}
 .btn,.tabs button,.linkbtn,.list li button,.stepper button,.st-kop{transition:background-color .18s,color .18s,border-color .18s,box-shadow .18s,transform .12s}
 .btn:active:not(:disabled),.tabs button:active,.stepper button:active,.st-thumb:active{transform:scale(.95)}
@@ -578,7 +578,8 @@ input.landt{animation:landt .7s cubic-bezier(.2,1.4,.4,1) both}
 .confetti i{position:absolute;top:-12px;width:9px;height:14px;border-radius:2px;animation:valt linear forwards}
 @keyframes valt{to{transform:translate(var(--x),105vh) rotate(var(--r))}}
 .list li.empty::before,.st-leeg::before,.blank::before{display:block;font-size:30px;margin-bottom:6px;animation:dobber 2.4s ease-in-out infinite}
-.list li.empty::before{content:"💡"}.st-leeg::before{content:"🔧"}.blank::before{content:"🎨"}
+.list li.empty::before{content:"💡";flex-basis:100%;width:100%}
+.list li.empty{flex-wrap:wrap;text-align:center}.st-leeg::before{content:"🔧"}.blank::before{content:"🎨"}
 @keyframes dobber{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-6px) rotate(-8deg)}}
 /* ===== status, overzicht, grafieken, herinnering, offline, tikvlakken, onderbalk ===== */
 .stl{display:inline-block;font:600 11px var(--f-mono);padding:1px 8px;border-radius:99px;vertical-align:2px;margin-right:4px}
