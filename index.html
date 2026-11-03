@@ -959,7 +959,7 @@ function renderSheet(){
         <div class="field">
           <label for="f-datum">Datum lakken</label>
           <div class="inp"><input id="f-datum" type="date" value="${esc(draft.datum)}" style="font-size:16px"></div>
-          ${dagen.some(d=>d.id!==draft.id&&d.datum===draft.datum)?'<span class="hint" style="color:var(--warn);font-family:var(--f-body)">Let op: er is al een lakdag op deze datum.</span>':""}
+          ${dagen.some(d=>d.id!==draft.id&&d.datum===draft.datum&&(!draft.lak||!d.lak||d.lak===draft.lak))?`<span class="hint" style="color:var(--warn);font-family:var(--f-body)">Let op: er is al een lakdag${draft.lak?` met ${draft.lak==="wit"?"witte":"zwarte"} lak`:""} op deze datum.</span>`:""}
         </div>
         <div class="field">
           <label for="f-temp">Temperatuur</label>
