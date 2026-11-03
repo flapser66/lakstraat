@@ -559,6 +559,27 @@ aside.list,main.sheet{border-radius:16px;border-color:color-mix(in srgb,var(--li
 .zoombalk{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end;padding:8px 16px 0;position:sticky;top:0;z-index:5}
 .zoombalk .btn{min-width:44px;padding:6px 12px;font-weight:700;font-size:16px;box-shadow:0 2px 8px rgba(16,40,80,.12)}
 .zoombalk .zoomval{min-width:64px;font-family:var(--f-mono);font-size:13px}
+.voortgang.vol .voortgang-t span:first-child{color:#22a447;font-weight:700}
+.voortgang.feest .voortgang-bar{animation:volPuls .9s ease-out}
+.voortgang.feest .voortgang-t span:first-child{animation:popIn .5s ease-out}
+@keyframes volPuls{0%{transform:scaleY(1);box-shadow:0 0 0 0 rgba(34,164,71,.6)}30%{transform:scaleY(1.8)}100%{transform:none;box-shadow:0 0 0 14px rgba(34,164,71,0)}}
+.vin.schud{animation:schudVak .45s ease-in-out}
+@keyframes schudVak{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+input.landt{animation:landt .7s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes landt{0%{transform:translateY(-22px) scale(1.25);opacity:0;background:var(--accent-soft)}60%{opacity:1;background:var(--accent-soft)}100%{transform:none}}
+.verfgolf{position:fixed;inset:0;z-index:90;pointer-events:none;clip-path:circle(0% at 0% 0%);animation:golf .55s cubic-bezier(.6,0,.3,1) forwards}
+.verfgolf.donker{background:#0F141B}.verfgolf.licht{background:#EEF1F5}
+.verfgolf.weg{transition:opacity .45s;opacity:0}
+@keyframes golf{to{clip-path:circle(150% at 0% 0%)}}
+.btn,.tabs button,.lakk,.ralk,.reg-filter button,.list li button{position:relative;overflow:hidden}
+.rimpel{position:absolute;border-radius:50%;background:currentColor;opacity:.18;transform:scale(0);pointer-events:none;animation:rimpel .6s ease-out forwards}
+@keyframes rimpel{to{transform:scale(1);opacity:0}}
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:95;overflow:hidden}
+.confetti i{position:absolute;top:-12px;width:9px;height:14px;border-radius:2px;animation:valt linear forwards}
+@keyframes valt{to{transform:translate(var(--x),105vh) rotate(var(--r))}}
+.list li.empty::before,.st-leeg::before,.blank::before{display:block;font-size:30px;margin-bottom:6px;animation:dobber 2.4s ease-in-out infinite}
+.list li.empty::before{content:"💡"}.st-leeg::before{content:"🔧"}.blank::before{content:"🎨"}
+@keyframes dobber{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-6px) rotate(-8deg)}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -998,7 +1019,7 @@ ${BEOORDELINGEN.map(b=>beoordelingHtml(b)).join("")}
   const touch=()=>{if(!dirty){dirty=true;justSaved=false;refreshHead()} else refreshHead();renderAdvies()};
   BEOORDELINGEN.forEach(b=>{const inp=$("#"+b.id);
     const setV=v=>{draft[b.k]=v;inp.classList.toggle("leeg",v==null);const o=$("#"+b.id+"-out");o.className="tev-out"+(v!=null?" s"+v:"");o.textContent=v!=null?v+" van 5 · "+b.txt[v]:b.leeg;inp.setAttribute("aria-valuetext",v!=null?v+" van 5":"niet ingevuld");touch()};
-    inp.oninput=()=>setV(Number(inp.value));
+    inp.oninput=()=>{const was=draft[b.k];setV(Number(inp.value));if(b.k==="tevredenheid"&&draft[b.k]===5&&was!==5)confetti()};
     inp.onpointerdown=()=>{if(draft[b.k]==null)setTimeout(()=>setV(Number(inp.value)),0)};
     const c=$("#"+b.id+"-clear");if(c)c.onclick=()=>{setV(null);renderSheet()};
     const t=$("#"+b.id+"-opm");if(t)t.oninput=()=>{draft[b.opm]=t.value;touch()};
@@ -1065,7 +1086,7 @@ ${BEOORDELINGEN.map(b=>beoordelingHtml(b)).join("")}
   const dn=$("#delNo"); if(dn)dn.onclick=()=>{confirmDel=false;renderSheet()};
   const dy=$("#delYes"); if(dy)dy.onclick=removeDay;
   const rv=$("#revert"); if(rv)rv.onclick=()=>{const rec=dagen.find(r=>r.id===draft.id);if(rec){draft=draftFrom(rec);dirty=false;error="";render()}};
-  requestAnimationFrame(zetVoortgang);
+  vorigeP=null;requestAnimationFrame(zetVoortgang);
   // bescherming: opgeslagen lakdagen van vóór vandaag openen alleen-lezen
   if(isVergrendeld()){
     el.classList.add("vergrendeld");
@@ -1090,6 +1111,23 @@ function zoomBlad(el,sleutel){
     if(k==="+")zet(ZOOM_STAP.find(s=>s>cur+0.001)||2);else if(k==="-")zet([...ZOOM_STAP].reverse().find(s=>s<cur-0.001)||0.2);else if(k==="100")zet(1);else if(k==="heel"){zet(pas(true));wrap.scrollIntoView({behavior:"smooth",block:"start"})}else zet(pas(false))}});
   zet(z||1);
 }
+// ===== animatiepakket =====
+function telOp(el,van,naar,dec){if(!el)return;const t0=performance.now(),d=600;
+  const stap=t=>{const f=Math.min(1,(t-t0)/d),e=1-Math.pow(1-f,3),v=van+(naar-van)*e;el.textContent=dec?fmt(Math.round(v*10)/10):String(Math.round(v));if(f<1)requestAnimationFrame(stap);else el.textContent=dec?fmt(naar):String(naar)};
+  requestAnimationFrame(stap)}
+function laatLanden(velden){requestAnimationFrame(()=>{let n=0;document.querySelectorAll("#sheet .wals input[data-w]").forEach(x=>{if(!velden.includes(x.dataset.f)||x.value==="")return;
+  x.style.animationDelay=(n++*45)+"ms";x.classList.remove("landt");void x.offsetWidth;x.classList.add("landt")})})}
+function confetti(){const c=document.createElement("div");c.className="confetti";const kl=["#0E4C92","#1D6CC8","#22a447","#ffcc00","#ff5a5f","#ffffff"];
+  for(let i=0;i<70;i++){const s=document.createElement("i");s.style.left=(Math.random()*100)+"vw";s.style.background=kl[i%kl.length];s.style.animationDelay=(Math.random()*.4)+"s";
+    s.style.setProperty("--x",(Math.random()*240-120)+"px");s.style.setProperty("--r",(Math.random()*900-450)+"deg");s.style.animationDuration=(1.4+Math.random()*1.2)+"s";c.appendChild(s)}
+  document.body.appendChild(c);setTimeout(()=>c.remove(),3200)}
+// tik-rimpeling
+document.addEventListener("pointerdown",e=>{const b=e.target.closest(".btn,.tabs button,.lakk,.ralk,.reg-filter button,.list li button");if(!b||b.disabled)return;
+  const r=b.getBoundingClientRect(),s=document.createElement("span"),d=Math.max(r.width,r.height)*2;s.className="rimpel";
+  s.style.cssText=`width:${d}px;height:${d}px;left:${e.clientX-r.left-d/2}px;top:${e.clientY-r.top-d/2}px`;b.appendChild(s);setTimeout(()=>s.remove(),600)},{passive:true});
+// getallen tellen op bij materialen-totalen
+const vorigeTot=new Map();
+function telTotalen(root){root.querySelectorAll("dl").forEach((dl,di)=>dl.querySelectorAll("dd").forEach((dd,i)=>{const k=di+":"+i,naar=num(dd.textContent)??0,van=vorigeTot.get(k)??0;vorigeTot.set(k,naar);if(van!==naar)telOp(dd,van,naar,true)}))}
 const ontgrendeld=new Set();
 function nieuwerBlad(rows,r){const rec=rows.find(x=>x.id===r.id)||r;return rows.find(x=>x.id!==rec.id&&((x.datum||"")>(rec.datum||"")||((x.datum||"")===(rec.datum||"")&&dagTijd(x)>dagTijd(rec))))||null}
 function vergrendelBlad(el,sleutel,datum,vuil,opnieuw,wat,nieuwer){
@@ -1109,8 +1147,12 @@ function voortgangInfo(){if(!draft)return null;let n=0,t=0;const tel=v=>{t++;if(
   tel(draft.lak);tel(draft.temperatuur);tel(draft.luchtvochtigheid);
   for(const w of walsen){const x=draft.walsen[w.id]||{};tel(x.stand);tel(x.hoogte);tel(x.eind);tel(x.hoogteEind)}
   tel(draft.tevredenheid);return {n,t,p:t?Math.round(n/t*100):0}}
+let vorigeP=null;
 function zetVoortgang(){const v=voortgangInfo(),el=$("#voortgang");if(!v||!el)return;
-  el.querySelector(".voortgang-t").innerHTML=`<span>Ingevuld</span><span>${v.n} van ${v.t} · ${v.p}%</span>`;el.querySelector(".voortgang-bar span").style.width=v.p+"%"}
+  el.querySelector(".voortgang-t").innerHTML=`<span>${v.p===100?"✓ Alles ingevuld":"Ingevuld"}</span><span>${v.n} van ${v.t} · <b class="telop" data-n="${v.p}">${v.p}</b>%</span>`;el.querySelector(".voortgang-bar span").style.width=v.p+"%";
+  el.classList.toggle("vol",v.p===100);
+  if(v.p===100&&vorigeP!==null&&vorigeP<100){el.classList.remove("feest");void el.offsetWidth;el.classList.add("feest")}
+  if(vorigeP!==v.p)telOp(el.querySelector(".telop"),vorigeP??0,v.p,0);vorigeP=v.p}
 function refreshHead(){
   zetVoortgang();
   const sub=document.querySelector(".sheet-head .sub"); if(!sub)return;
@@ -1526,11 +1568,12 @@ function renderRegSheet(){
     if(!vanVak)inp.value=fmt(v);
     inp.classList.toggle("uit",uit);
     st.className="vst"+(uit?" uit":"");st.textContent=v==null?"":uit?"buiten het middengebied":"binnen het middengebied";};
+  const schudUit=(i,k)=>{const x=el.querySelector(`.vwr[data-m="${i}"][data-s="${k}"] .vin.uit`);if(x){x.classList.remove("schud");void x.offsetWidth;x.classList.add("schud")}};
   el.querySelectorAll(".dg").forEach(b=>b.onclick=()=>{const i=+b.dataset.m,m=r.metingen[i],k=b.dataset.s,v=Number(b.dataset.v);
-    m[k]=(m[k]!=null&&Math.abs(m[k]-v)<1e-9)?null:v;upd(i,k);touch()});
+    m[k]=(m[k]!=null&&Math.abs(m[k]-v)<1e-9)?null:v;upd(i,k);schudUit(i,k);touch()});
   el.querySelectorAll(".vwr").forEach(w=>{const i=+w.dataset.m,k=w.dataset.s,inp=w.querySelector(".vin");
     inp.oninput=()=>{const t=inp.value.trim();const v=t===""?null:num(t);if(t!==""&&v==null)return;r.metingen[i][k]=v==null?null:Math.round(v*100)/100;upd(i,k,true);touch()};
-    inp.onblur=()=>{inp.value=fmt(r.metingen[i][k])};upd(i,k)});
+    inp.onblur=()=>{inp.value=fmt(r.metingen[i][k]);schudUit(i,k)};upd(i,k)});
   $("#regSave").onclick=saveReg;
   const d=$("#regDel");if(d)d.onclick=()=>{regDel=true;renderRegSheet()};
   const dn=$("#regDelNo");if(dn)dn.onclick=()=>{regDel=false;renderRegSheet()};
@@ -1742,13 +1785,13 @@ function renderAdvies(){
   const nb=$("#advNeem");if(nb)nb.onclick=()=>{
     for(const w of walsen){const a=A.adv[w.id]||{};if(!a.stand&&!a.hoogte)continue;const cur=draft.walsen[w.id]||{naam:w.naam};
       if(a.stand)cur.stand=a.stand.v;if(a.hoogte)cur.hoogte=a.hoogte.v;cur.naam=w.naam;draft.walsen[w.id]=cur}
-    dirty=true;justSaved=false;renderSheet();const m=$("#advMelding");if(m){m.textContent="✓ Advies overgenomen als beginwaarden in deze lakdag.";m.hidden=false}};
+    dirty=true;justSaved=false;renderSheet();laatLanden(["stand","hoogte"]);const m=$("#advMelding");if(m){m.textContent="✓ Advies overgenomen als beginwaarden in deze lakdag.";m.hidden=false}};
   box.querySelectorAll("[data-neem]").forEach(b=>b.onclick=()=>{const d=dagen.find(x=>x.id===b.dataset.neem);if(!d)return;
     const oud=draft.walsen,nieuw={};
     draft.walsVolgorde=(d.walsen||[]).map(x=>({id:x.id,naam:x.naam}));
     (d.walsen||[]).forEach(x=>{const o={naam:x.naam},s=x.stand??x.eind,hg=x.hoogte??x.hoogteEind;if(s!=null)o.stand=s;if(hg!=null)o.hoogte=hg;
       const e=oud[x.id];if(e){if(e.eind!=null)o.eind=e.eind;if(e.hoogteEind!=null)o.hoogteEind=e.hoogteEind}nieuw[x.id]=o});
-    draft.walsen=nieuw;dirty=true;justSaved=false;renderSheet();
+    draft.walsen=nieuw;dirty=true;justSaved=false;renderSheet();laatLanden(["stand","hoogte"]);
     const m=$("#advMelding");if(m){m.textContent=`✓ Beginwaarden en walsnamen van ${shortDate(d.datum)} overgenomen in deze lakdag.`;m.hidden=false}});
 }
 // ===================== FOTO'S BIJ STORINGEN =====================
@@ -2428,7 +2471,7 @@ function renderMatList(){
   tot.querySelectorAll("[data-mlf]").forEach(b=>b.onclick=()=>{matLakFilter=b.dataset.mlf;renderMatList()});
   const pc=perCharge(rows);
   if(pc.length)tot.innerHTML+=`<div class="mat-tot-h" style="margin-top:10px">Per charge</div><dl>${pc.map(o=>`<dt>${esc(o.soort)} <span class="chg">${esc(o.charge)}</span></dt><dd>${fmt(o.blik)}</dd>`).join("")}</dl>`;
-  $("#matCount").textContent=String(rows.length);
+  $("#matCount").textContent=String(rows.length);telTotalen(tot);
   let h="";
   if(matSel==="__new")h+=`<li><button type="button" aria-current="true"><span><span class="d">Nieuwe dag</span><br><span class="wd">nog niet opgeslagen</span></span><span class="cond"></span></button></li>`;
   if(!rows.length&&matSel!=="__new")h+=`<li class="empty">${matMaand===nu?'Deze maand is nog niets ingevuld. Klik op <b>+ Materialen invullen</b>.':`Niets ingevuld in ${maandNaam(matMaand)}.`}</li>`;
@@ -2615,8 +2658,14 @@ let laatsteThema;
 function zetThema(){const lak=huidigeLak();
   const g=$("#groet");if(g){const u=new Date().getHours(),dl=u<12?"Goedemorgen":u<18?"Goedemiddag":"Goedenavond";const d=parseDate(today());
     g.innerHTML=`<span>${dl} · ${d?DAGEN[d.getDay()]+" "+d.getDate()+" "+MAANDEN[d.getMonth()]:""}</span>${lak?`<span class="lakchip ${lak}"><i></i>${lak==="wit"?"Witte lak":"Zwarte lak"}</span>`:""}`}
-  if(lak===laatsteThema)return;laatsteThema=lak;
-  const r=document.documentElement;if(lak==="zwart")r.setAttribute("data-theme","dark");else if(lak==="wit")r.setAttribute("data-theme","light");else r.removeAttribute("data-theme");
+  if(lak===laatsteThema)return;const eerste=laatsteThema===undefined;laatsteThema=lak;
+  const r=document.documentElement;
+  if(!eerste&&lak&&!matchMedia("(prefers-reduced-motion: reduce)").matches){const g=document.createElement("div");g.className="verfgolf "+(lak==="zwart"?"donker":"licht");document.body.appendChild(g);
+    setTimeout(()=>zetAttr(),380);setTimeout(()=>g.classList.add("weg"),520);setTimeout(()=>g.remove(),1000);
+    const mc=document.querySelector('meta[name="theme-color"]');if(mc)mc.content=lak==="zwart"?"#0F141B":"#0E4C92";return}
+  zetAttr();
+  function zetAttr(){if(lak==="zwart")r.setAttribute("data-theme","dark");else if(lak==="wit")r.setAttribute("data-theme","light");else r.removeAttribute("data-theme");
+  }
   const mc=document.querySelector('meta[name="theme-color"]');if(mc)mc.content=lak==="zwart"?"#0F141B":"#0E4C92"}
 setInterval(()=>{zetThema()},700);
 
