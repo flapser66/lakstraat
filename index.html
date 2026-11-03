@@ -635,35 +635,13 @@ input.landt{animation:landt .7s cubic-bezier(.2,1.4,.4,1) both}
   body:has(input:focus,textarea:focus) .tabs{display:none}
   body:has(input:focus,textarea:focus) .fab-save{bottom:calc(16px + env(safe-area-inset-bottom) + var(--kb,0px))}
 }
-.mannetje{position:relative;width:min(300px,82%);height:118px;margin:10px auto 0;background:linear-gradient(transparent 92%,color-mix(in srgb,var(--line) 70%,transparent) 92%,transparent 96%)}
-.mn-loop{position:absolute;bottom:0;left:0;width:76px;height:105px;animation:mnLoop 9s linear infinite}
-.mn-loop svg{width:76px;height:105px;overflow:visible;animation:mnDraaiom 9s linear infinite;filter:drop-shadow(0 2px 2px rgba(0,0,0,.12))}
-@keyframes mnLoop{0%{left:0}45%{left:calc(100% - 76px)}50%{left:calc(100% - 76px)}95%{left:0}100%{left:0}}
-@keyframes mnDraaiom{0%,45%{transform:scaleX(1)}46.5%{transform:scaleX(.08) scaleY(1.04)}48%,95%{transform:scaleX(-1)}96.5%{transform:scaleX(-.08) scaleY(1.04)}98%,100%{transform:scaleX(1)}}
-.mannetje *{transform-box:view-box}
-.mn-schaduw{fill:rgba(10,20,40,.25);transform-origin:40px 104px;animation:mnSchaduw .9s ease-in-out infinite}
-@keyframes mnSchaduw{0%,50%,100%{transform:scaleX(1)}25%,75%{transform:scaleX(.8);opacity:.75}}
-.mn-lijf{transform-origin:40px 104px;animation:mnVeer .45s ease-in-out infinite alternate}
-@keyframes mnVeer{0%{transform:translateY(1.2px) scale(1.02,.975)}100%{transform:translateY(-2px) scale(.985,1.02)}}
-.mn-kop{transform-origin:40px 42px;animation:mnKop .9s ease-in-out infinite}
-@keyframes mnKop{0%,100%{transform:rotate(-3deg) translateY(0)}25%{transform:rotate(1deg) translateY(.8px)}50%{transform:rotate(3deg)}75%{transform:rotate(-1deg) translateY(.8px)}}
-.mn-helm{transform-origin:40px 24px;animation:mnHelm .9s ease-in-out infinite;animation-delay:-.12s}
-@keyframes mnHelm{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
-.mn-ogen{transform-origin:40px 27px;animation:mnKnipper 4s infinite}
-@keyframes mnKnipper{0%,93%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
-.mn-dij{transform-origin:40px 66px}.mn-scheen{transform-origin:40px 79px}.mn-voet{transform-origin:40px 93px}
-.mn-d1{animation:mnDij .9s ease-in-out infinite}.mn-d2{animation:mnDij .9s ease-in-out infinite;animation-delay:-.45s}
-.mn-s1{animation:mnKnie .9s ease-in-out infinite}.mn-s2{animation:mnKnie .9s ease-in-out infinite;animation-delay:-.45s}
-@keyframes mnDij{0%,100%{transform:rotate(28deg)}50%{transform:rotate(-26deg)}}
-@keyframes mnKnie{0%,100%{transform:rotate(0)}20%{transform:rotate(8deg)}55%{transform:rotate(4deg)}75%{transform:rotate(48deg)}90%{transform:rotate(20deg)}}
-.mn-bovenarm{transform-origin:40px 48px}.mn-onderarm{transform-origin:40px 57px}
-.mn-ba1{animation:mnArm .9s ease-in-out infinite;animation-delay:-.45s}.mn-ba2{animation:mnArm .9s ease-in-out infinite}
-.mn-oa1{animation:mnElleboog .9s ease-in-out infinite;animation-delay:-.45s}.mn-oa2{animation:mnElleboog .9s ease-in-out infinite}
-@keyframes mnArm{0%,100%{transform:rotate(30deg)}50%{transform:rotate(-30deg)}}
-@keyframes mnElleboog{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(-38deg)}}
-.mn-sleutel{transform-origin:40px 69px;animation:mnSleutel 3s ease-in-out infinite}
-@keyframes mnSleutel{0%,60%,100%{transform:rotate(0)}70%{transform:rotate(-35deg)}80%{transform:rotate(18deg)}88%{transform:rotate(-8deg)}}
-@media (prefers-reduced-motion:reduce){.mn-loop{left:calc(50% - 38px)}}
+.mannetje{position:relative;width:min(320px,84%);height:116px;margin:10px auto 0}
+.mn-loop{position:absolute;bottom:0;left:0;width:90px;height:110px;animation:mnLoop 10s linear infinite}
+.mn-sprite{width:90px;height:110px;background:url(monteur.webp) 0 0/2160px 110px no-repeat;animation:mnLoopje 1.05s steps(24) infinite,mnDraaiom 10s linear infinite}
+@keyframes mnLoopje{to{background-position:-2160px 0}}
+@keyframes mnLoop{0%{left:0}46%{left:calc(100% - 90px)}50%{left:calc(100% - 90px)}96%{left:0}100%{left:0}}
+@keyframes mnDraaiom{0%,46%{transform:scaleX(1)}48%,96%{transform:scaleX(-1)}98%,100%{transform:scaleX(1)}}
+@media (prefers-reduced-motion:reduce){.mn-loop{left:calc(50% - 45px)}}
 .st-leeg{text-align:center}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
@@ -1217,49 +1195,7 @@ document.addEventListener("pointerdown",e=>{const b=e.target.closest(".btn,.tabs
 // getallen tellen op bij materialen-totalen
 const vorigeTot=new Map();
 function telTotalen(root){root.querySelectorAll("dl").forEach((dl,di)=>dl.querySelectorAll("dd").forEach((dd,i)=>{const k=di+":"+i,naar=num(dd.textContent)??0,van=vorigeTot.get(k)??0;vorigeTot.set(k,naar);if(van!==naar)telOp(dd,van,naar,true)}))}
-const MANNETJE=`<div class="mannetje" aria-hidden="true"><div class="mn-loop"><svg viewBox="0 0 80 110">
-<defs>
- <radialGradient id="mnHuid" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ffe9d6"/><stop offset=".55" stop-color="#ffcfa6"/><stop offset="1" stop-color="#e59f73"/></radialGradient>
- <radialGradient id="mnHelm" cx=".32" cy=".22" r=".95"><stop offset="0" stop-color="#fff7c2"/><stop offset=".35" stop-color="#ffd23f"/><stop offset=".85" stop-color="#e9a400"/><stop offset="1" stop-color="#b97f00"/></radialGradient>
- <linearGradient id="mnRomp" x1="0" x2="1"><stop offset="0" stop-color="#6ea2f0"/><stop offset=".35" stop-color="#2f6fd6"/><stop offset="1" stop-color="#1a4590"/></linearGradient>
- <linearGradient id="mnMetaal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".4" stop-color="#aab5c4"/><stop offset=".65" stop-color="#e3e8ee"/><stop offset="1" stop-color="#6c7889"/></linearGradient>
- <clipPath id="mnHoofdClip"><circle cx="40" cy="27" r="16"/></clipPath>
-</defs>
-<ellipse class="mn-schaduw" cx="40" cy="104" rx="17" ry="3"/>
-<g class="mn-lijf">
- <g class="mn-dij mn-d2"><rect x="35.5" y="64" width="9" height="16" rx="4.5" fill="#1f4e9e" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><rect x="37.5" y="66" width="2" height="11" rx="1" fill="#4f88e6" opacity=".7"/>
-   <g class="mn-scheen mn-s2"><rect x="36" y="77" width="8" height="15" rx="4" fill="#1f4e9e" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><rect x="35.3" y="86" width="9.4" height="3.2" rx="1.2" fill="#ff8a1f" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/>
-    <g class="mn-voet"><path d="M35 91.5h9.5q5.5 0 6 4.5v.8H35z" fill="#3a2a1f" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M37 92.6h6" stroke="#a7826a" stroke-width="1.1" stroke-linecap="round" opacity=".7"/></g></g></g>
- <g class="mn-bovenarm mn-ba2"><rect x="36" y="46" width="8" height="13" rx="4" fill="#1f4e9e" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><rect x="38" y="48" width="1.8" height="8" rx=".9" fill="#4f88e6" opacity=".7"/>
-   <g class="mn-onderarm mn-oa2"><rect x="36.4" y="56" width="7.2" height="12" rx="3.6" fill="#1f4e9e" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="40" cy="69" r="4" fill="url(#mnHuid)" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></g></g>
- <g class="mn-romp"><rect x="28" y="42" width="24" height="27" rx="11" fill="url(#mnRomp)" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M31 46h18v10a9 9 0 0 1-18 0z" fill="#2a63c6" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round" stroke-width="1.2"/>
-  <rect x="36.5" y="49" width="7" height="5.5" rx="1.4" fill="#ffd23f" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
-  <path d="M29.5 58h21" stroke="#ff8a1f" stroke-width="3.2"/><path d="M29.5 58h21" stroke="#fff" stroke-width=".9" opacity=".8"/>
-  <path d="M31 45q3-4 7-4M49 45q-3-4-7-4" stroke="#163a78" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-  <path d="M31.5 50q1-5 5-7" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" opacity=".5"/></g>
- <g class="mn-dij mn-d1"><rect x="35.5" y="64" width="9" height="16" rx="4.5" fill="#2f6fd6" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><rect x="37.5" y="66" width="2" height="11" rx="1" fill="#6ea2f0" opacity=".7"/>
-   <g class="mn-scheen mn-s1"><rect x="36" y="77" width="8" height="15" rx="4" fill="#2f6fd6" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><rect x="35.3" y="86" width="9.4" height="3.2" rx="1.2" fill="#ff8a1f" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/>
-    <g class="mn-voet"><path d="M35 91.5h9.5q5.5 0 6 4.5v.8H35z" fill="#5b4332" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M37 92.6h6" stroke="#a7826a" stroke-width="1.1" stroke-linecap="round" opacity=".7"/></g></g></g>
- <g class="mn-kop">
-  <ellipse cx="40" cy="42.5" rx="6" ry="2.4" fill="#000" opacity=".18"/>
-  <circle cx="40" cy="27" r="16" fill="url(#mnHuid)" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/>
-  <g clip-path="url(#mnHoofdClip)"><path d="M24 30a16 16 0 0 0 30 9a18 18 0 0 1-30-9z" fill="#d98c62" opacity=".35"/></g>
-  <ellipse cx="27.5" cy="29" rx="3" ry="4" fill="#f2b48a" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round" stroke-width="1.3"/>
-  <g class="mn-ogen"><ellipse cx="45.5" cy="27" rx="3.4" ry="4.2" fill="#fff" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round" stroke-width="1.2"/><circle cx="46.6" cy="27.6" r="2.3" fill="#1b2433"/><circle cx="47.4" cy="26.6" r=".85" fill="#fff"/>
-   <ellipse cx="36.5" cy="27" rx="2.9" ry="3.8" fill="#fff" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round" stroke-width="1.2"/><circle cx="37.4" cy="27.6" r="2" fill="#1b2433"/><circle cx="38.1" cy="26.7" r=".75" fill="#fff"/></g>
-  <path d="M33.5 21.5q3-1.8 5.5-.3M43 21q3-1.6 5.6.4" stroke="#6b3d26" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-  <ellipse cx="50.5" cy="31.5" rx="2.6" ry="2.1" fill="#f2a27b"/>
-  <ellipse cx="34" cy="33.5" rx="2.8" ry="1.5" fill="#ff8e8e" opacity=".55"/><ellipse cx="48.5" cy="34.5" rx="2.4" ry="1.4" fill="#ff8e8e" opacity=".55"/>
-  <path d="M39.5 36q4 3.2 8 0" stroke="#7a3b26" stroke-width="1.5" fill="#fff" stroke-linecap="round"/>
-  <g class="mn-helm"><path d="M23.5 23.5a16.5 15.5 0 0 1 33 0z" fill="url(#mnHelm)" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/>
-   <path d="M20 23.8q20 4.2 41 0" fill="none" stroke="#1b2433" stroke-width="5.4" stroke-linecap="round"/><path d="M20 23.8q20 4.2 41 0" fill="none" stroke="#e9a400" stroke-width="3" stroke-linecap="round"/>
-   <path d="M38 8.5v14.5" stroke="#d99700" stroke-width="4" stroke-linecap="round"/><path d="M38 8.5v14.5" stroke="#ffe27a" stroke-width="1.2" stroke-linecap="round"/>
-   <path d="M27.5 15q4-5.5 9.5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" opacity=".85"/></g>
- </g>
- <g class="mn-bovenarm mn-ba1"><rect x="36" y="46" width="8" height="13" rx="4" fill="#2f6fd6" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><rect x="38" y="48" width="1.8" height="8" rx=".9" fill="#6ea2f0" opacity=".7"/>
-   <g class="mn-onderarm mn-oa1"><rect x="36.4" y="56" width="7.2" height="12" rx="3.6" fill="#2f6fd6" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><g class="mn-sleutel"><rect x="37.8" y="69" width="4.4" height="16" rx="2.2" fill="url(#mnMetaal)" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M40 85.5a6 6 0 1 1-.1 0zm-2 1.6h4v4.4h-4z" fill="url(#mnMetaal)" fill-rule="evenodd" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M39 71v11" stroke="#fff" stroke-width="1" stroke-linecap="round" opacity=".8"/></g><circle cx="40" cy="69" r="4" fill="url(#mnHuid)" stroke="#1b2433" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></g></g>
-</g></svg></div></div>`;
+const MANNETJE=`<div class="mannetje" aria-hidden="true"><div class="mn-loop"><div class="mn-sprite"></div></div></div>`;
 // ===== status (storingen / punten van aandacht) =====
 const STATUSSEN=[["open","Open"],["bezig","Mee bezig"],["opgelost","Opgelost"]];
 function statusVan(s){return s.status||((s.oplossing||"").trim()?"opgelost":"open")}
