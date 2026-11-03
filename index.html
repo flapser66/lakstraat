@@ -635,13 +635,10 @@ input.landt{animation:landt .7s cubic-bezier(.2,1.4,.4,1) both}
   body:has(input:focus,textarea:focus) .tabs{display:none}
   body:has(input:focus,textarea:focus) .fab-save{bottom:calc(16px + env(safe-area-inset-bottom) + var(--kb,0px))}
 }
-.mannetje{position:relative;width:min(320px,84%);height:116px;margin:10px auto 0}
-.mn-loop{position:absolute;bottom:0;left:0;width:90px;height:110px;animation:mnLoop 10s linear infinite}
-.mn-sprite{width:90px;height:110px;background:url(monteur.webp) 0 0/2160px 110px no-repeat;animation:mnLoopje 1.05s steps(24) infinite,mnDraaiom 10s linear infinite}
-@keyframes mnLoopje{to{background-position:-2160px 0}}
-@keyframes mnLoop{0%{left:0}46%{left:calc(100% - 90px)}50%{left:calc(100% - 90px)}96%{left:0}100%{left:0}}
-@keyframes mnDraaiom{0%,46%{transform:scaleX(1)}48%,96%{transform:scaleX(-1)}98%,100%{transform:scaleX(1)}}
-@media (prefers-reduced-motion:reduce){.mn-loop{left:calc(50% - 45px)}}
+.mannetje{position:relative;width:min(340px,86%);height:122px;margin:10px auto 0}
+.mannetje::after{content:"";position:absolute;left:0;right:0;bottom:4px;height:2px;border-radius:2px;background:color-mix(in srgb,var(--line) 80%,transparent)}
+.mn-sprite{position:absolute;left:0;bottom:6px;width:61px;height:110px;background:url(monteur-loop.webp) 0 0/3233px 110px no-repeat;will-change:transform,background-position;z-index:1}
+.mn-sprite::after{content:"";position:absolute;left:12px;right:12px;bottom:-3px;height:6px;border-radius:50%;background:radial-gradient(rgba(0,0,0,.28),transparent 70%);z-index:-1}
 .st-leeg{text-align:center}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
@@ -1195,7 +1192,22 @@ document.addEventListener("pointerdown",e=>{const b=e.target.closest(".btn,.tabs
 // getallen tellen op bij materialen-totalen
 const vorigeTot=new Map();
 function telTotalen(root){root.querySelectorAll("dl").forEach((dl,di)=>dl.querySelectorAll("dd").forEach((dd,i)=>{const k=di+":"+i,naar=num(dd.textContent)??0,van=vorigeTot.get(k)??0;vorigeTot.set(k,naar);if(van!==naar)telOp(dd,van,naar,true)}))}
-const MANNETJE=`<div class="mannetje" aria-hidden="true"><div class="mn-loop"><div class="mn-sprite"></div></div></div>`;
+const MANNETJE=`<div class="mannetje" aria-hidden="true"><div class="mn-sprite"></div></div>`;
+// monteur loopt heen en weer: 31 loopbeelden (24 fps), omdraaien via achterkant (13) en via voorkant (9)
+(function(){const FW=61,N=53,WALK=31,T1=31,T1N=13,T2=44,T2N=9,V=52;let vorige=performance.now();
+  const stil=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function stap(nu){const dt=Math.min(.1,(nu-vorige)/1000);vorige=nu;
+    document.querySelectorAll(".mannetje").forEach(el=>{const sp=el.firstElementChild;if(!sp)return;
+      const max=Math.max(0,el.clientWidth-FW);let s=el._mn;if(!s)s=el._mn={f:"R",x:0,t:0};
+      s.t+=dt;let fr=0,spiegel=false;
+      if(stil){s.x=max/2;fr=0}
+      else if(s.f==="R"){s.x+=V*dt;fr=Math.floor(s.t*24)%WALK;if(s.x>=max){s.x=max;s.f="T1";s.t=0}}
+      else if(s.f==="T1"){const k=Math.floor(s.t*12);fr=T1+Math.min(k,T1N-1);if(k>=T1N){s.f="L";s.t=0}}
+      else if(s.f==="L"){s.x-=V*dt;fr=Math.floor(s.t*24)%WALK;spiegel=true;if(s.x<=0){s.x=0;s.f="T2";s.t=0}}
+      else{const k=Math.floor(s.t*12);fr=T2+Math.min(k,T2N-1);if(k>=T2N){s.f="R";s.t=0}}
+      sp.style.backgroundPosition=(-fr*FW)+"px 0";sp.style.transform=`translateX(${s.x.toFixed(1)}px)${spiegel?" scaleX(-1)":""}`});
+    requestAnimationFrame(stap)}
+  requestAnimationFrame(stap)})();
 // ===== status (storingen / punten van aandacht) =====
 const STATUSSEN=[["open","Open"],["bezig","Mee bezig"],["opgelost","Opgelost"]];
 function statusVan(s){return s.status||((s.oplossing||"").trim()?"opgelost":"open")}
