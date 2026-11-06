@@ -2875,11 +2875,11 @@ function matFrom(r){const o={id:r.id,datum:r.datum||"",opmerking:r.opmerking||""
 function matSorted(){return matRows.slice().sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||(b.bijgewerkt||0)-(a.bijgewerkt||0))}
 const matAantal=(m,v)=>v==null?"":fmt(v)+(m.eenheid?" "+(v===1?m.eenheid:m.meer):"");
 function matGuard(opnieuw){if(!matDirty)return true;vraagOpslaan("materialen",opnieuw);return false}
-function matOpen(id){if(!matGuard(()=>matOpen(id)))return;matKiezen=false;const r=matRows.find(x=>x.id===id);if(r)matWeergave=r.soort==="afschuren"?"afschuren":"normaal";matSel=id;matDraft=r?matFrom(r):null;matDirty=false;matSaved=false;matErr="";matDel=false;renderMatList();renderMatSheet()}
+function matOpen(id){if(!matGuard(()=>matOpen(id)))return;matKiezen=false;const r=matRows.find(x=>x.id===id);if(r&&matWeergave!=="totaal")matWeergave=r.soort==="afschuren"?"afschuren":"normaal";matSel=id;matDraft=r?matFrom(r):null;matDirty=false;matSaved=false;matErr="";matDel=false;renderMatList();renderMatSheet()}
 function matNaarBlad(){if(innerWidth<900)setTimeout(()=>{const e=$("#matSheet");if(e)e.scrollIntoView({behavior:"smooth",block:"start"})},30)}
 function matNew(soort){if(!matGuard(()=>matNew(soort)))return;
   if(soort!=="normaal"&&soort!=="afschuren"){matSel=null;matDraft=null;matDirty=false;matErr="";matDel=false;matKiezen=true;renderMatList();renderMatSheet();matNaarBlad();return}
-  matKiezen=false;matWeergave=soort;matNaarBlad();matSel="__new";matDraft=matBlank(soort);matDirty=true;matSaved=false;matErr="";matDel=false;renderMatList();renderMatSheet()}
+  matKiezen=false;if(matWeergave!=="totaal")matWeergave=soort;matNaarBlad();matSel="__new";matDraft=matBlank(soort);matDirty=true;matSaved=false;matErr="";matDel=false;renderMatList();renderMatSheet()}
 function matTotalen(maandKey,lak,soort){const t={};MATS.forEach(m=>t[m.k]=0);let n=0;
   matRows.filter(r=>(r.datum||"").slice(0,7)===maandKey&&(!lak||lak==="alle"||matLak(r)===lak)&&(!soort||(r.soort==="afschuren")===(soort==="afschuren"))).forEach(r=>{if(soort||r.soort!=="afschuren")n++;MATS.forEach(m=>t[m.k]+=matTot(r,m.k))});return {t,n}}
 let matMaand=today().slice(0,7);
@@ -2897,20 +2897,24 @@ function renderMatList(){
   $("#mPrev").onclick=()=>ga(maandStap(matMaand,-1));
   $("#mNext").onclick=()=>{if(matMaand<nu)ga(maandStap(matMaand,1))};
   $("#mSel").onchange=e=>ga(e.target.value);
-  const isA=matWeergave==="afschuren";$("#matKop").textContent=isA?"Afschuur deuren":"Materialen per lakdag";const lf=isA?"alle":matLakFilter;const T=matTotalen(matMaand,lf,matWeergave);
-  tot.innerHTML=`<div class="reg-filter mat-soortf" style="margin-bottom:8px">${[["normaal","Materialen lakdag"],["afschuren","Afschuur deuren"]].map(([k,t])=>`<button type="button" data-msf="${k}" aria-pressed="${matWeergave===k}">${t}</button>`).join("")}</div>${isA?"":`<div class="reg-filter mat-lakf">${[["alle","Alle"],["wit","Wit"],["zwart","Zwart"]].map(([k,t])=>`<button type="button" data-mlf="${k}" aria-pressed="${matLakFilter===k}">${t}</button>`).join("")}</div>`}<div class="mat-tot-h">Totaal ${maandNaam(matMaand)}${lf!=="alle"?" · "+(matLakFilter==="wit"?"wit":"zwart"):""} <span>${T.n} dag${T.n===1?"":"en"}</span></div>
-    <dl>${(isA?AFS:MATB).map(m=>`<dt>${esc(isA?m.naam.replace("Afschuren ","Schuurp. "):m.naam.replace("Schuurpapier ","Schuurp. "))}</dt><dd>${fmt(T.t[m.k])}</dd>`).join("")}</dl>`;
-  const rows=matSorted().filter(r=>(r.datum||"").slice(0,7)===matMaand&&(lf==="alle"||matLak(r)===lf)&&(r.soort==="afschuren")===isA);
+  const isA=matWeergave==="afschuren",isT=matWeergave==="totaal";$("#matKop").textContent=isA?"Afschuur deuren":isT?"Alles samen":"Materialen per lakdag";const lf=isA||isT?"alle":matLakFilter;const T=matTotalen(matMaand,lf,isT?null:matWeergave);
+  const rows=matSorted().filter(r=>(r.datum||"").slice(0,7)===matMaand&&(lf==="alle"||matLak(r)===lf)&&(isT||(r.soort==="afschuren")===isA));
+  const nDag=isT?new Set(rows.map(r=>r.datum)).size:T.n;
+  const sw=m=>m.groep==="schuur"?(T.t[m.k]||0)+(T.t["a"+m.k.slice(1)]||0):T.t[m.k];
+  const afsAny=AFS.some(m=>T.t[m.k]);
+  tot.innerHTML=`<div class="reg-filter mat-soortf" style="margin-bottom:8px">${[["normaal","Lakdag"],["afschuren","Afschuur deuren"],["totaal","Totaal"]].map(([k,t])=>`<button type="button" data-msf="${k}" aria-pressed="${matWeergave===k}">${t}</button>`).join("")}</div>${isA||isT?"":`<div class="reg-filter mat-lakf">${[["alle","Alle"],["wit","Wit"],["zwart","Zwart"]].map(([k,t])=>`<button type="button" data-mlf="${k}" aria-pressed="${matLakFilter===k}">${t}</button>`).join("")}</div>`}<div class="mat-tot-h">${isT?"Alles samen":"Totaal"} ${maandNaam(matMaand)}${lf!=="alle"?" · "+(matLakFilter==="wit"?"wit":"zwart"):""} <span>${nDag} dag${nDag===1?"":"en"}</span></div>
+    <dl>${(isA?AFS:MATB).map(m=>`<dt>${esc(isA?m.naam.replace("Afschuren ","Schuurp. "):m.naam.replace("Schuurpapier ","Schuurp. "))}</dt><dd>${fmt(isT?sw(m):T.t[m.k])}</dd>`).join("")}</dl>
+    ${isT&&afsAny?`<div class="mat-tot-h" style="margin-top:10px">Waarvan afschuur deuren</div><dl>${AFS.filter(m=>T.t[m.k]).map(m=>`<dt>${esc(m.naam.replace("Afschuren ","Schuurp. "))}</dt><dd>${fmt(T.t[m.k])}</dd>`).join("")}</dl>`:""}`;
   tot.querySelectorAll("[data-msf]").forEach(b=>b.onclick=()=>{matWeergave=b.dataset.msf;renderMatList()});tot.querySelectorAll("[data-mlf]").forEach(b=>b.onclick=()=>{matLakFilter=b.dataset.mlf;renderMatList()});
-  const pc=isA?[]:perCharge(rows);
+  const pc=isA?[]:perCharge(rows.filter(r=>r.soort!=="afschuren"));
   if(pc.length)tot.innerHTML+=`<div class="mat-tot-h" style="margin-top:10px">Per charge</div><dl>${pc.map(o=>`<dt>${esc(o.soort)} <span class="chg">${esc(o.charge)}</span></dt><dd>${fmt(o.blik)}</dd>`).join("")}</dl>`;
   $("#matCount").textContent=String(rows.length);telTotalen(tot);
   let h="";
-  if(matSel==="__new"&&(matDraft&&matDraft.soort==="afschuren")===isA)h+=`<li><button type="button" aria-current="true"><span><span class="d">Nieuwe dag</span><br><span class="wd">nog niet opgeslagen</span></span><span class="cond"></span></button></li>`;
+  if(matSel==="__new"&&(isT||(matDraft&&matDraft.soort==="afschuren")===isA))h+=`<li><button type="button" aria-current="true"><span><span class="d">Nieuwe dag</span><br><span class="wd">nog niet opgeslagen</span></span><span class="cond"></span></button></li>`;
   if(!rows.length&&matSel!=="__new")h+=`<li class="empty">${matMaand===nu?'Deze maand is nog niets ingevuld. Klik op <b>+ Materialen invullen</b>.':`Niets ingevuld in ${maandNaam(matMaand)}.`}</li>`;
-  for(const r of rows){const dd=parseDate(r.datum);
+  for(const r of rows){const dd=parseDate(r.datum),rA=r.soort==="afschuren";
     const lak=LAK_K.reduce((s,k)=>s+matTot(r,k),0),sch=MATS.filter(m=>m.groep==="schuur").map(m=>m.k).reduce((s,k)=>s+(r[k]||0),0);
-    h+=`<li><button type="button" data-id="${esc(r.id)}" aria-current="${r.id===matSel}"><span><span class="d">${esc(shortDate(r.datum))}</span> ${isA?"":lakBadge(matLak(r))}<br><span class="wd">${dd?DAGEN[dd.getDay()]:""}</span></span><span class="cond">${isA?`${fmt(afsTot(r))} vellen<br>schuurpapier`:`${fmt(lak)} blik lak<br>${fmt(sch)} schuurpapier${afsTot(r)?`<br>${fmt(afsTot(r))} afschuren`:""}`}</span></button></li>`}
+    h+=`<li><button type="button" data-id="${esc(r.id)}" aria-current="${r.id===matSel}"><span><span class="d">${esc(shortDate(r.datum))}</span> ${rA?(isT?'<span class="afs-tag">afschuur</span>':""):lakBadge(matLak(r))}<br><span class="wd">${dd?DAGEN[dd.getDay()]:""}</span></span><span class="cond">${rA?`${fmt(afsTot(r))} vellen<br>schuurpapier`:`${fmt(lak)} blik lak<br>${fmt(sch)} schuurpapier`}</span></button></li>`}
   ul.innerHTML=h;ul.querySelectorAll("button[data-id]").forEach(b=>b.onclick=()=>matOpen(b.dataset.id));
 }
 function renderMatSheet(){
