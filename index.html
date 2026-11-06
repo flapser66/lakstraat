@@ -640,6 +640,26 @@ input.landt{animation:landt .7s cubic-bezier(.2,1.4,.4,1) both}
 .mn-sprite{position:absolute;left:0;bottom:6px;width:61px;height:110px;background:url(monteur-loop.webp) 0 0/3233px 110px no-repeat;will-change:transform,background-position;z-index:1}
 .mn-sprite::after{content:"";position:absolute;left:12px;right:12px;bottom:-3px;height:6px;border-radius:50%;background:radial-gradient(rgba(0,0,0,.28),transparent 70%);z-index:-1}
 .st-leeg{text-align:center}
+.t-planning{gap:12px}
+.plan-form{display:grid;grid-template-columns:170px auto minmax(0,1fr);gap:10px 14px;align-items:end;padding:12px;border-radius:12px;background:var(--sunk)}
+.plan-form .plan-wat{grid-column:span 1}.plan-form .field{margin:0}
+.plan-form input{font-size:16px}
+.plan-knoppen{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+@media (max-width:760px){.plan-form{grid-template-columns:1fr 1fr}.plan-form .plan-wat,.plan-knoppen{grid-column:1/-1}}
+.plan-dag{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:4px;padding-bottom:2px;border-bottom:1px solid var(--line)}
+.plan-dag.vandaag{color:var(--accent);font-weight:700}.plan-dag.achter{color:#b3261e;font-weight:700}
+.plan-lijst{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.plan-item{display:flex;align-items:stretch;gap:8px;border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:6px;animation:fadeUp .3s ease-out both}
+.plan-item.bewerk{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
+.plan-vink{flex:none;width:34px;height:34px;align-self:center;border-radius:50%;border:2px solid var(--line);background:var(--panel);color:#fff;font-weight:800;font-size:17px}
+.plan-vink[aria-pressed="true"]{background:#22a447;border-color:#22a447}
+.plan-tekst{flex:1;min-width:0;text-align:left;border:0;background:none;color:var(--fg);font-size:15px;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;padding:4px 2px}
+.plan-tekst small{flex-basis:100%;color:var(--muted)}
+.plan-aantal{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+.plan-datum{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.plan-item.klaar .plan-tekst b{text-decoration:line-through;opacity:.6}
+.plan-weg{flex:none;border:0;background:none;color:var(--muted);font-size:22px;padding:0 10px;border-radius:8px}
+.plan-weg.zeker{background:#b3261e;color:#fff;font-size:13px;font-weight:700}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -1222,6 +1242,58 @@ function lijnGrafiek(punten,opt={}){ // punten: [{x:label,y:getal,kleur}]
   const stip=punten.map((p,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="4.5" class="g-stip" style="fill:${p.kleur||"var(--accent)"};animation-delay:${i*40}ms"><title>${esc(p.x)}: ${fmt(p.y)}</title></circle>`).join("");
   const lbl=[0,punten.length-1].filter((v,i,a)=>a.indexOf(v)===i).map(i=>`<text x="${X(i).toFixed(1)}" y="${H-4}" class="g-as" text-anchor="${i?"end":"start"}">${esc(punten[i].x)}</text>`).join("");
   return `<svg class="graf" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${esc(opt.label||"grafiek")}">${raster}<path d="${d}" class="g-lijn" pathLength="1"/>${stip}${lbl}</svg>`}
+// ===================== PLANNING (op het overzicht) =====================
+let planning=[],planEdit=null,planToonOud=false;
+const planLeeg=()=>({datum:volgendeWerkdag(),lak:null,tekst:"",aantal:"",opmerking:""});
+let planDraft=null;
+function volgendeWerkdag(){const d=new Date();d.setDate(d.getDate()+1);while(d.getDay()===0||d.getDay()===6)d.setDate(d.getDate()+1);return d.toISOString().slice(0,10)}
+function planDagNaam(datum){const t=today();if(datum===t)return "Vandaag";const m=new Date();m.setDate(m.getDate()+1);if(datum===m.toISOString().slice(0,10))return "Morgen";
+  const d=parseDate(datum);return d?DAGEN[d.getDay()].replace(/^./,c=>c.toUpperCase())+" "+d.getDate()+" "+MAANDEN[d.getMonth()]:datum}
+function planningHtml(){
+  if(!planDraft)planDraft=planLeeg();const P=planDraft,t=today();
+  const rijen=planning.slice().sort((a,b)=>(a.datum||"").localeCompare(b.datum||"")||(a.aangemaakt||0)-(b.aangemaakt||0));
+  const achter=rijen.filter(r=>r.datum<t&&!r.klaar),komend=rijen.filter(r=>r.datum>=t),oud=rijen.filter(r=>r.datum<t&&r.klaar);
+  const groep={};komend.forEach(r=>{(groep[r.datum]=groep[r.datum]||[]).push(r)});
+  const item=r=>`<li class="plan-item${r.klaar?" klaar":""}${planEdit===r.id?" bewerk":""}">
+      <button type="button" class="plan-vink" data-pk="${esc(r.id)}" aria-label="${r.klaar?"Markeer als niet klaar":"Markeer als klaar"}" aria-pressed="${!!r.klaar}">${r.klaar?"✓":""}</button>
+      <button type="button" class="plan-tekst" data-pe="${esc(r.id)}">${lakBadge(r.lak)} <b>${esc(r.tekst||"(geen omschrijving)")}</b>${r.aantal?` <span class="plan-aantal">${esc(r.aantal)}</span>`:""}${r.opmerking?`<small>${esc(r.opmerking)}</small>`:""}</button>
+      <button type="button" class="plan-weg" data-pd="${esc(r.id)}" aria-label="Verwijderen">×</button></li>`;
+  return `<section class="tegel t-breed t-planning"><h3>Planning <span class="tegel-sub">wat we de komende periode gaan lakken</span></h3>
+    <div class="plan-form">
+      <div class="field"><label for="planDatum">Datum</label><div class="inp"><input type="date" id="planDatum" value="${esc(P.datum)}"></div></div>
+      <div class="field"><label>Lak</label>${lakKeuze(P.lak,"plak")}</div>
+      <div class="field plan-wat"><label for="planTekst">Wat gaan we lakken?</label><div class="inp"><input id="planTekst" value="${esc(P.tekst)}" placeholder="Bijv. order 4512, binnendeuren glad" autocomplete="off"></div></div>
+      <div class="field plan-n"><label for="planAantal">Aantal</label><div class="inp"><input id="planAantal" value="${esc(P.aantal)}" placeholder="Bijv. 120 deuren" autocomplete="off"></div></div>
+      <div class="field plan-wat"><label for="planOpm">Opmerking</label><div class="inp"><input id="planOpm" value="${esc(P.opmerking)}" placeholder="Optioneel" autocomplete="off"></div></div>
+      <div class="plan-knoppen"><button type="button" class="btn primary" id="planOk">${planEdit?"Wijziging opslaan":"+ Toevoegen"}</button>${planEdit?`<button type="button" class="btn" id="planAnnuleer">Annuleren</button>`:""}<span class="err" id="planErr" hidden></span></div>
+    </div>
+    ${achter.length?`<div class="plan-dag achter">Nog niet afgerond</div><ul class="plan-lijst">${achter.map(item).join("")}</ul>`:""}
+    ${Object.keys(groep).length?Object.keys(groep).map(d=>`<div class="plan-dag${d===t?" vandaag":""}">${planDagNaam(d)}</div><ul class="plan-lijst">${groep[d].map(item).join("")}</ul>`).join(""):`<p class="tegel-leeg">Nog niets gepland. Vul hierboven in wat er gelakt gaat worden.</p>`}
+    ${oud.length?`<button type="button" class="linkbtn" id="planOud">${planToonOud?"Verberg":"Toon"} afgeronde dagen (${oud.length})</button>${planToonOud?`<ul class="plan-lijst oud">${oud.slice().reverse().map(r=>item(r).replace('<b>',`<span class="plan-datum">${esc(shortDate(r.datum))}</span> <b>`)).join("")}</ul>`:""}`:""}
+  </section>`}
+function bindPlanning(el){const P=planDraft;
+  const zet=(id,k)=>{const x=el.querySelector("#"+id);if(x)x.oninput=x.onchange=()=>{P[k]=x.value}};
+  zet("planDatum","datum");zet("planTekst","tekst");zet("planAantal","aantal");zet("planOpm","opmerking");
+  const pd=el.querySelector("#planDatum");if(pd)pd.onclick=()=>{try{pd.showPicker()}catch(e){}};
+  el.querySelectorAll("[data-plak]").forEach(b=>b.onclick=()=>{P.lak=P.lak===b.dataset.plak?null:b.dataset.plak;el.querySelectorAll("[data-plak]").forEach(x=>x.setAttribute("aria-checked",String(x.dataset.plak===P.lak)))});
+  const ok=el.querySelector("#planOk");if(ok)ok.onclick=async()=>{const er=el.querySelector("#planErr");
+    if(!P.datum||!P.tekst.trim()){er.hidden=false;er.textContent="Vul een datum en wat er gelakt wordt in.";return}
+    ok.disabled=true;const id=planEdit||DOC_ID("plan_");const oud=planning.find(x=>x.id===id);
+    const rec={datum:P.datum,lak:P.lak||null,tekst:P.tekst.trim(),aantal:(P.aantal||"").trim(),opmerking:(P.opmerking||"").trim(),klaar:oud?!!oud.klaar:false,aangemaakt:(oud&&oud.aangemaakt)||Date.now(),bijgewerkt:Date.now(),door:(firebase.auth().currentUser||{}).email||""};
+    try{await db.collection("instellingen").doc(id).set(rec);planning=planning.filter(x=>x.id!==id).concat([{id,...rec}]);
+      const vorigeDatum=P.datum,vorigeLak=P.lak;planEdit=null;planDraft=planLeeg();planDraft.datum=vorigeDatum;planDraft.lak=vorigeLak;renderStart()}
+    catch(e){ok.disabled=false;er.hidden=false;er.textContent=saveErr(e)}};
+  const an=el.querySelector("#planAnnuleer");if(an)an.onclick=()=>{planEdit=null;planDraft=planLeeg();renderStart()};
+  el.querySelectorAll("[data-pe]").forEach(b=>b.onclick=()=>{const r=planning.find(x=>x.id===b.dataset.pe);if(!r)return;planEdit=r.id;
+    planDraft={datum:r.datum,lak:r.lak||null,tekst:r.tekst||"",aantal:r.aantal||"",opmerking:r.opmerking||""};renderStart();
+    const f=$("#planTekst");if(f){f.focus();f.scrollIntoView({behavior:"smooth",block:"center"})}});
+  el.querySelectorAll("[data-pk]").forEach(b=>b.onclick=async()=>{const r=planning.find(x=>x.id===b.dataset.pk);if(!r)return;r.klaar=!r.klaar;
+    try{await db.collection("instellingen").doc(r.id).update({klaar:r.klaar,bijgewerkt:Date.now()})}catch(e){}renderStart()});
+  el.querySelectorAll("[data-pd]").forEach(b=>b.onclick=async()=>{const r=planning.find(x=>x.id===b.dataset.pd);if(!r)return;
+    if(b.dataset.zeker!=="1"){b.dataset.zeker="1";b.textContent="Zeker?";b.classList.add("zeker");setTimeout(()=>{if(b.isConnected){b.dataset.zeker="";b.textContent="×";b.classList.remove("zeker")}},3000);return}
+    try{await db.collection("instellingen").doc(r.id).delete();planning=planning.filter(x=>x.id!==r.id)}catch(e){}if(planEdit===r.id){planEdit=null;planDraft=planLeeg()}renderStart()});
+  const ou=el.querySelector("#planOud");if(ou)ou.onclick=()=>{planToonOud=!planToonOud;renderStart()};
+}
 // ===== OVERZICHT (startscherm) =====
 let grafLak=null,grafWals=null,grafVeld="stand";
 function renderStart(){
@@ -1240,6 +1312,7 @@ function renderStart(){
     .map(d=>{const x=(d.walsen||[]).find(w=>w.id===grafWals);const v=x?(grafVeld==="stand"?(x.stand??null):(x.hoogte??null)):null;return v==null?null:{x:shortDate(d.datum),y:v,kleur:d.tevredenheid>=4?"#22a447":d.tevredenheid!=null&&d.tevredenheid<=2?"#d64545":"var(--accent)"}}).filter(Boolean).slice(-30);
   const trend=reeks.length>1?Math.round((reeks[reeks.length-1].y-reeks[0].y)*100)/100:null;
   el.innerHTML=`<div class="dash">
+    ${planningHtml()}
     <section class="tegel t-vandaag"><h3>Vandaag</h3>
       ${vandaag.length?vandaag.map(d=>`<button type="button" class="dag-knop" data-dag="${esc(d.id)}">${lakBadge(d.lak)} <b>Lakdag ${d.lak==="zwart"?"zwart":d.lak==="wit"?"wit":""}</b><span>${d.tevredenheid!=null?d.tevredenheid+"/5":"bezig"} ›</span></button>`).join(""):`<p class="tegel-leeg">Nog geen lakdag vandaag.</p>`}
       <button type="button" class="btn primary" id="dashNieuw">+ Nieuwe lakdag</button>
@@ -1266,6 +1339,7 @@ function renderStart(){
     </section>
   </div>`;
   el.querySelectorAll(".telop[data-n]").forEach(x=>telOp(x,0,Number(x.dataset.n),true));
+  bindPlanning(el);
   el.querySelectorAll("[data-dag]").forEach(b=>b.onclick=()=>{setTab("walsen");if(tab==="walsen")select(b.dataset.dag)});
   $("#dashNieuw").onclick=()=>{setTab("walsen");if(tab==="walsen")startChecklist()};
   el.querySelectorAll("[data-ga]").forEach(b=>b.onclick=()=>{const k=b.dataset.ga;if(b.dataset.f){if(k==="storingen")stStatus="open";else paStatus="open"}setTab(k)});
@@ -2803,8 +2877,9 @@ async function start(user){
     lampRows=docs.filter(d=>d.id.startsWith("lamp_")); regSheets=docs.filter(d=>d.id.startsWith("reg_"));
     storingen=docs.filter(d=>d.id.startsWith("stor_")); const tdd=docs.find(d=>d.id==="tdmail"); tdMail=(tdd&&tdd.email)||""; if(tab==="storingen")renderTdMail(); matRows=docs.filter(d=>d.id.startsWith("mat_")); matLoaded=true;
     if(tab==="materialen"){renderMatList();if(!matDirty&&!matSaving){if(matDraft&&matDraft.id){const r=matRows.find(x=>x.id===matDraft.id);matDraft=r?matFrom(r):null;if(!r)matSel=null}renderMatSheet()}}
+    planning=docs.filter(d=>d.id.startsWith("plan_"));
     punten=docs.filter(d=>d.id.startsWith("pva_")); const pam=docs.find(d=>d.id==="pamail"); paMail=(pam&&pam.email!=null)?pam.email:"peter@ideaal.nl"; paLoaded=true;
-    if(tab==="start")renderStart();
+    if(tab==="start"&&!(document.activeElement&&document.activeElement.closest&&document.activeElement.closest("#startView")))renderStart();
     if(tab==="punten"){if(!$("#paLijst"))renderPunten();else{renderPaLijst();renderPaMail()}}
     lampLoaded=true; regLoaded=true; stLoaded=true;
     if(tab==="storingen"){if(!$("#stLijst"))renderStoringen();else renderStLijst()}
