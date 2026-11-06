@@ -353,6 +353,36 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 @media (max-width:640px){.st-form .fgrid{grid-template-columns:minmax(0,1fr)}}
 .st-form .inp input{font-family:var(--f-body);font-size:16px}
 .st-form textarea{min-height:90px}
+/* krastest */
+.kr-sheet .sheet-head{flex-wrap:wrap;gap:10px}
+.kr-acties{display:flex;gap:8px;flex-wrap:wrap}
+.kr-acties a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
+.kr-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (max-width:700px){.kr-grid{grid-template-columns:minmax(0,1fr)}}
+.kr-score{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.kr-score button{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--fg)}
+.kr-score button b{font-size:22px;line-height:1}
+.kr-score button span{font-size:11px;color:var(--muted)}
+.kr-score button[aria-checked="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.kr-score button[aria-checked="true"] span{color:#fff}
+.kr-jn{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-width:420px}
+.kr-jn button{height:52px;border-radius:10px;font-size:18px;font-weight:700;border:2px solid var(--line);background:var(--panel);color:var(--fg)}
+.kr-jn .kj-ja{border-color:#2e9d4f;color:#1f7a3a}
+.kr-jn .kj-nee{border-color:#d0383b;color:#b3262a}
+.kr-jn .kj-ja[aria-pressed="true"]{background:#2e9d4f;color:#fff}
+.kr-jn .kj-nee[aria-pressed="true"]{background:#d0383b;color:#fff}
+.kr-sig{width:100%;height:110px;background:#fff;border:1px dashed var(--line);border-radius:8px;touch-action:none;display:block}
+.kr-lijst{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.kr-lijst button{width:100%;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.2fr);gap:8px;align-items:center;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:10px 12px;color:var(--fg)}
+.kr-lijst button[aria-current="true"]{border-color:var(--accent)}
+@media (max-width:620px){.kr-lijst button{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.kr-g{font-weight:700;border-radius:999px;padding:3px 10px;justify-self:start;font-size:13px}
+.kr-g.ja{background:#e3f4e8;color:#1f7a3a}
+.kr-g.nee{background:#fbe5e5;color:#b3262a}
+.kr-p{display:flex;align-items:center;gap:8px;min-width:0}
+.kr-p img{height:32px;max-width:100px;object-fit:contain;background:#fff;border-radius:4px}
+.kr-tip{margin-top:10px;padding:10px 12px;border-radius:10px;background:#fbe5e5;color:#7a1c1e;font-size:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.kr-doc .row{display:flex;gap:8px;flex-wrap:wrap}
 /* materialen */
 .mat-kies{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:100%;max-width:560px;margin:6px 0}
 @media (max-width:520px){.mat-kies{grid-template-columns:minmax(0,1fr)}}
@@ -689,6 +719,7 @@ input.landt{animation:landt .7s cubic-bezier(.2,1.4,.4,1) both}
         <button type="button" data-tab="walsen" aria-selected="false">Walsen</button>
         <button type="button" data-tab="lampen" aria-selected="false">Lampen</button>
         <button type="button" data-tab="registratie" aria-selected="false">Registratieblad</button>
+        <button type="button" data-tab="krastest" aria-selected="false">Krastest</button>
         <button type="button" data-tab="materialen" aria-selected="false">Materialen</button>
         <button type="button" data-tab="storingen" aria-selected="false">Storingen</button>
         <button type="button" data-tab="punten" aria-selected="false">Punten van aandacht</button>
@@ -730,6 +761,7 @@ input.landt{animation:landt .7s cubic-bezier(.2,1.4,.4,1) both}
   </div>
 
   <section id="lampenView" hidden></section>
+  <section id="krasView" hidden></section>
 
   <section id="storView" hidden></section>
   <section id="puntView" hidden></section>
@@ -864,7 +896,7 @@ const SCHRIK_SVG=`<svg class="schrik" viewBox="0 0 120 140" aria-hidden="true">
     <path class="sk-lijf" d="M60 70 L60 108 M60 108 L46 134 M60 108 L74 134"/>
     <path class="sk-arm sk-arm-l" d="M60 80 L36 64 L28 46"/><path class="sk-arm sk-arm-r" d="M60 80 L84 64 L92 46"/>
   </g></svg>`;
-const SAVERS={walsen:()=>save(),lampen:()=>saveLampen(),registratie:()=>saveReg(),materialen:()=>saveMat(),storingen:()=>saveStoring(),punten:()=>savePunt(),verslag:()=>saveVerslag()};
+const SAVERS={krastest:()=>saveKras(),walsen:()=>save(),lampen:()=>saveLampen(),registratie:()=>saveReg(),materialen:()=>saveMat(),storingen:()=>saveStoring(),punten:()=>savePunt(),verslag:()=>saveVerslag()};
 // "Good job"-afbeelding na elke geslaagde opslag
 function toonOpgeslagen(){
   const oud=document.querySelector(".goedjob");if(oud)oud.remove();
@@ -1583,9 +1615,10 @@ function renderAuth(){
 // ===================== TABBLADEN =====================
 let tab="start", tabArmed=false;
 function warn(msg){const n=$("#leaveWarn");if(msg){n.textContent=msg;n.hidden=false}else n.hidden=true}
-function tabDirty(t){return t==="start"?false:t==="walsen"?dirty:t==="lampen"?lampDirty:t==="storingen"?stDirty:t==="punten"?paDirty:t==="verslag"?vsDirty:t==="materialen"?matDirty:regDirty}
+function tabDirty(t){return t==="start"?false:t==="walsen"?dirty:t==="lampen"?lampDirty:t==="storingen"?stDirty:t==="punten"?paDirty:t==="verslag"?vsDirty:t==="materialen"?matDirty:t==="krastest"?krDirty:regDirty}
 function discardTab(t){
   if(t==="walsen"){dirty=false;mode="dag";if(draft&&!draft.id){draft=null;selectedId=null}else if(draft){const r=dagen.find(x=>x.id===draft.id);draft=r?draftFrom(r):null}}
+  if(t==="krastest"){krDirty=false;krDel=false;krErr="";krEdit=null}
   if(t==="lampen"){lampEdits={};lampNew=blankLampRows();lampDirty=false;lampDel=null}
   if(t==="storingen"){stEdit=null;stDirty=false;stDel=false;stErr=""}
   if(t==="punten"){paEdit=null;paDirty=false;paDel=false;paErr=""}
@@ -1601,11 +1634,12 @@ function setTab(t){
 function renderTabs(){
   document.querySelectorAll("#tabs [data-tab]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===tab)));
   if(typeof zetPil==="function")requestAnimationFrame(zetPil);
-  $("#startView").hidden=tab!=="start"; $("#appLayout").hidden=tab!=="walsen"; $("#lampenView").hidden=tab!=="lampen"; $("#regLayout").hidden=tab!=="registratie"; $("#storView").hidden=tab!=="storingen"; $("#puntView").hidden=tab!=="punten"; $("#verslagView").hidden=tab!=="verslag"; $("#matLayout").hidden=tab!=="materialen"; $("#matActions").hidden=tab!=="materialen";
+  $("#startView").hidden=tab!=="start"; $("#appLayout").hidden=tab!=="walsen"; $("#lampenView").hidden=tab!=="lampen"; $("#krasView").hidden=tab!=="krastest"; $("#regLayout").hidden=tab!=="registratie"; $("#storView").hidden=tab!=="storingen"; $("#puntView").hidden=tab!=="punten"; $("#verslagView").hidden=tab!=="verslag"; $("#matLayout").hidden=tab!=="materialen"; $("#matActions").hidden=tab!=="materialen";
   $("#walsActions").hidden=tab!=="walsen"; $("#regActions").hidden=tab!=="registratie";
-  {const v=$({start:"#startView",walsen:"#appLayout",lampen:"#lampenView",registratie:"#regLayout",storingen:"#storView",punten:"#puntView",verslag:"#verslagView",materialen:"#matLayout"}[tab]);if(v){v.classList.remove("anim-in");void v.offsetWidth;v.classList.add("anim-in");clearTimeout(v._at);v._at=setTimeout(()=>v.classList.remove("anim-in"),900)}}
+  {const v=$({start:"#startView",walsen:"#appLayout",lampen:"#lampenView",krastest:"#krasView",registratie:"#regLayout",storingen:"#storView",punten:"#puntView",verslag:"#verslagView",materialen:"#matLayout"}[tab]);if(v){v.classList.remove("anim-in");void v.offsetWidth;v.classList.add("anim-in");clearTimeout(v._at);v._at=setTimeout(()=>v.classList.remove("anim-in"),900)}}
   if(tab==="walsen")render();
   if(tab==="lampen")renderLampen();
+  if(tab==="krastest")renderKras();
   if(tab==="registratie"){renderRegList();renderRegSheet()}
   if(tab==="storingen")renderStoringen();
   if(tab==="punten")renderPunten();
@@ -2841,6 +2875,90 @@ function renderPaMail(){const el=$("#paMail");if(!el)return;
     $("#paOk").onclick=async()=>{const v=$("#paInp").value.trim();if(v&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){$("#paInp").style.outline="2px solid var(--danger)";return}
       try{await db.collection("instellingen").doc("pamail").set({email:v,bijgewerkt:Date.now()});paMail=v}catch(e){}renderPaMail()}}}
 
+// ===================== KRASTEST =====================
+const KR_SCORE=[[5,"Perfect","Randen van de sneden glad, niets losgekomen (SKH klasse 0)."],[4,"Goed","Alleen kleine stukjes los op de kruispunten, minder dan 2% (SKH klasse 1)."],[3,"Voldoende","Lak los langs de sneden, 2 tot 5% (SKH klasse 2)."],[2,"Matig","Duidelijk los langs de sneden, 5 tot 15% (SKH klasse 3). Na 4 weken opnieuw testen."],[1,"Slecht","Veel lak los, meer dan 15% (SKH klasse 4 of 5). Na 4 weken opnieuw testen."]];
+let krasRows=[],krLoaded=false,krEdit=null,krDirty=false,krSaving=false,krSaved=false,krErr="",krDel=false,krIsAdmin=false;
+function krBlank(){const ld=dagen.find(d=>d.datum===today());return {id:null,datum:today(),lak:(ld&&ld.lak)||null,score:null,geslaagd:null,gHand:false,initialen:"",handtekening:""}}
+function krFrom(r){return {id:r.id,datum:r.datum||"",lak:r.lak||null,score:r.score??null,geslaagd:r.geslaagd??null,gHand:r.geslaagd!=null,initialen:r.initialen||"",handtekening:r.handtekening||""}}
+function krSorted(){return krasRows.slice().sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||(b.aangemaakt||0)-(a.aangemaakt||0))}
+const krScoreTxt=s=>{const x=KR_SCORE.find(k=>k[0]===s);return x?`${x[0]} · ${x[1]}`:""};
+function krOpen(id){if(krDirty)return vraagOpslaan("krastest",()=>krOpen(id));const x=krasRows.find(r=>r.id===id);krEdit=x?krFrom(x):krBlank();krDel=false;krErr="";krSaved=false;renderKras();if(innerWidth<900)setTimeout(()=>{const f=$("#krForm");if(f)f.scrollIntoView({behavior:"smooth",block:"start"})},30)}
+function renderKras(){
+  const el=$("#krasView");if(!krEdit)krEdit=krBlank();const r=krEdit,isNew=!r.id,rows=krSorted();
+  el.innerHTML=`<div class="sheet kr-sheet">
+  <div class="sheet-head"><div><div class="title">Krastest</div><div class="sub">${krLoaded?rows.length+" test"+(rows.length===1?"":"s"):"Laden…"} ${statusHtml(krSaving,krDirty,krSaved)}</div></div>
+    <div class="kr-acties"><button class="btn" type="button" id="krWerk">Werkwijze</button><a class="btn" href="krastest-formulier.pdf" download="Krastest formulier.pdf">Formulier printen</a></div></div>
+  <div class="section" id="krForm"><h3>${isNew?"Nieuwe krastest":"Krastest van "+esc(shortDate(r.datum))+" wijzigen"}</h3>
+    <div class="kr-grid">
+      <div class="field"><label for="kr-datum">Datum</label><div class="inp"><input id="kr-datum" type="date" value="${esc(r.datum)}" style="font-size:16px"></div></div>
+      <div class="field lak-veld"><label>Lak</label>${lakKeuze(r.lak,"klak")}</div>
+    </div>
+    <div class="field"><label>Score <span class="hint" style="font-family:var(--f-body)">1 is slecht, 5 is perfect</span></label>
+      <div class="kr-score" role="radiogroup" aria-label="Score">${KR_SCORE.slice().reverse().map(([n,t])=>`<button type="button" role="radio" aria-checked="${r.score===n}" data-ks="${n}"><b>${n}</b><span>${t}</span></button>`).join("")}</div>
+      ${r.score?`<span class="hint" style="font-family:var(--f-body)">${esc(KR_SCORE.find(k=>k[0]===r.score)[2])}</span>`:""}</div>
+    <div class="field"><label>Krastest geslaagd?</label><div class="kr-jn"><button type="button" class="kj-ja" aria-pressed="${r.geslaagd===true}" data-kg="ja">Ja</button><button type="button" class="kj-nee" aria-pressed="${r.geslaagd===false}" data-kg="nee">Nee</button></div>${r.geslaagd===false?`<div class="kr-tip"><b>Test niet geslaagd?</b> Zoek de oorzaak op in de werkwijze: zijn de omstandigheden goed, klopt de tape en is de snede goed gezet? Bij score 1 of 2 na 4 weken opnieuw testen. <button type="button" class="btn" id="krTipDoc">Werkwijze openen</button></div>`:""}</div>
+    <div class="kr-grid">
+      <div class="field"><label for="kr-ini">Paraaf: initialen</label><div class="inp"><input id="kr-ini" autocomplete="off" maxlength="6" value="${esc(r.initialen)}" placeholder="bijv. J.J." style="text-transform:uppercase"></div></div>
+      <div class="field"><label>Paraaf: handtekening <button type="button" class="linkbtn" id="kr-sig-wis">Wissen</button></label><canvas id="kr-sig" class="kr-sig" width="600" height="180" aria-label="Zet hier je handtekening met je vinger"></canvas></div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="grp">${isNew?"":krDel?`<span class="confirm">Deze krastest verwijderen? <button class="btn danger-solid" type="button" id="krDelJa">Ja</button><button class="btn" type="button" id="krDelNee">Annuleren</button></span>`:`<button class="btn danger" type="button" id="krDelBtn">Verwijderen</button>`}${!isNew||krDirty?` <button class="btn" type="button" id="krAnn">${isNew?"Leegmaken":"Terug naar nieuw"}</button>`:""}</div>
+    <div class="grp">${krErr?`<span class="err">${esc(krErr)}</span>`:""}<button class="btn primary" type="button" id="krSave" ${krSaving||!krDirty?"disabled":""}>Opslaan</button></div>
+  </div>
+  <div class="section"><h3>Uitslagen</h3><ul class="kr-lijst">${rows.length?rows.map(x=>`<li><button type="button" data-kid="${esc(x.id)}" aria-current="${x.id===r.id}">
+    <span class="kr-d"><b>${esc(shortDate(x.datum))}</b> ${lakBadge(x.lak)}</span>
+    <span class="kr-s">${esc(krScoreTxt(x.score)||"–")}</span>
+    <span class="kr-g ${x.geslaagd===true?"ja":x.geslaagd===false?"nee":""}">${x.geslaagd===true?"Geslaagd":x.geslaagd===false?"Niet geslaagd":"–"}</span>
+    <span class="kr-p"><b>${esc(x.initialen||"")}</b>${x.handtekening?`<img src="${x.handtekening}" alt="handtekening">`:""}</span></button></li>`).join(""):`<li class="empty">${krLoaded?"Nog geen krastesten ingevuld.":"Laden…"}</li>`}</ul></div>
+  </div>`;
+  const touch=()=>{krDirty=true;krSaved=false;krErr="";const s=$("#krSave");if(s)s.disabled=false;const sub=el.querySelector(".sheet-head .sub");if(sub)sub.innerHTML=sub.innerHTML.replace(/<span class="status[^"]*">[^<]*<\/span>/,"")+statusHtml(false,true,false)};
+  const dt=$("#kr-datum");dt.onclick=()=>{try{dt.showPicker()}catch(e){}};dt.onchange=()=>{r.datum=dt.value;touch()};
+  el.querySelectorAll("[data-klak]").forEach(b=>b.onclick=()=>{r.lak=b.dataset.klak;krDirty=true;krSaved=false;renderKras()});
+  el.querySelectorAll("[data-ks]").forEach(b=>b.onclick=()=>{r.score=+b.dataset.ks;if(!r.gHand)r.geslaagd=r.score>=3;krDirty=true;krSaved=false;renderKras()});
+  el.querySelectorAll("[data-kg]").forEach(b=>b.onclick=()=>{r.geslaagd=b.dataset.kg==="ja";r.gHand=true;krDirty=true;krSaved=false;renderKras()});
+  $("#kr-ini").oninput=e=>{r.initialen=e.target.value.toUpperCase();touch()};
+  const cv=$("#kr-sig"),cx=cv.getContext("2d");cx.lineWidth=4;cx.lineCap="round";cx.lineJoin="round";cx.strokeStyle="#0b1f44";
+  if(r.handtekening){const im=new Image();im.onload=()=>cx.drawImage(im,0,0,cv.width,cv.height);im.src=r.handtekening}
+  let teken=false;const pos=e=>{const b=cv.getBoundingClientRect();return [(e.clientX-b.left)*cv.width/b.width,(e.clientY-b.top)*cv.height/b.height]};
+  cv.onpointerdown=e=>{teken=true;try{cv.setPointerCapture(e.pointerId)}catch(x){}const [x,y]=pos(e);cx.beginPath();cx.moveTo(x,y);cx.lineTo(x+0.1,y);cx.stroke();e.preventDefault()};
+  cv.onpointermove=e=>{if(!teken)return;const [x,y]=pos(e);cx.lineTo(x,y);cx.stroke();e.preventDefault()};
+  cv.onpointerup=cv.onpointercancel=()=>{if(!teken)return;teken=false;r.handtekening=cv.toDataURL("image/png");touch()};
+  $("#kr-sig-wis").onclick=()=>{cx.clearRect(0,0,cv.width,cv.height);r.handtekening="";touch()};
+  $("#krSave").onclick=saveKras;
+  const an=$("#krAnn");if(an)an.onclick=()=>{krEdit=krBlank();krDirty=false;krDel=false;krErr="";krSaved=false;renderKras()};
+  const db1=$("#krDelBtn");if(db1)db1.onclick=()=>{krDel=true;renderKras()};
+  const dn=$("#krDelNee");if(dn)dn.onclick=()=>{krDel=false;renderKras()};
+  const dy=$("#krDelJa");if(dy)dy.onclick=async()=>{try{await db.collection("instellingen").doc(r.id).delete();krasRows=krasRows.filter(x=>x.id!==r.id);krEdit=krBlank();krDirty=false}catch(e){krErr="Verwijderen mislukt."}krDel=false;renderKras()};
+  el.querySelectorAll("[data-kid]").forEach(b=>b.onclick=()=>krOpen(b.dataset.kid));
+  $("#krWerk").onclick=krWerkwijze;
+  const tip=$("#krTipDoc");if(tip)tip.onclick=krWerkwijze;
+}
+async function saveKras(){const r=krEdit;
+  krErr=!r.datum?"Vul een datum in.":!r.score?"Kies een score.":r.geslaagd==null?"Kies of de krastest geslaagd is.":!r.initialen.trim()?"Vul je initialen in.":!r.handtekening?"Zet je handtekening.":"";
+  if(krErr)return renderKras();
+  krSaving=true;renderKras();
+  try{const oud=r.id&&krasRows.find(x=>x.id===r.id);
+    const rec={datum:r.datum,lak:r.lak||null,score:r.score,geslaagd:r.geslaagd,initialen:r.initialen.trim().toUpperCase(),handtekening:r.handtekening,aangemaakt:(oud&&oud.aangemaakt)||Date.now(),bijgewerkt:Date.now()};
+    const id=r.id||DOC_ID("kras_");await db.collection("instellingen").doc(id).set(rec);
+    krasRows=krasRows.filter(x=>x.id!==id).concat([{id,...rec}]);krDirty=false;krSaved=true;krEdit=krBlank()}
+  catch(e){krErr=saveErr(e)}
+  krSaving=false;renderKras()}
+// werkinstructie: staat in de database (alleen na inloggen), niet in de openbare repo
+async function krWerkwijze(){const m=$("#modal");const sluit=()=>{m.hidden=true;m.innerHTML=""};
+  m.innerHTML=`<div class="modal-box kr-doc" role="dialog" aria-modal="true" aria-labelledby="krdT"><h2 id="krdT">Werkwijze krastest</h2><p id="krdTxt">Laden…</p><div class="row" id="krdKnop"></div>
+    ${krIsAdmin?`<label class="linkbtn" style="cursor:pointer">Document uploaden of vervangen (PDF)<input type="file" id="krdUp" accept="application/pdf" hidden></label>`:""}
+    <div class="row"><button class="btn" type="button" id="krdSluit">Sluiten</button></div></div>`;
+  m.hidden=false;m.onclick=e=>{if(e.target===m)sluit()};$("#krdSluit").onclick=sluit;
+  let d=null;try{const s=await db.collection("instellingen").doc("doc_krastest").get();d=s.exists?s.data():null}catch(e){}
+  const t=$("#krdTxt"),k=$("#krdKnop");if(!t)return;
+  if(d&&d.data){t.textContent=`${d.naam||"Werkinstructie krastest"} · bijgewerkt ${d.bijgewerkt?shortDate(new Date(d.bijgewerkt).toISOString().slice(0,10)):""}`;
+    const b=await (await fetch(d.data)).blob();const url=URL.createObjectURL(b);
+    k.innerHTML=`<a class="btn primary" href="${url}" target="_blank" rel="noopener">Openen</a><a class="btn" href="${url}" download="${esc(d.naam||"Werkinstructie krastest.pdf")}">Downloaden</a>`}
+  else t.textContent=krIsAdmin?"Er is nog geen werkinstructie geüpload. Upload hieronder de PDF.":"Er is nog geen werkinstructie geüpload. Vraag de beheerder.";
+  const up=$("#krdUp");if(up)up.onchange=()=>{const f=up.files[0];if(!f)return;if(f.size>950000){t.textContent="Het bestand is te groot (maximaal 0,9 MB).";return}
+    const fr=new FileReader();fr.onload=async()=>{t.textContent="Uploaden…";try{await db.collection("instellingen").doc("doc_krastest").set({naam:f.name,data:fr.result,bijgewerkt:Date.now()});krWerkwijze()}catch(e){t.textContent=saveErr(e)}};fr.readAsDataURL(f)};
+}
 // ===================== MATERIALEN =====================
 const MATS=[
   {k:"primer",naam:"Primer",sub:"blik 25 kg",eenheid:"blik",meer:"blikken",stap:0.5,groep:"lak"},
@@ -3051,7 +3169,7 @@ async function start(user){
     try{const m=await db.collection("leden").doc(email).get(); if(!m.exists){authView="noaccess";return renderAuth()}}
     catch(e){authView="noaccess";return renderAuth()}
   }
-  showOnly("app"); $("#btnUsers").hidden=!isAdmin;
+  showOnly("app"); $("#btnUsers").hidden=!isAdmin; krIsAdmin=isAdmin;
   render();
   unsubs.push(db.doc("instellingen/walsen").onSnapshot(s=>{
     const sd=s.exists?s.data():{},lijst=a=>Array.isArray(a)?a.map(w=>({id:w.id,naam:w.naam})):null;
@@ -3069,7 +3187,7 @@ async function start(user){
   unsubs.push(db.collection("instellingen").where(firebase.firestore.FieldPath.documentId(),">=","g").onSnapshot(s=>{
     const docs=s.docs.map(d=>({id:d.id,...d.data()}));
     lampRows=docs.filter(d=>d.id.startsWith("lamp_")); regSheets=docs.filter(d=>d.id.startsWith("reg_"));
-    storingen=docs.filter(d=>d.id.startsWith("stor_")); const tdd=docs.find(d=>d.id==="tdmail"); tdMail=(tdd&&tdd.email)||""; if(tab==="storingen")renderTdMail(); matRows=docs.filter(d=>d.id.startsWith("mat_")); matLoaded=true;
+    storingen=docs.filter(d=>d.id.startsWith("stor_")); const tdd=docs.find(d=>d.id==="tdmail"); tdMail=(tdd&&tdd.email)||""; if(tab==="storingen")renderTdMail(); matRows=docs.filter(d=>d.id.startsWith("mat_")); matLoaded=true; krasRows=docs.filter(d=>d.id.startsWith("kras_")); krLoaded=true; if(tab==="krastest"&&!krDirty&&!krSaving&&!krDel)renderKras();
     if(tab==="materialen"){renderMatList();if(!matDirty&&!matSaving){if(matDraft&&matDraft.id){const r=matRows.find(x=>x.id===matDraft.id);matDraft=r?matFrom(r):null;if(!r)matSel=null}renderMatSheet()}}
     planning=docs.filter(d=>d.id.startsWith("plan_"));
     verslagen=docs.filter(d=>d.id.startsWith("vsl_"));vsLoaded=true;{const vm=docs.find(d=>d.id==="vsmail");vsMail=(vm&&vm.email!=null)?vm.email:"peter@ideaal.nl"}
@@ -3091,8 +3209,8 @@ $("#btnNew").onclick=()=>startChecklist();
 $("#btnSetup").onclick=openSetup;
 $("#btnExport").onclick=exportPdf;
 // ===== frisse look: tab-iconen, schuivende pil, groet, lak-thema =====
-const TAB_ICON={start:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',walsen:'<circle cx="7" cy="12" r="4"/><circle cx="17" cy="12" r="4"/><path d="M3 18h18"/>',lampen:'<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/>',registratie:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v3h6V3M9 11h6M9 15h4"/>',materialen:'<path d="M5 7h14v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zM4 7h16M9 3h6v4H9z"/>',storingen:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>',punten:'<path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17.5v.5"/>',verslag:'<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 11h7M9 15h7M9 19h4"/>'};
-const TAB_KORT={start:"Start",verslag:"Verslag",registratie:"Registratie",materialen:"Materiaal",punten:"Punten",storingen:"Storingen"};
+const TAB_ICON={krastest:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 17 14 6M10 18l7-11"/><path d="M7 7l10 10"/>',start:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',walsen:'<circle cx="7" cy="12" r="4"/><circle cx="17" cy="12" r="4"/><path d="M3 18h18"/>',lampen:'<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/>',registratie:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v3h6V3M9 11h6M9 15h4"/>',materialen:'<path d="M5 7h14v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zM4 7h16M9 3h6v4H9z"/>',storingen:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>',punten:'<path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17.5v.5"/>',verslag:'<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 11h7M9 15h7M9 19h4"/>'};
+const TAB_KORT={krastest:"Kras",start:"Start",verslag:"Verslag",registratie:"Registratie",materialen:"Materiaal",punten:"Punten",storingen:"Storingen"};
 document.querySelectorAll("#tabs [data-tab]").forEach(b=>{const ic=TAB_ICON[b.dataset.tab],lang=b.textContent.trim(),kort=TAB_KORT[b.dataset.tab]||lang;
   b.innerHTML=`${ic?`<svg viewBox="0 0 24 24" aria-hidden="true">${ic}</svg>`:""}<span class="tl">${lang}</span><span class="tk">${kort}</span>`});
 const tabPil=document.createElement("span");tabPil.className="tab-pil";tabPil.setAttribute("aria-hidden","true");$("#tabs").prepend(tabPil);
@@ -3140,7 +3258,7 @@ setInterval(()=>{zetThema();zetPil()},700);
 
 $("#btnUsers").onclick=()=>{if(tab!=="walsen"){setTab("walsen");if(tab!=="walsen")return}mode="users";renderUsers($("#sheet"))};
 $("#btnLogout").onclick=()=>{dagen=[];walsen=[];draft=null;selectedId=null;dirty=false;mode="dag";
-  lampRows=[];lampEdits={};lampNew=blankLampRows();lampDirty=false;storingen=[];stEdit=null;stDirty=false;stQ="";punten=[];paEdit=null;paDirty=false;paQ="";verslagen=[];vsEdit=null;vsDirty=false;vsQ="";matRows=[];matDraft=null;matSel=null;matDirty=false;regSheets=[];regDraft=null;regSel=null;regDirty=false;tab="start";
+  lampRows=[];lampEdits={};lampNew=blankLampRows();lampDirty=false;storingen=[];stEdit=null;stDirty=false;stQ="";punten=[];paEdit=null;paDirty=false;paQ="";verslagen=[];vsEdit=null;vsDirty=false;vsQ="";matRows=[];matDraft=null;matSel=null;matDirty=false;krasRows=[];krEdit=null;krDirty=false;regSheets=[];regDraft=null;regSel=null;regDirty=false;tab="start";
   firebase.auth().signOut()};
 
 if(!window.firebase||!window.LAKSTRAAT_FIREBASE){$("#authBox").hidden=false;$("#authBox").innerHTML="<h2>Niet ingesteld</h2><p>De koppeling met de database ontbreekt (config.js).</p>"}
