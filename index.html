@@ -2094,10 +2094,10 @@ async function maakStoringPdf(s,fotos,T={kop:"Storingsmelding",l1:"Oorzaak",l2:"
   for(const l of wrap(s.titel||"(zonder titel)",18,true,CW)){ruimte(24);txt(l,M,y,18,true);y-=24}
   y-=6;
   const rij=(lab,val)=>{if(!val)return;const ls=wrap(val,11,false,CW-130);ruimte(16*ls.length);txt(lab,M,y,10,true,"0.34 0.39 0.48");ls.forEach((l,i)=>txt(l,M+130,y-i*15,11,false));y-=15*ls.length+5};
-  rij("Wals / onderdeel",s.onderdeel);rij("Datum",s.datum?longDate(s.datum):"");rij("Trefwoorden",s.trefwoorden);
+  rij(T.rij1||"Wals / onderdeel",s.onderdeel);rij("Datum",s.datum?longDate(s.datum):"");rij(T.rij3||"Trefwoorden",s.trefwoorden);
   const blok=(kop,tekst,kleur)=>{y-=10;ruimte(40);ops.push(`${kleur} rg ${M} ${y-4} 4 18 re f`);txt(kop.toUpperCase(),M+12,y,11,true,"0.34 0.39 0.48");y-=20;
     for(const l of wrap(tekst||"Niet ingevuld.",11.5,false,CW-12)){ruimte(16);txt(l,M+12,y,11.5,false);y-=16}};
-  blok(T.l1,s.oorzaak,"0.6 0.36 0");blok(T.l2,s.oplossing,"0.055 0.298 0.573");
+  blok(T.l1,s.oorzaak,"0.6 0.36 0");if(T.l2)blok(T.l2,s.oplossing,"0.055 0.298 0.573");
   // foto's
   const imgs=[];
   if(fotos.length){y-=14;ruimte(30);txt(`FOTO'S (${fotos.length})`,M,y,11,true,"0.34 0.39 0.48");y-=12;
@@ -2319,6 +2319,8 @@ async function verstuurStoring(id,knop,bevestigd){
 async function msHervat(){ // na aanmelding de storing alsnog versturen
   await msKlaar;msTerug=false;const id=lsG("ms_pending");
   if(msFout){if(tab!=="storingen")setTab("storingen");const el=$("#tdMail");if(el)el.insertAdjacentHTML("beforeend",`<span class="err" style="flex-basis:100%">Microsoft-aanmelding mislukt: ${esc(msFout)}</span>`);msFout="";return}
+  if(id&&id.startsWith("vsl_")){if(!vsLoaded)return;const s=verslagen.find(x=>x.id===id);lsS("ms_pending",null);if(!s)return;
+    if(tab!=="verslag")setTab("verslag");vsOpen=id;renderVsLijst();const b=document.querySelector(`#vsLijst [data-send="${CSS.escape(id)}"]`);if(b)verstuurVerslag(id,b,true);return}
   if(id&&id.startsWith("pva_")){if(!paLoaded)return;const s=punten.find(x=>x.id===id);lsS("ms_pending",null);if(!s)return;
     if(tab!=="punten")setTab("punten");paOpen=id;renderPaLijst();const b=document.querySelector(`[data-send="${CSS.escape(id)}"]`);if(b)verstuurPunt(id,b,true);return}
   if(!id||!stLoaded)return;const s=storingen.find(x=>x.id===id);lsS("ms_pending",null);if(!s)return;
@@ -2507,7 +2509,7 @@ function vsItemHtml(v,open){const n=(v.fotos||[]).length,kort=(v.tekst||"").repl
       <div class="vs-tekst">${esc(v.tekst||"").replace(/\n/g,"<br>")||"<span class='hint'>Geen tekst</span>"}</div>
       ${n?`<div class="st-fotos">${v.fotos.map((id,i)=>`<button type="button" class="st-thumb" data-foto="${esc(id)}" aria-label="Foto ${i+1} vergroten"><span class="hint">laden…</span></button>`).join("")}</div>`:""}
       <div class="st-meta" style="margin-top:8px">${v.door?`Geschreven door ${esc(v.door)}`:""}</div>
-      <div class="st-acties"><button class="btn" type="button" data-vedit="${esc(v.id)}">Bewerken</button></div>
+      <div class="st-acties"><button class="btn" type="button" data-vedit="${esc(v.id)}">Bewerken</button><button class="btn primary" type="button" data-send="${esc(v.id)}">Versturen</button></div>
     </div>`:""}
   </article>`}
 function renderVsLijst(){const box=$("#vsLijst");if(!box)return;const lijst=vsFilter();
@@ -2519,6 +2521,7 @@ function renderVsLijst(){const box=$("#vsLijst");if(!box)return;const lijst=vsFi
   box.querySelectorAll("[data-vopen]").forEach(b=>b.onclick=()=>{vsOpen=vsOpen===b.dataset.vopen?null:b.dataset.vopen;renderVsLijst()});
   box.querySelectorAll("[data-vedit]").forEach(b=>b.onclick=()=>{const go=()=>{const v=verslagen.find(x=>x.id===b.dataset.vedit);if(!v)return;
     vsEdit={...VS_LEEG(),...v,fotoIds:(v.fotos||[]).slice(),fotos:null};vsDirty=false;vsErr="";vsDel=false;renderVerslag();$("#vs-tekst")?.focus()};if(vsGuard(go))go()});
+  box.querySelectorAll("[data-send]").forEach(b=>b.onclick=()=>verstuurVerslag(b.dataset.send,b));
   vulThumbs(box);
 }
 function vsFormHtml(){if(!vsEdit)return "";const e=vsEdit,isNew=!e.id;
@@ -2574,12 +2577,73 @@ async function saveVerslag(){const e=vsEdit;if(!e)return;
 function renderVerslag(){const el=$("#verslagView");
   el.innerHTML=`<main class="sheet solo">
     <div class="sheet-head"><div><div class="title">Dagverslag</div><div class="sub">Het verslag van de dag, met foto's</div></div><button class="btn primary" type="button" id="vsNew">+ Nieuw verslag</button></div>
+    <div class="td-mail" id="vsMail"></div>
     <div class="st-zoek"><div class="inp"><span class="unit" aria-hidden="true">Zoek</span><input id="vsQ" type="search" placeholder="Zoek in verslagen, bijv. order 4512" value="${esc(vsQ)}" autocomplete="off" aria-label="Zoeken in dagverslagen"></div><span class="hint" id="vsCount"></span></div>
     <div id="vsFormHolder"></div><div class="st-lijst" id="vsLijst"></div></main>`;
-  renderVsForm();renderVsLijst();
+  renderVsForm();renderVsLijst();renderVsMail();
   const q=$("#vsQ");q.oninput=()=>{vsQ=q.value;renderVsLijst()};
   $("#vsNew").onclick=()=>{const go=()=>{vsEdit=VS_LEEG();vsDirty=false;vsErr="";vsDel=false;renderVsForm();$("#vs-tekst").focus()};if(!vsEdit||vsGuard(go))go()};
 }
+// ===== dagverslag versturen =====
+const VS_PDF={kop:"Dagverslag",l1:"Verslag",l2:null,rij1:"Lak",rij3:"Geschreven door"};
+let vsMail="peter@ideaal.nl";
+function vsPdfObj(v){return {titel:v.titel||("Dagverslag "+(v.datum?longDate(v.datum):"")),onderdeel:v.lak?LAKKEN[v.lak]:"",datum:v.datum,oorzaak:v.tekst,trefwoorden:v.door||""}}
+function vsOnderwerp(v){return "Dagverslag lakstraat "+(v.datum?longDate(v.datum):"")+(v.titel?": "+v.titel:"")}
+function vsTekst(v){const n=(v.fotos||[]).length;return [vsOnderwerp(v),v.lak?"Lak: "+LAKKEN[v.lak]:"","",v.tekst||"",
+  n?`\nIn de bijgevoegde PDF ${n===1?"staat 1 foto":"staan "+n+" foto's"}.`:"",v.door?"\nGeschreven door "+v.door:"","","Verstuurd vanuit het Lakstraat Logboek."].filter((x,i)=>x!==""||i===2||i===6).join("\n")}
+function vsBestand(v){return ("Dagverslag "+(v.datum||"")+" "+(v.titel||"")).replace(/[\\/:*?"<>|]+/g,"").replace(/\s+/g," ").trim().slice(0,80)+".pdf"}
+async function verstuurVerslag(id,knop,bevestigd){
+  const s=verslagen.find(x=>x.id===id);if(!s)return;
+  if(!vsMail||!navigator.onLine)return deelVerslag(id,knop);
+  const oud="Versturen";
+  if(!bevestigd){knop.textContent="Tik nog eens: mail naar "+vsMail;knop.onclick=()=>verstuurVerslag(id,knop,true);
+    setTimeout(()=>{if(knop.isConnected&&!knop.disabled){knop.textContent=oud;knop.onclick=()=>verstuurVerslag(id,knop)}},6000);return}
+  knop.disabled=true;knop.onclick=()=>verstuurVerslag(id,knop);
+  try{
+    let token=await msToken();
+    if(!token){knop.textContent="Aanmelden bij Microsoft…";return msLogin(id)}
+    knop.textContent="PDF maken…";
+    const fotos=await laadFotos(s.fotos||[]),bytes=await maakStoringPdf(vsPdfObj(s),fotos,VS_PDF);
+    if(bytes.length>3000000){knop.disabled=false;knop.textContent=oud;return deelVerslag(id,knop)} // te groot voor automatisch
+    knop.textContent="Verzenden…";
+    const res=await msVerstuur(s,bytes,vsBestand(s),vsOnderwerp(s),vsTekst(s),token,vsMail);
+    if(res==="login"){knop.textContent="Aanmelden bij Microsoft…";return msLogin(id)}
+    knop.textContent="Verstuurd ✓";renderVsMail();setTimeout(()=>{if(knop.isConnected){knop.textContent=oud;knop.disabled=false}},4000);
+  }catch(e){
+    knop.disabled=false;knop.textContent="Automatisch mislukt: tik om te delen";knop.title=String(e.message||e);
+    knop.onclick=()=>{knop.textContent=oud;knop.onclick=()=>verstuurVerslag(id,knop);deelVerslag(id,knop)};
+  }
+}
+async function deelVerslag(id,knop){
+  const s=verslagen.find(x=>x.id===id);if(!s)return;
+  const oud=knop.textContent;knop.disabled=true;knop.textContent="PDF maken…";
+  try{
+    const fotos=await laadFotos(s.fotos||[]);
+    const bytes=await maakStoringPdf(vsPdfObj(s),fotos,VS_PDF);
+    const file=new File([bytes],vsBestand(s),{type:"application/pdf"});
+    const tekst=vsTekst(s),onderwerp=vsOnderwerp(s);
+    const deel=async()=>{await navigator.share({files:[file],title:onderwerp,text:(vsMail?`Aan: ${vsMail}\n\n`:"")+tekst})};
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      try{await deel();knop.textContent=oud}
+      catch(e){if(e&&e.name==="AbortError"){knop.textContent=oud}
+        else{knop.textContent="Klaar: tik om te delen";knop.disabled=false;knop.onclick=async()=>{try{await deel()}catch(x){}knop.textContent=oud;knop.onclick=()=>verstuurVerslag(id,knop)};return}}
+    } else {
+      const a=document.createElement("a");a.href=URL.createObjectURL(file);a.download=file.name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);
+      location.href=`mailto:${encodeURIComponent(vsMail||"")}?subject=${encodeURIComponent(onderwerp)}&body=${encodeURIComponent(tekst+"\n\n(De PDF is gedownload. Voeg hem als bijlage toe.)")}`;
+      knop.textContent=oud;
+    }
+  }catch(e){knop.textContent="Versturen mislukt";setTimeout(()=>{knop.textContent=oud},3000)}
+  knop.disabled=false;
+}
+function renderVsMail(){const el=$("#vsMail");if(!el)return;
+  el.innerHTML=`<span>Versturen naar: <b>${vsMail?esc(vsMail):"nog geen e-mailadres"}</b></span><button type="button" class="linkbtn" id="vsMailEdit">${vsMail?"Wijzigen":"Instellen"}</button>`
+  if(vsMail)el.insertAdjacentHTML("beforeend",msTok()?`<span class="hint" style="font-family:var(--f-body)">Wordt automatisch verstuurd via jouw Outlook.</span><button type="button" class="linkbtn" id="vsMsUit">Afmelden Microsoft</button>`:`<span class="hint" style="font-family:var(--f-body)">Bij de eerste keer versturen meld je je één keer aan bij Microsoft.</span>`);
+  const mu=$("#vsMsUit");if(mu)mu.onclick=()=>{lsS("ms_tok",null);renderVsMail()};
+  $("#vsMailEdit").onclick=()=>{el.innerHTML=`<div class="inp" style="max-width:320px"><input id="vsInp" type="email" value="${esc(vsMail)}" placeholder="peter@ideaal.nl" style="font-family:var(--f-body);font-size:15px;padding:6px 10px" aria-label="E-mailadres dagverslag"></div><button type="button" class="btn primary" id="vsOk">Opslaan</button><button type="button" class="btn" id="vsNee">Annuleren</button>`;
+    $("#vsInp").focus();$("#vsNee").onclick=renderVsMail;
+    $("#vsOk").onclick=async()=>{const v=$("#vsInp").value.trim();if(v&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){$("#vsInp").style.outline="2px solid var(--danger)";return}
+      try{await db.collection("instellingen").doc("vsmail").set({email:v,bijgewerkt:Date.now()});vsMail=v}catch(e){}renderVsMail()}}}
+
 // ===================== PUNTEN VAN AANDACHT =====================
 const PA_PDF={kop:"Punt van aandacht",l1:"Omschrijving",l2:"Actie / afspraak"};
 function puntTekst(s){return [`Punt van aandacht: ${s.titel||""}`,s.onderdeel?`Wals / onderdeel: ${s.onderdeel}`:"",s.datum?`Datum: ${longDate(s.datum)}`:"","",
@@ -2984,8 +3048,8 @@ async function start(user){
     storingen=docs.filter(d=>d.id.startsWith("stor_")); const tdd=docs.find(d=>d.id==="tdmail"); tdMail=(tdd&&tdd.email)||""; if(tab==="storingen")renderTdMail(); matRows=docs.filter(d=>d.id.startsWith("mat_")); matLoaded=true;
     if(tab==="materialen"){renderMatList();if(!matDirty&&!matSaving){if(matDraft&&matDraft.id){const r=matRows.find(x=>x.id===matDraft.id);matDraft=r?matFrom(r):null;if(!r)matSel=null}renderMatSheet()}}
     planning=docs.filter(d=>d.id.startsWith("plan_"));
-    verslagen=docs.filter(d=>d.id.startsWith("vsl_"));vsLoaded=true;
-    if(tab==="verslag"){if(!$("#vsLijst"))renderVerslag();else renderVsLijst()}
+    verslagen=docs.filter(d=>d.id.startsWith("vsl_"));vsLoaded=true;{const vm=docs.find(d=>d.id==="vsmail");vsMail=(vm&&vm.email!=null)?vm.email:"peter@ideaal.nl"}
+    if(tab==="verslag"){if(!$("#vsLijst"))renderVerslag();else{renderVsLijst();renderVsMail()}}
     punten=docs.filter(d=>d.id.startsWith("pva_")); const pam=docs.find(d=>d.id==="pamail"); paMail=(pam&&pam.email!=null)?pam.email:"peter@ideaal.nl"; paLoaded=true;
     if(tab==="start"&&!(document.activeElement&&document.activeElement.closest&&document.activeElement.closest("#startView")))renderStart();
     if(tab==="punten"){if(!$("#paLijst"))renderPunten();else{renderPaLijst();renderPaMail()}}
