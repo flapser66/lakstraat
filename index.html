@@ -2855,7 +2855,7 @@ const MATS=[
   ...["500","360","220","150","100"].map(g=>({k:"a"+g,naam:"Afschuren P"+g,sub:"",eenheid:"",meer:"",stap:1,groep:"afschuur"}))];
 const MATB=MATS.filter(m=>m.groep!=="afschuur"),AFS=MATS.filter(m=>m.groep==="afschuur");
 const afsTot=r=>AFS.reduce((s,m)=>s+(r[m.k]||0),0);
-let matRows=[],matLoaded=false,matSel=null,matDraft=null,matDirty=false,matSaving=false,matSaved=false,matErr="",matDel=false,matArmed=false,matKiezen=false,matWeergave="normaal";
+let matRows=[],matLoaded=false,matSel=null,matDraft=null,matDirty=false,matSaving=false,matSaved=false,matErr="",matDel=false,matArmed=false,matKiezen=false,matWeergave="totaal";
 const LAK_K=["primer","grondlak","deklak"];
 function lakdagOp(datum,lak){if(!datum)return null;const c=dagen.filter(d=>d.datum===datum).sort((a,b)=>dagTijd(b)-dagTijd(a));
   if(!lak)return c[0]||null;return c.find(d=>d.lak===lak)||c.find(d=>!d.lak)||null}
@@ -2902,7 +2902,7 @@ function renderMatList(){
   const nDag=isT?new Set(rows.map(r=>r.datum)).size:T.n;
   const sw=m=>m.groep==="schuur"?(T.t[m.k]||0)+(T.t["a"+m.k.slice(1)]||0):T.t[m.k];
   const afsAny=AFS.some(m=>T.t[m.k]);
-  tot.innerHTML=`<div class="reg-filter mat-soortf" style="margin-bottom:8px">${[["normaal","Lakdag"],["afschuren","Afschuur deuren"],["totaal","Totaal"]].map(([k,t])=>`<button type="button" data-msf="${k}" aria-pressed="${matWeergave===k}">${t}</button>`).join("")}</div>${isA||isT?"":`<div class="reg-filter mat-lakf">${[["alle","Alle"],["wit","Wit"],["zwart","Zwart"]].map(([k,t])=>`<button type="button" data-mlf="${k}" aria-pressed="${matLakFilter===k}">${t}</button>`).join("")}</div>`}<div class="mat-tot-h">${isT?"Alles samen":"Totaal"} ${maandNaam(matMaand)}${lf!=="alle"?" · "+(matLakFilter==="wit"?"wit":"zwart"):""} <span>${nDag} dag${nDag===1?"":"en"}</span></div>
+  tot.innerHTML=`<div class="reg-filter mat-soortf" style="margin-bottom:8px">${[["totaal","Totaal"],["normaal","Lakdag"],["afschuren","Afschuur deuren"]].map(([k,t])=>`<button type="button" data-msf="${k}" aria-pressed="${matWeergave===k}">${t}</button>`).join("")}</div>${isA||isT?"":`<div class="reg-filter mat-lakf">${[["alle","Alle"],["wit","Wit"],["zwart","Zwart"]].map(([k,t])=>`<button type="button" data-mlf="${k}" aria-pressed="${matLakFilter===k}">${t}</button>`).join("")}</div>`}<div class="mat-tot-h">${isT?"Alles samen":"Totaal"} ${maandNaam(matMaand)}${lf!=="alle"?" · "+(matLakFilter==="wit"?"wit":"zwart"):""} <span>${nDag} dag${nDag===1?"":"en"}</span></div>
     <dl>${(isA?AFS:MATB).map(m=>`<dt>${esc(isA?m.naam.replace("Afschuren ","Schuurp. "):m.naam.replace("Schuurpapier ","Schuurp. "))}</dt><dd>${fmt(isT?sw(m):T.t[m.k])}</dd>`).join("")}</dl>
     ${isT&&afsAny?`<div class="mat-tot-h" style="margin-top:10px">Waarvan afschuur deuren</div><dl>${AFS.filter(m=>T.t[m.k]).map(m=>`<dt>${esc(m.naam.replace("Afschuren ","Schuurp. "))}</dt><dd>${fmt(T.t[m.k])}</dd>`).join("")}</dl>`:""}`;
   tot.querySelectorAll("[data-msf]").forEach(b=>b.onclick=()=>{matWeergave=b.dataset.msf;renderMatList()});tot.querySelectorAll("[data-mlf]").forEach(b=>b.onclick=()=>{matLakFilter=b.dataset.mlf;renderMatList()});
