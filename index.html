@@ -2891,7 +2891,7 @@ function renderMatList(){
   $("#mSel").onchange=e=>ga(e.target.value);
   const T=matTotalen(matMaand,matLakFilter);
   tot.innerHTML=`<div class="reg-filter mat-lakf">${[["alle","Alle"],["wit","Wit"],["zwart","Zwart"]].map(([k,t])=>`<button type="button" data-mlf="${k}" aria-pressed="${matLakFilter===k}">${t}</button>`).join("")}</div><div class="mat-tot-h">Totaal ${maandNaam(matMaand)}${matLakFilter!=="alle"?" · "+(matLakFilter==="wit"?"wit":"zwart"):""} <span>${T.n} dag${T.n===1?"":"en"}</span></div>
-    <dl>${MATS.map(m=>`<dt>${esc(m.naam.replace("Schuurpapier ","Schuurp. "))}</dt><dd>${fmt(T.t[m.k])}</dd>`).join("")}</dl>`;
+    <dl>${MATS.filter(m=>m.groep!=="afschuur"||T.t[m.k]).map(m=>`<dt>${esc(m.naam.replace("Schuurpapier ","Schuurp. "))}</dt><dd>${fmt(T.t[m.k])}</dd>`).join("")}</dl>`;
   const rows=matSorted().filter(r=>(r.datum||"").slice(0,7)===matMaand&&(matLakFilter==="alle"||matLak(r)===matLakFilter));
   tot.querySelectorAll("[data-mlf]").forEach(b=>b.onclick=()=>{matLakFilter=b.dataset.mlf;renderMatList()});
   const pc=perCharge(rows);
