@@ -354,6 +354,11 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .st-form .inp input{font-family:var(--f-body);font-size:16px}
 .st-form textarea{min-height:90px}
 /* materialen */
+.mat-kies{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:100%;max-width:560px;margin:6px 0}
+@media (max-width:520px){.mat-kies{grid-template-columns:minmax(0,1fr)}}
+.mat-kies .btn{height:auto;min-height:72px;padding:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;line-height:1.25;white-space:normal}
+.mat-kies small{font-weight:400;font-size:12px;opacity:.85}
+.afs-tag{font-family:var(--f-mono);font-size:10px;border:1px solid var(--line);border-radius:999px;padding:1px 6px;color:var(--muted);vertical-align:middle}
 .mat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
 .mat-grid.drie{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media (max-width:700px){.mat-grid.drie{grid-template-columns:minmax(0,1fr)}}
@@ -1305,7 +1310,7 @@ function renderStart(){
   const el=$("#startView");if(!el)return;const t=today(),mk=t.slice(0,7),gw=Math.max(300,Math.min(1080,(el.clientWidth||document.body.clientWidth)-40));
   const vandaag=dagen.filter(d=>d.datum===t).sort((a,b)=>dagTijd(a)-dagTijd(b));
   const heeft=(rows)=>rows.some(r=>r.datum===t);
-  const taken=[["registratie","Registratieblad",heeft(regSheets)],["lampen","Lampen",heeft(lampRows)],["materialen","Materialen",heeft(matRows)]];
+  const taken=[["registratie","Registratieblad",heeft(regSheets)],["lampen","Lampen",heeft(lampRows)],["materialen","Materialen",heeft(matRows.filter(r=>r.soort!=="afschuren"))]];
   const open=(rows)=>rows.filter(s=>statusVan(s)!=="opgelost");
   const oS=open(storingen),oP=open(punten);
   const blik=lak=>{const T=matTotalen(mk,lak);return LAK_K.reduce((s,k)=>s+(T.t[k]||0),0)};
@@ -1355,7 +1360,7 @@ function renderStart(){
 let startRz;window.addEventListener("resize",()=>{clearTimeout(startRz);startRz=setTimeout(()=>{if(tab==="start")renderStart()},300)});
 // ===== herinnering: stipje op tabbladen als er vandaag nog iets mist =====
 function zetHerinnering(){const t=today(),actief=dagen.some(d=>d.datum===t);
-  [["registratie",regSheets],["lampen",lampRows],["materialen",matRows]].forEach(([k,rows])=>{const b=document.querySelector(`#tabs [data-tab="${k}"]`);if(!b)return;
+  [["registratie",regSheets],["lampen",lampRows],["materialen",matRows.filter(r=>r.soort!=="afschuren")]].forEach(([k,rows])=>{const b=document.querySelector(`#tabs [data-tab="${k}"]`);if(!b)return;
     const mist=actief&&!rows.some(r=>r.datum===t);b.classList.toggle("mist",mist);b.title=mist?"Vandaag nog niet ingevuld":""})}
 setInterval(zetHerinnering,1500);
 // ===== offline: duidelijke melding en niet blijven hangen op opslaan =====
@@ -1926,7 +1931,7 @@ function buildWordBody(){
   const mr=matSorted().slice().reverse();
   if(!mr.length)B.push(wP("Nog geen materialen ingevuld."));
   else{
-    B.push(wTable([["Datum",...MATB.map(m=>m.groep==="schuur"?m.naam.replace("Schuurpapier ",""):m.naam+" ("+m.sub+")"),"Opmerking"],...mr.map(r=>[paperDate(r.datum),...MATB.map(m=>({t:fmt(LAK_K.includes(m.k)&&r[m.k+"B"]!=null?matTot(r,m.k):r[m.k]),align:"right"})),r.opmerking||""])],[1300,...MATB.map(m=>m.groep==="schuur"?820:1450),3350],{header:true}));
+    B.push(wTable([["Datum",...MATB.map(m=>m.groep==="schuur"?m.naam.replace("Schuurpapier ",""):m.naam+" ("+m.sub+")"),"Opmerking"],...mr.filter(r=>r.soort!=="afschuren").map(r=>[paperDate(r.datum),...MATB.map(m=>({t:fmt(LAK_K.includes(m.k)&&r[m.k+"B"]!=null?matTot(r,m.k):r[m.k]),align:"right"})),r.opmerking||""])],[1300,...MATB.map(m=>m.groep==="schuur"?820:1450),3350],{header:true}));
     const maanden=[...new Set(mr.map(r=>(r.datum||"").slice(0,7)).filter(Boolean))];
     B.push(wP("Totaal per maand",{style:"Kop2"}));
     const pcAll=perCharge(mr);
@@ -2173,7 +2178,7 @@ async function maakLogboekPdf(meld,opt){
   if(deel("materialen")){meld("Materialen…");kop1("Materialen");const mr=fMat.slice().reverse();
   if(!mr.length)alinea("Nog geen materialen ingevuld.");
   else{const kort=m=>m.groep==="schuur"?m.naam.replace("Schuurpapier ",""):m.naam;
-    tabel([["Datum","Lak",...MATB.map(kort),"Opmerking"],...mr.map(r=>[paperDate(r.datum),matLak(r)==="zwart"?"Zwart":matLak(r)==="wit"?"Wit":"",...MATB.map(m=>({t:fmt(LAK_K.includes(m.k)&&r[m.k+"B"]!=null?matTot(r,m.k):r[m.k]),align:"right"})),r.opmerking||""])],[13,8,...MATB.map(m=>m.groep==="schuur"?8:12),30],{header:true,sz:8});
+    tabel([["Datum","Lak",...MATB.map(kort),"Opmerking"],...mr.filter(r=>r.soort!=="afschuren").map(r=>[paperDate(r.datum),matLak(r)==="zwart"?"Zwart":matLak(r)==="wit"?"Wit":"",...MATB.map(m=>({t:fmt(LAK_K.includes(m.k)&&r[m.k+"B"]!=null?matTot(r,m.k):r[m.k]),align:"right"})),r.opmerking||""])],[13,8,...MATB.map(m=>m.groep==="schuur"?8:12),30],{header:true,sz:8});
     const pcAll=perCharge(mr);
     if(pcAll.length){kop2("Verbruik per charge");tabel([["Soort","Charge","Blikken","Dagen","Van","Tot en met"],...pcAll.map(o=>[o.soort,{t:o.charge,b:true},{t:fmt(o.blik),align:"right"},{t:String(o.dagen),align:"right"},paperDate(o.van),paperDate(o.tot)])],[26,30,15,12,22,22],{header:true})}
     const maanden=[...new Set(mr.map(r=>(r.datum||"").slice(0,7)).filter(Boolean))];
@@ -2850,7 +2855,7 @@ const MATS=[
   ...["500","360","220","150","100"].map(g=>({k:"a"+g,naam:"Afschuren P"+g,sub:"",eenheid:"",meer:"",stap:1,groep:"afschuur"}))];
 const MATB=MATS.filter(m=>m.groep!=="afschuur"),AFS=MATS.filter(m=>m.groep==="afschuur");
 const afsTot=r=>AFS.reduce((s,m)=>s+(r[m.k]||0),0);
-let matRows=[],matLoaded=false,matSel=null,matDraft=null,matDirty=false,matSaving=false,matSaved=false,matErr="",matDel=false,matArmed=false;
+let matRows=[],matLoaded=false,matSel=null,matDraft=null,matDirty=false,matSaving=false,matSaved=false,matErr="",matDel=false,matArmed=false,matKiezen=false;
 const LAK_K=["primer","grondlak","deklak"];
 function lakdagOp(datum,lak){if(!datum)return null;const c=dagen.filter(d=>d.datum===datum).sort((a,b)=>dagTijd(b)-dagTijd(a));
   if(!lak)return c[0]||null;return c.find(d=>d.lak===lak)||c.find(d=>!d.lak)||null}
@@ -2865,15 +2870,18 @@ function perCharge(rows){const map={};
 function matTot(r,k){return (r[k]||0)+(LAK_K.includes(k)?(r[k+"B"]||0):0)}
 function matLak(r){return r.lak||(lakdagOp(r.datum)||{}).lak||null}
 let matLakFilter="alle";
-function matBlank(){const o={id:null,datum:today(),opmerking:"",chargeAangepast:false,lak:null};o.lak=matLak(o);MATS.forEach(m=>o[m.k]=null);LAK_K.forEach(k=>o[k+"B"]=null);o.charge=chargesVoor(o);return o}
-function matFrom(r){const o={id:r.id,datum:r.datum||"",opmerking:r.opmerking||"",chargeAangepast:false,lak:matLak(r)};MATS.forEach(m=>o[m.k]=r[m.k]??null);LAK_K.forEach(k=>o[k+"B"]=r[k+"B"]??null);o.charge=chargesVoor(r);return o}
+function matBlank(soort){const o={id:null,datum:today(),opmerking:"",chargeAangepast:false,lak:null,soort:soort==="afschuren"?"afschuren":"normaal"};o.lak=matLak(o);MATS.forEach(m=>o[m.k]=null);LAK_K.forEach(k=>o[k+"B"]=null);o.charge=chargesVoor(o);return o}
+function matFrom(r){const o={id:r.id,datum:r.datum||"",opmerking:r.opmerking||"",chargeAangepast:false,lak:matLak(r),soort:r.soort==="afschuren"?"afschuren":"normaal"};MATS.forEach(m=>o[m.k]=r[m.k]??null);LAK_K.forEach(k=>o[k+"B"]=r[k+"B"]??null);o.charge=chargesVoor(r);return o}
 function matSorted(){return matRows.slice().sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||(b.bijgewerkt||0)-(a.bijgewerkt||0))}
 const matAantal=(m,v)=>v==null?"":fmt(v)+(m.eenheid?" "+(v===1?m.eenheid:m.meer):"");
 function matGuard(opnieuw){if(!matDirty)return true;vraagOpslaan("materialen",opnieuw);return false}
-function matOpen(id){if(!matGuard(()=>matOpen(id)))return;const r=matRows.find(x=>x.id===id);matSel=id;matDraft=r?matFrom(r):null;matDirty=false;matSaved=false;matErr="";matDel=false;renderMatList();renderMatSheet()}
-function matNew(){if(!matGuard(matNew))return;matSel="__new";matDraft=matBlank();matDirty=true;matSaved=false;matErr="";matDel=false;renderMatList();renderMatSheet()}
+function matOpen(id){if(!matGuard(()=>matOpen(id)))return;matKiezen=false;const r=matRows.find(x=>x.id===id);matSel=id;matDraft=r?matFrom(r):null;matDirty=false;matSaved=false;matErr="";matDel=false;renderMatList();renderMatSheet()}
+function matNaarBlad(){if(innerWidth<900)setTimeout(()=>{const e=$("#matSheet");if(e)e.scrollIntoView({behavior:"smooth",block:"start"})},30)}
+function matNew(soort){if(!matGuard(()=>matNew(soort)))return;
+  if(soort!=="normaal"&&soort!=="afschuren"){matSel=null;matDraft=null;matDirty=false;matErr="";matDel=false;matKiezen=true;renderMatList();renderMatSheet();matNaarBlad();return}
+  matKiezen=false;matNaarBlad();matSel="__new";matDraft=matBlank(soort);matDirty=true;matSaved=false;matErr="";matDel=false;renderMatList();renderMatSheet()}
 function matTotalen(maandKey,lak){const t={};MATS.forEach(m=>t[m.k]=0);let n=0;
-  matRows.filter(r=>(r.datum||"").slice(0,7)===maandKey&&(!lak||lak==="alle"||matLak(r)===lak)).forEach(r=>{n++;MATS.forEach(m=>t[m.k]+=matTot(r,m.k))});return {t,n}}
+  matRows.filter(r=>(r.datum||"").slice(0,7)===maandKey&&(!lak||lak==="alle"||matLak(r)===lak)).forEach(r=>{if(r.soort!=="afschuren")n++;MATS.forEach(m=>t[m.k]+=matTot(r,m.k))});return {t,n}}
 let matMaand=today().slice(0,7);
 function maandStap(mk,n){const [y,m]=mk.split("-").map(Number);const d=new Date(y,m-1+n,1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")}
 function maandNaam(mk){const d=parseDate(mk+"-01");return MAANDEN[d.getMonth()]+" "+d.getFullYear()}
@@ -2898,20 +2906,27 @@ function renderMatList(){
   if(pc.length)tot.innerHTML+=`<div class="mat-tot-h" style="margin-top:10px">Per charge</div><dl>${pc.map(o=>`<dt>${esc(o.soort)} <span class="chg">${esc(o.charge)}</span></dt><dd>${fmt(o.blik)}</dd>`).join("")}</dl>`;
   $("#matCount").textContent=String(rows.length);telTotalen(tot);
   let h="";
-  if(matSel==="__new")h+=`<li><button type="button" aria-current="true"><span><span class="d">Nieuwe dag</span><br><span class="wd">nog niet opgeslagen</span></span><span class="cond"></span></button></li>`;
+  if(matSel==="__new")h+=`<li><button type="button" aria-current="true"><span><span class="d">${matDraft&&matDraft.soort==="afschuren"?"Nieuw: afschuren":"Nieuwe dag"}</span><br><span class="wd">nog niet opgeslagen</span></span><span class="cond"></span></button></li>`;
   if(!rows.length&&matSel!=="__new")h+=`<li class="empty">${matMaand===nu?'Deze maand is nog niets ingevuld. Klik op <b>+ Materialen invullen</b>.':`Niets ingevuld in ${maandNaam(matMaand)}.`}</li>`;
   for(const r of rows){const dd=parseDate(r.datum);
     const lak=LAK_K.reduce((s,k)=>s+matTot(r,k),0),sch=MATS.filter(m=>m.groep==="schuur").map(m=>m.k).reduce((s,k)=>s+(r[k]||0),0);
-    h+=`<li><button type="button" data-id="${esc(r.id)}" aria-current="${r.id===matSel}"><span><span class="d">${esc(shortDate(r.datum))}</span> ${lakBadge(matLak(r))}<br><span class="wd">${dd?DAGEN[dd.getDay()]:""}</span></span><span class="cond">${fmt(lak)} blik lak<br>${fmt(sch)} schuurpapier${afsTot(r)?`<br>${fmt(afsTot(r))} afschuren`:""}</span></button></li>`}
+    h+=`<li><button type="button" data-id="${esc(r.id)}" aria-current="${r.id===matSel}"><span><span class="d">${esc(shortDate(r.datum))}</span> ${lakBadge(matLak(r))}${r.soort==="afschuren"?' <span class="afs-tag">afschuren</span>':""}<br><span class="wd">${dd?DAGEN[dd.getDay()]:""}</span></span><span class="cond">${r.soort==="afschuren"?`${fmt(afsTot(r))} vellen<br>afschuren`:`${fmt(lak)} blik lak<br>${fmt(sch)} schuurpapier${afsTot(r)?`<br>${fmt(afsTot(r))} afschuren`:""}`}</span></button></li>`}
   ul.innerHTML=h;ul.querySelectorAll("button[data-id]").forEach(b=>b.onclick=()=>matOpen(b.dataset.id));
 }
 function renderMatSheet(){
   const el=$("#matSheet");
+  if(!matDraft&&matKiezen){
+    el.innerHTML=`<div class="blank"><strong>Wat wil je invullen?</strong>
+      <div class="mat-kies"><button class="btn primary" type="button" data-soort="normaal">Materialen lakdag<small>lak, verdunner en schuurpapier</small></button>
+      <button class="btn primary" type="button" data-soort="afschuren">Afschuren foute deuren<small>schuurpapier P500 t/m P100</small></button></div>
+      <button class="btn" type="button" id="matKiesNee">Annuleren</button></div>`;
+    el.querySelectorAll("[data-soort]").forEach(b=>b.onclick=()=>matNew(b.dataset.soort));
+    $("#matKiesNee").onclick=()=>{matKiezen=false;renderMatSheet()};return}
   if(!matDraft){
     el.innerHTML=`<div class="blank"><strong>${matLoaded?"Kies een dag":"Laden…"}</strong><span>Selecteer links een dag, of vul de materialen van een nieuwe lakdag in.</span><button class="btn primary" type="button" id="matBlankNew">+ Materialen invullen</button></div>`;
-    $("#matBlankNew").onclick=matNew;return}
-  const r=matDraft,isNew=!r.id;
-  const dubbel=matRows.some(x=>x.id!==r.id&&x.datum===r.datum&&matLak(x)===r.lak);
+    $("#matBlankNew").onclick=()=>matNew();return}
+  const r=matDraft,isNew=!r.id,isAfs=r.soort==="afschuren";
+  const dubbel=matRows.some(x=>x.id!==r.id&&x.datum===r.datum&&matLak(x)===r.lak&&(x.soort==="afschuren")===isAfs);
   const stp=(k,naam,cls)=>`<div class="stepper ${cls}">
           <button type="button" data-step="-1" data-k="${k}" aria-label="${naam} minder">−</button>
           <input id="mat-${k}" data-k="${k}" inputmode="decimal" autocomplete="off" value="${esc(fmt(r[k]))}" placeholder="0" aria-label="${naam}">
@@ -2941,16 +2956,15 @@ function renderMatSheet(){
       </div>`:""}
       ${LAK_K.includes(m.k)?`<div class="mat-ch"><label for="mch-${m.k}">Charge</label><div class="ch2"><div class="inp"><input id="mch-${m.k}" data-ch="${m.k}" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${esc(r.charge?.[m.k]||"")}" placeholder="charge 1" aria-label="${esc(m.naam)} charge 1"></div><div class="inp"><input id="mch-${m.k}2" data-ch="${m.k}2" inputmode="numeric" pattern="[0-9]*" autocomplete="off" value="${esc(r.charge?.[m.k+"2"]||"")}" placeholder="charge 2" aria-label="${esc(m.naam)} charge 2"></div></div></div>`:""}
     </div>`;
-  el.innerHTML=`<div class="sheet-head"><div><div class="title">Materialen ${esc(r.datum?longDate(r.datum):"")}</div><div class="sub">${isNew?"Nieuwe dag":"Opgeslagen dag"} ${statusHtml(matSaving,matDirty,matSaved)}</div></div></div>
+  el.innerHTML=`<div class="sheet-head"><div><div class="title">${isAfs?"Afschuren foute deuren":"Materialen"} ${esc(r.datum?longDate(r.datum):"")}</div><div class="sub">${isNew?"Nieuwe dag":"Opgeslagen dag"} ${statusHtml(matSaving,matDirty,matSaved)}</div></div></div>
     <div class="section"><h3>Lakdag</h3>
       <div class="field lak-veld"><label>Gebruikte lak</label>${lakKeuze(r.lak,"mlak")}${!r.lak?'<span class="hint" style="color:var(--warn);font-family:var(--f-body)">Kies wit of zwart.</span>':lakdagOp(r.datum,r.lak)&&lakdagOp(r.datum,r.lak).lak===r.lak?'<span class="hint" style="font-family:var(--f-body)">Gelijk aan de lakdag van deze datum.</span>':""}</div>
       <div class="conds" style="grid-template-columns:minmax(0,260px)"><div class="field"><label for="mat-datum">Datum</label><div class="inp"><input id="mat-datum" type="date" value="${esc(r.datum)}" style="font-size:16px"></div>
-      ${dubbel?'<span class="hint" style="color:var(--warn);font-family:var(--f-body)">Er is al een materialenblad voor deze datum en deze lak.</span>':""}
-      <span class="hint" style="font-family:var(--f-body)">${lakdagOp(r.datum,r.lak)?"Charges komen uit de lakdag van deze datum en lak. Pas je ze hier aan, dan wordt de lakdag ook bijgewerkt.":"Er is nog geen lakdag op deze datum. De charges worden bij dit materialenblad bewaard en komen mee als je de lakdag later aanmaakt."}</span></div></div></div>
-    <div class="section"><h3>Lak</h3><div class="mat-grid een">${MATS.filter(m=>m.groep==="lak").map(kaart).join("")}</div></div>
+      ${dubbel?'<span class="hint" style="color:var(--warn);font-family:var(--f-body)">${isAfs?"Er is al een afschuurblad":"Er is al een materialenblad"} voor deze datum en deze lak.</span>':""}
+      <span class="hint" style="font-family:var(--f-body)">${isAfs?"Vul alleen het schuurpapier in dat je gebruikt hebt om foute deuren af te schuren.":lakdagOp(r.datum,r.lak)?"Charges komen uit de lakdag van deze datum en lak. Pas je ze hier aan, dan wordt de lakdag ook bijgewerkt.":"Er is nog geen lakdag op deze datum. De charges worden bij dit materialenblad bewaard en komen mee als je de lakdag later aanmaakt."}</span></div></div></div>
+${isAfs?`    <div class="section"><h3>Schuurpapier</h3><div class="mat-grid vier">${AFS.map(kaart).join("")}</div></div>`:`    <div class="section"><h3>Lak</h3><div class="mat-grid een">${MATS.filter(m=>m.groep==="lak").map(kaart).join("")}</div></div>
     <div class="section"><h3>Verdunner</h3><div class="mat-grid drie">${MATS.filter(m=>m.groep==="verdunner").map(kaart).join("")}</div></div>
-    <div class="section"><h3>Schuurpapier</h3><div class="mat-grid vier">${MATS.filter(m=>m.groep==="schuur").map(kaart).join("")}</div></div>
-    <div class="section"><h3>Afschuren foute deuren</h3><span class="hint" style="font-family:var(--f-body);display:block;margin:-4px 0 8px">Schuurpapier dat je gebruikt hebt om foute deuren af te schuren. Telt apart van het gewone schuurpapier.</span><div class="mat-grid vier">${AFS.map(kaart).join("")}</div></div>
+    <div class="section"><h3>Schuurpapier</h3><div class="mat-grid vier">${MATS.filter(m=>m.groep==="schuur").map(kaart).join("")}</div></div>`}
     <div class="section"><h3><label for="mat-opm" style="all:inherit">Opmerking</label></h3><textarea id="mat-opm" placeholder="Bijv. nieuwe batch lak geopend, blik deels gebruikt…" style="min-height:80px">${esc(r.opmerking)}</textarea></div>
     <div class="foot">
       <div class="grp">${matDel?`<span class="confirm">Deze dag ${isNew?"weggooien":"verwijderen"}? <button class="btn danger-solid" type="button" id="matDelYes">Ja</button><button class="btn" type="button" id="matDelNo">Annuleren</button></span>`:`<button class="btn danger" type="button" id="matDelBtn">${isNew?"Weggooien":"Verwijderen"}</button>`}</div>
@@ -2980,9 +2994,9 @@ async function saveMat(){
   const r=matDraft;if(!r.datum){matErr="Vul een datum in.";return renderMatSheet()}
   matSaving=true;matErr="";renderMatSheet();
   try{const ch=chObj(r.charge,true);
-    const oudM=r.id&&matRows.find(x=>x.id===r.id);const rec={aangemaakt:(oudM&&(oudM.aangemaakt||oudM.bijgewerkt))||Date.now(),datum:r.datum,lak:r.lak||matLak(r),opmerking:(r.opmerking||"").trim(),charge:ch,bijgewerkt:Date.now()};MATS.forEach(m=>rec[m.k]=r[m.k]??null);LAK_K.forEach(k=>rec[k+"B"]=r[k+"B"]??null);
+    const oudM=r.id&&matRows.find(x=>x.id===r.id);const rec={aangemaakt:(oudM&&(oudM.aangemaakt||oudM.bijgewerkt))||Date.now(),soort:r.soort==="afschuren"?"afschuren":"normaal",datum:r.datum,lak:r.lak||matLak(r),opmerking:(r.opmerking||"").trim(),charge:ch,bijgewerkt:Date.now()};MATS.forEach(m=>rec[m.k]=r[m.k]??null);LAK_K.forEach(k=>rec[k+"B"]=r[k+"B"]??null);
     const id=r.id||DOC_ID("mat_");await db.collection("instellingen").doc(id).set(rec);
-    const ld=lakdagOp(r.datum,r.lak);
+    const ld=r.soort==="afschuren"?null:lakdagOp(r.datum,r.lak);
     if(ld&&CH_K.some(k=>((ld.charge&&ld.charge[k])||"")!==ch[k])){await db.collection("lakdagen").doc(ld.id).update({charge:ch});ld.charge=ch;
       if(draft&&draft.id===ld.id&&!dirty)draft.charge={...ch}}
     r.chargeAangepast=false;
@@ -2990,7 +3004,7 @@ async function saveMat(){
   catch(e){matErr=saveErr(e)}
   matSaving=false;renderMatList();renderMatSheet();
 }
-$("#btnMatNew").onclick=matNew;
+$("#btnMatNew").onclick=()=>matNew();
 // ===================== HERINNERING SLOTGATEN =====================
 const SLOT_START="2026-10-13";          // lakdagen vanaf deze datum tellen mee
 const SLOT_DAGEN=7;
