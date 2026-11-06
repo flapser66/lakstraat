@@ -383,6 +383,9 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .kr-p{display:flex;align-items:center;gap:8px;min-width:0}
 .kr-p img{height:32px;max-width:100px;object-fit:contain;background:#fff;border-radius:4px}
 .kr-tip{margin-top:10px;padding:10px 12px;border-radius:10px;background:#fbe5e5;color:#7a1c1e;font-size:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.modal-breed{align-items:start;overflow:auto}
+.kr-form-box{max-width:960px;border-top-color:var(--accent);padding:16px}
+.kr-form-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .kr-doc .row{display:flex;gap:8px;flex-wrap:wrap}
 /* materialen */
 .mat-kies{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:100%;max-width:560px;margin:6px 0}
@@ -2889,7 +2892,7 @@ function renderKras(){
   const el=$("#krasView");if(!krEdit)krEdit=krBlank();const r=krEdit,isNew=!r.id,rows=krSorted();
   el.innerHTML=`<div class="sheet kr-sheet">
   <div class="sheet-head"><div><div class="title">Krastest</div><div class="sub">${krLoaded?rows.length+" test"+(rows.length===1?"":"s"):"Laden…"} ${statusHtml(krSaving,krDirty,krSaved)}</div></div>
-    <div class="kr-acties"><button class="btn" type="button" id="krWerk">Werkwijze</button><a class="btn" href="krastest-formulier.pdf" download="Krastest formulier.pdf">Formulier printen</a></div></div>
+    <div class="kr-acties"><button class="btn primary" type="button" id="krForm2">Formulier bekijken</button><button class="btn" type="button" id="krWerk">Werkwijze</button><a class="btn" href="krastest-formulier.pdf" download="Krastest formulier.pdf">Leeg formulier</a></div></div>
   <div class="section" id="krForm"><h3>${isNew?"Nieuwe krastest":"Krastest van "+esc(shortDate(r.datum))+" wijzigen"}</h3>
     <div class="kr-grid">
       <div class="field"><label for="kr-datum">Datum</label><div class="inp"><input id="kr-datum" type="date" value="${esc(r.datum)}" style="font-size:16px"></div></div>
@@ -2933,8 +2936,37 @@ function renderKras(){
   const dn=$("#krDelNee");if(dn)dn.onclick=()=>{krDel=false;renderKras()};
   const dy=$("#krDelJa");if(dy)dy.onclick=async()=>{try{await db.collection("instellingen").doc(r.id).delete();krasRows=krasRows.filter(x=>x.id!==r.id);krEdit=krBlank();krDirty=false}catch(e){krErr="Verwijderen mislukt."}krDel=false;renderKras()};
   el.querySelectorAll("[data-kid]").forEach(b=>b.onclick=()=>krOpen(b.dataset.kid));
-  $("#krWerk").onclick=krWerkwijze;
+  $("#krWerk").onclick=krWerkwijze;$("#krForm2").onclick=()=>{krFormMaand=(krEdit&&krEdit.datum||today()).slice(0,7);krFormulier()};
   const tip=$("#krTipDoc");if(tip)tip.onclick=krWerkwijze;
+}
+// ingevuld krastestformulier per maand (automatisch uit de opgeslagen krastesten)
+let krFormMaand=today().slice(0,7);
+function krPapier(mk){
+  const rows=krasRows.filter(r=>(r.datum||"").slice(0,7)===mk).sort((a,b)=>(a.datum||"").localeCompare(b.datum||"")||(a.aangemaakt||0)-(b.aangemaakt||0));
+  const leeg=Math.max(0,15-rows.length);
+  const tr=r=>{const k=krKlasse(r);return `<tr><td>${esc(paperDate(r.datum))}</td><td>${r.lak==="wit"?"Wit":r.lak==="zwart"?"Zwart":""}</td><td class="c"><b>${k??""}</b></td><td class="c ${r.geslaagd===true?"ja":r.geslaagd===false?"nee":""}">${r.geslaagd===true?"Ja":r.geslaagd===false?"Nee":""}</td><td class="c"><b>${esc(r.initialen||"")}</b></td><td class="c">${r.handtekening?`<img src="${r.handtekening}" alt="">`:""}</td></tr>`};
+  return `<div class="krp"><div class="krp-kop"><div><div class="krp-t">Krastest lakstraat</div><div>Maand: <b>${esc(maandNaam(mk))}</b></div><div class="krp-s">Volgens SKH-publicatie 05-01 · ${rows.length} test${rows.length===1?"":"en"}${rows.length?` · ${rows.filter(r=>r.geslaagd===true).length} geslaagd, ${rows.filter(r=>r.geslaagd===false).length} niet geslaagd`:""}</div></div>
+    <div class="krp-leg"><b>SKH-klasse</b> <span>0 = beste</span>${KR_SCORE.map(([n,t])=>`<div><b>${n}</b> ${n===0?"Geen onthechting":n===5?"Meer dan 35% los":t+" los"}</div>`).join("")}</div></div>
+    <table><thead><tr><th>Datum</th><th>Lak</th><th>Klasse<br>0 – 5</th><th>Geslaagd</th><th>Paraaf<br>initialen</th><th>Handtekening</th></tr></thead>
+    <tbody>${rows.map(tr).join("")}${"<tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>".repeat(leeg)}</tbody></table>
+    <div class="krp-v">Klasse 3, 4 of 5: test na 4 weken herhalen.</div></div>`}
+const KRP_CSS=`.krp{background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif;padding:22px;border-radius:6px}
+.krp-kop{display:flex;justify-content:space-between;gap:16px;margin-bottom:14px;font-size:13px}.krp-t{font-size:24px;font-weight:700;color:#0E4C92;margin-bottom:4px}.krp-s{font-size:11px;color:#555;margin-top:4px}
+.krp-leg{border:1.5px solid #0E4C92;border-radius:8px;padding:8px 12px;font-size:11.5px;line-height:1.5;min-width:170px}.krp-leg>b{color:#0E4C92}.krp-leg>span{float:right;color:#666;font-size:10px}.krp-leg div b{color:#0E4C92;display:inline-block;width:14px}
+.krp table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px}.krp th{background:#0E4C92;color:#fff;padding:6px 4px;font-size:12px;border:1px solid #0E4C92}
+.krp td{border:1px solid #333;height:40px;padding:2px 6px;vertical-align:middle}.krp td.c{text-align:center}.krp td.ja{color:#1f7a3a;font-weight:700}.krp td.nee{color:#b3262a;font-weight:700}
+.krp col,.krp th:nth-child(6){width:30%}.krp td img{max-height:36px;max-width:100%}.krp-v{font-size:11px;color:#444;margin-top:8px}`;
+function krFormulier(){const m=$("#modal");const sluit=()=>{m.hidden=true;m.innerHTML="";m.classList.remove("modal-breed")};
+  const nu=today().slice(0,7);const maanden=[...new Set(krasRows.map(r=>(r.datum||"").slice(0,7)).filter(Boolean).concat([nu,krFormMaand]))].sort().reverse();
+  m.innerHTML=`<div class="modal-box kr-form-box" role="dialog" aria-modal="true" aria-label="Krastestformulier"><style>${KRP_CSS}</style>
+    <div class="kr-form-bar"><div class="maandkiezer" style="border:0;padding:0;flex:1;max-width:340px"><button type="button" id="kfPrev" aria-label="Vorige maand">◀</button><select id="kfSel" aria-label="Kies maand">${maanden.map(k=>`<option value="${k}"${k===krFormMaand?" selected":""}>${maandNaam(k)}</option>`).join("")}</select><button type="button" id="kfNext" aria-label="Volgende maand" ${krFormMaand>=nu?"disabled":""}>▶</button></div>
+    <button class="btn primary" type="button" id="kfPrint">Printen / PDF</button><button class="btn" type="button" id="kfSluit">Sluiten</button></div>
+    ${krPapier(krFormMaand)}</div>`;
+  m.classList.add("modal-breed");m.hidden=false;m.onclick=e=>{if(e.target===m)sluit()};
+  const ga=k=>{krFormMaand=k;krFormulier()};
+  $("#kfPrev").onclick=()=>ga(maandStap(krFormMaand,-1));$("#kfNext").onclick=()=>{if(krFormMaand<nu)ga(maandStap(krFormMaand,1))};$("#kfSel").onchange=e=>ga(e.target.value);$("#kfSluit").onclick=sluit;
+  $("#kfPrint").onclick=()=>{const w=window.open("","_blank");if(!w){alert("Pop-up geblokkeerd. Sta pop-ups toe om te printen.");return}
+    w.document.write(`<!DOCTYPE html><html lang="nl"><head><meta charset="utf-8"><title>Krastest ${esc(maandNaam(krFormMaand))}</title><style>@page{size:A4;margin:12mm}body{margin:0}${KRP_CSS}.krp{padding:0}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}</style></head><body>${krPapier(krFormMaand)}<script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);w.document.close()};
 }
 async function saveKras(){const r=krEdit;
   krErr=!r.datum?"Vul een datum in.":r.score==null?"Kies een klasse.":r.geslaagd==null?"Kies of de krastest geslaagd is.":!r.initialen.trim()?"Vul je initialen in.":!r.handtekening?"Zet je handtekening.":"";
