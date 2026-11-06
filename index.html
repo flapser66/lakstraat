@@ -1926,13 +1926,14 @@ function buildWordBody(){
   const mr=matSorted().slice().reverse();
   if(!mr.length)B.push(wP("Nog geen materialen ingevuld."));
   else{
-    B.push(wTable([["Datum",...MATS.map(m=>m.groep==="schuur"?m.naam.replace("Schuurpapier ",""):m.naam+" ("+m.sub+")"),"Opmerking"],...mr.map(r=>[paperDate(r.datum),...MATS.map(m=>({t:fmt(LAK_K.includes(m.k)&&r[m.k+"B"]!=null?matTot(r,m.k):r[m.k]),align:"right"})),r.opmerking||""])],[1300,...MATS.map(m=>m.groep==="schuur"?820:1450),3350],{header:true}));
+    B.push(wTable([["Datum",...MATB.map(m=>m.groep==="schuur"?m.naam.replace("Schuurpapier ",""):m.naam+" ("+m.sub+")"),"Opmerking"],...mr.map(r=>[paperDate(r.datum),...MATB.map(m=>({t:fmt(LAK_K.includes(m.k)&&r[m.k+"B"]!=null?matTot(r,m.k):r[m.k]),align:"right"})),r.opmerking||""])],[1300,...MATB.map(m=>m.groep==="schuur"?820:1450),3350],{header:true}));
     const maanden=[...new Set(mr.map(r=>(r.datum||"").slice(0,7)).filter(Boolean))];
     B.push(wP("Totaal per maand",{style:"Kop2"}));
     const pcAll=perCharge(mr);
     if(pcAll.length){B.push(wP("Verbruik per charge",{style:"Kop2"}));
       B.push(wTable([["Soort","Charge","Blikken","Dagen","Van","Tot en met"],...pcAll.map(o=>[o.soort,{t:o.charge,b:true},{t:fmt(o.blik),align:"right"},{t:String(o.dagen),align:"right"},paperDate(o.van),paperDate(o.tot)])],[2600,3000,1500,1200,2200,2200],{header:true}))}
-    B.push(wTable([["Maand","Dagen",...MATS.map(m=>m.groep==="schuur"?m.naam.replace("Schuurpapier ",""):m.naam)],...maanden.map(k=>{const T=matTotalen(k),d=parseDate(k+"-01");return [MAANDEN[d.getMonth()]+" "+d.getFullYear(),{t:String(T.n),align:"right"},...MATS.map(m=>({t:fmt(T.t[m.k]),align:"right"}))]})],[2200,800,...MATS.map(m=>m.groep==="schuur"?1000:1400)],{header:true}));
+    B.push(wTable([["Maand","Dagen",...MATB.map(m=>m.groep==="schuur"?m.naam.replace("Schuurpapier ",""):m.naam)],...maanden.map(k=>{const T=matTotalen(k),d=parseDate(k+"-01");return [MAANDEN[d.getMonth()]+" "+d.getFullYear(),{t:String(T.n),align:"right"},...MATB.map(m=>({t:fmt(T.t[m.k]),align:"right"}))]})],[2200,800,...MATB.map(m=>m.groep==="schuur"?1000:1400)],{header:true}));
+    {const afs=mr.filter(r=>afsTot(r));if(afs.length){B.push(wP("Afschuren foute deuren",{style:"Kop2"}));B.push(wTable([["Datum","Lak",...AFS.map(m=>m.naam.replace("Afschuren ","")),"Totaal"],...afs.map(r=>[paperDate(r.datum),matLak(r)==="zwart"?"Zwart":matLak(r)==="wit"?"Wit":"",...AFS.map(m=>({t:fmt(r[m.k]),align:"right"})),{t:fmt(afsTot(r)),align:"right",b:true}])],[1500,1000,...AFS.map(()=>1100),1200],{header:true}));B.push(wP("Afschuren per maand",{style:"Kop2"}));B.push(wTable([["Maand",...AFS.map(m=>m.naam.replace("Afschuren ","")),"Totaal"],...maanden.map(k=>{const T=matTotalen(k),d=parseDate(k+"-01");return [MAANDEN[d.getMonth()]+" "+d.getFullYear(),...AFS.map(m=>({t:fmt(T.t[m.k]),align:"right"})),{t:fmt(afsTot(T.t)),align:"right",b:true}]}).filter(x=>x[x.length-1].t!=="0")],[2200,...AFS.map(()=>1100),1200],{header:true}))}}
   }
   B.push(wP("Storingen",{style:"Kop1",pageBreak:true}));
   const st=stSorted();
@@ -2172,11 +2173,12 @@ async function maakLogboekPdf(meld,opt){
   if(deel("materialen")){meld("Materialen…");kop1("Materialen");const mr=fMat.slice().reverse();
   if(!mr.length)alinea("Nog geen materialen ingevuld.");
   else{const kort=m=>m.groep==="schuur"?m.naam.replace("Schuurpapier ",""):m.naam;
-    tabel([["Datum","Lak",...MATS.map(kort),"Opmerking"],...mr.map(r=>[paperDate(r.datum),matLak(r)==="zwart"?"Zwart":matLak(r)==="wit"?"Wit":"",...MATS.map(m=>({t:fmt(LAK_K.includes(m.k)&&r[m.k+"B"]!=null?matTot(r,m.k):r[m.k]),align:"right"})),r.opmerking||""])],[13,8,...MATS.map(m=>m.groep==="schuur"?8:12),30],{header:true,sz:8});
+    tabel([["Datum","Lak",...MATB.map(kort),"Opmerking"],...mr.map(r=>[paperDate(r.datum),matLak(r)==="zwart"?"Zwart":matLak(r)==="wit"?"Wit":"",...MATB.map(m=>({t:fmt(LAK_K.includes(m.k)&&r[m.k+"B"]!=null?matTot(r,m.k):r[m.k]),align:"right"})),r.opmerking||""])],[13,8,...MATB.map(m=>m.groep==="schuur"?8:12),30],{header:true,sz:8});
     const pcAll=perCharge(mr);
     if(pcAll.length){kop2("Verbruik per charge");tabel([["Soort","Charge","Blikken","Dagen","Van","Tot en met"],...pcAll.map(o=>[o.soort,{t:o.charge,b:true},{t:fmt(o.blik),align:"right"},{t:String(o.dagen),align:"right"},paperDate(o.van),paperDate(o.tot)])],[26,30,15,12,22,22],{header:true})}
     const maanden=[...new Set(mr.map(r=>(r.datum||"").slice(0,7)).filter(Boolean))];
-    kop2("Totaal per maand");tabel([["Maand","Lak","Dagen",...MATS.map(kort)],...maanden.flatMap(k=>["wit","zwart","alle"].map(l=>{const T=matTotalen(k,l),d=parseDate(k+"-01");return T.n?[MAANDEN[d.getMonth()]+" "+d.getFullYear(),{t:l==="alle"?"Totaal":l==="wit"?"Wit":"Zwart",b:l==="alle"},{t:String(T.n),align:"right"},...MATS.map(m=>({t:fmt(T.t[m.k]),align:"right",b:l==="alle"}))]:null}).filter(Boolean))],[22,9,8,...MATS.map(m=>m.groep==="schuur"?10:14)],{header:true})}}
+    kop2("Totaal per maand");tabel([["Maand","Lak","Dagen",...MATB.map(kort)],...maanden.flatMap(k=>["wit","zwart","alle"].map(l=>{const T=matTotalen(k,l),d=parseDate(k+"-01");return T.n?[MAANDEN[d.getMonth()]+" "+d.getFullYear(),{t:l==="alle"?"Totaal":l==="wit"?"Wit":"Zwart",b:l==="alle"},{t:String(T.n),align:"right"},...MATB.map(m=>({t:fmt(T.t[m.k]),align:"right",b:l==="alle"}))]:null}).filter(Boolean))],[22,9,8,...MATB.map(m=>m.groep==="schuur"?10:14)],{header:true})
+    {const afs=mr.filter(r=>afsTot(r));if(afs.length){kop2("Afschuren foute deuren");tabel([["Datum","Lak",...AFS.map(m=>m.naam.replace("Afschuren ","")),"Totaal"],...afs.map(r=>[paperDate(r.datum),matLak(r)==="zwart"?"Zwart":matLak(r)==="wit"?"Wit":"",...AFS.map(m=>({t:fmt(r[m.k]),align:"right"})),{t:fmt(afsTot(r)),align:"right",b:true}])],[16,10,...AFS.map(()=>12),14],{header:true});kop2("Afschuren per maand");tabel([["Maand",...AFS.map(m=>m.naam.replace("Afschuren ","")),"Totaal"],...maanden.map(k=>{const T=matTotalen(k),d=parseDate(k+"-01");return [MAANDEN[d.getMonth()]+" "+d.getFullYear(),...AFS.map(m=>({t:fmt(T.t[m.k]),align:"right"})),{t:fmt(afsTot(T.t)),align:"right",b:true}]}).filter(x=>x[x.length-1].t!=="0")],[24,...AFS.map(()=>12),14],{header:true})}}}}
   // storingen, met foto's
   if(deel("storingen")){kop1("Storingen");const st=fSt;
   if(!st.length)alinea("Nog geen storingen vastgelegd.");
@@ -2844,7 +2846,10 @@ const MATS=[
   {k:"p360",naam:"Schuurpapier P360",sub:"",eenheid:"",meer:"",stap:1,groep:"schuur"},
   {k:"p220",naam:"Schuurpapier P220",sub:"",eenheid:"",meer:"",stap:1,groep:"schuur"},
   {k:"p150",naam:"Schuurpapier P150",sub:"",eenheid:"",meer:"",stap:1,groep:"schuur"},
-  {k:"p100",naam:"Schuurpapier P100",sub:"",eenheid:"",meer:"",stap:1,groep:"schuur"}];
+  {k:"p100",naam:"Schuurpapier P100",sub:"",eenheid:"",meer:"",stap:1,groep:"schuur"},
+  ...["500","360","220","150","100"].map(g=>({k:"a"+g,naam:"Afschuren P"+g,sub:"",eenheid:"",meer:"",stap:1,groep:"afschuur"}))];
+const MATB=MATS.filter(m=>m.groep!=="afschuur"),AFS=MATS.filter(m=>m.groep==="afschuur");
+const afsTot=r=>AFS.reduce((s,m)=>s+(r[m.k]||0),0);
 let matRows=[],matLoaded=false,matSel=null,matDraft=null,matDirty=false,matSaving=false,matSaved=false,matErr="",matDel=false,matArmed=false;
 const LAK_K=["primer","grondlak","deklak"];
 function lakdagOp(datum,lak){if(!datum)return null;const c=dagen.filter(d=>d.datum===datum).sort((a,b)=>dagTijd(b)-dagTijd(a));
@@ -2897,7 +2902,7 @@ function renderMatList(){
   if(!rows.length&&matSel!=="__new")h+=`<li class="empty">${matMaand===nu?'Deze maand is nog niets ingevuld. Klik op <b>+ Materialen invullen</b>.':`Niets ingevuld in ${maandNaam(matMaand)}.`}</li>`;
   for(const r of rows){const dd=parseDate(r.datum);
     const lak=LAK_K.reduce((s,k)=>s+matTot(r,k),0),sch=MATS.filter(m=>m.groep==="schuur").map(m=>m.k).reduce((s,k)=>s+(r[k]||0),0);
-    h+=`<li><button type="button" data-id="${esc(r.id)}" aria-current="${r.id===matSel}"><span><span class="d">${esc(shortDate(r.datum))}</span> ${lakBadge(matLak(r))}<br><span class="wd">${dd?DAGEN[dd.getDay()]:""}</span></span><span class="cond">${fmt(lak)} blik lak<br>${fmt(sch)} schuurpapier</span></button></li>`}
+    h+=`<li><button type="button" data-id="${esc(r.id)}" aria-current="${r.id===matSel}"><span><span class="d">${esc(shortDate(r.datum))}</span> ${lakBadge(matLak(r))}<br><span class="wd">${dd?DAGEN[dd.getDay()]:""}</span></span><span class="cond">${fmt(lak)} blik lak<br>${fmt(sch)} schuurpapier${afsTot(r)?`<br>${fmt(afsTot(r))} afschuren`:""}</span></button></li>`}
   ul.innerHTML=h;ul.querySelectorAll("button[data-id]").forEach(b=>b.onclick=()=>matOpen(b.dataset.id));
 }
 function renderMatSheet(){
@@ -2945,6 +2950,7 @@ function renderMatSheet(){
     <div class="section"><h3>Lak</h3><div class="mat-grid een">${MATS.filter(m=>m.groep==="lak").map(kaart).join("")}</div></div>
     <div class="section"><h3>Verdunner</h3><div class="mat-grid drie">${MATS.filter(m=>m.groep==="verdunner").map(kaart).join("")}</div></div>
     <div class="section"><h3>Schuurpapier</h3><div class="mat-grid vier">${MATS.filter(m=>m.groep==="schuur").map(kaart).join("")}</div></div>
+    <div class="section"><h3>Afschuren foute deuren</h3><span class="hint" style="font-family:var(--f-body);display:block;margin:-4px 0 8px">Schuurpapier dat je gebruikt hebt om foute deuren af te schuren. Telt apart van het gewone schuurpapier.</span><div class="mat-grid vier">${AFS.map(kaart).join("")}</div></div>
     <div class="section"><h3><label for="mat-opm" style="all:inherit">Opmerking</label></h3><textarea id="mat-opm" placeholder="Bijv. nieuwe batch lak geopend, blik deels gebruikt…" style="min-height:80px">${esc(r.opmerking)}</textarea></div>
     <div class="foot">
       <div class="grp">${matDel?`<span class="confirm">Deze dag ${isNew?"weggooien":"verwijderen"}? <button class="btn danger-solid" type="button" id="matDelYes">Ja</button><button class="btn" type="button" id="matDelNo">Annuleren</button></span>`:`<button class="btn danger" type="button" id="matDelBtn">${isNew?"Weggooien":"Verwijderen"}</button>`}</div>
