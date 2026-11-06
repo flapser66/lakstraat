@@ -359,7 +359,8 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .kr-acties a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .kr-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 @media (max-width:700px){.kr-grid{grid-template-columns:minmax(0,1fr)}}
-.kr-score{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.kr-score{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+@media (max-width:480px){.kr-score{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .kr-score button{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--fg)}
 .kr-score button b{font-size:22px;line-height:1}
 .kr-score button span{font-size:11px;color:var(--muted)}
@@ -2876,12 +2877,13 @@ function renderPaMail(){const el=$("#paMail");if(!el)return;
       try{await db.collection("instellingen").doc("pamail").set({email:v,bijgewerkt:Date.now()});paMail=v}catch(e){}renderPaMail()}}}
 
 // ===================== KRASTEST =====================
-const KR_SCORE=[[5,"Perfect","Randen van de sneden glad, niets losgekomen (SKH klasse 0)."],[4,"Goed","Alleen kleine stukjes los op de kruispunten, minder dan 2% (SKH klasse 1)."],[3,"Voldoende","Lak los langs de sneden, 2 tot 5% (SKH klasse 2)."],[2,"Matig","Duidelijk los langs de sneden, 5 tot 15% (SKH klasse 3). Na 4 weken opnieuw testen."],[1,"Slecht","Veel lak los, meer dan 15% (SKH klasse 4 of 5). Na 4 weken opnieuw testen."]];
+const KR_SCORE=[[0,"geen","De randen van de sneden zijn glad, geen kruispunt is losgekomen: geen onthechting."],[1,"< 2%","Kleine stukjes los op kruispunten en/of langs de sneden, hooguit 2% weg, plekjes max. 2 mm²."],[2,"2–5%","Lak los langs de randen en/of kruispunten, 2 tot 5% weg, plekjes max. 5 mm²."],[3,"5–15%","Lak los langs de sneden en/of deels ernaast, 5 tot 15% weg, plekjes max. 50 mm². Na 4 weken opnieuw testen."],[4,"15–35%","Lak los langs de sneden en/of deels ernaast, 15 tot 35% weg. Na 4 weken opnieuw testen."],[5,"> 35%","Meer dan 35% van de lak is weg. Na 4 weken opnieuw testen."]];
+const krKlasse=r=>r.klasse!=null?r.klasse:r.score!=null?Math.min(5,5-r.score):null;
 let krasRows=[],krLoaded=false,krEdit=null,krDirty=false,krSaving=false,krSaved=false,krErr="",krDel=false,krIsAdmin=false;
 function krBlank(){const ld=dagen.find(d=>d.datum===today());return {id:null,datum:today(),lak:(ld&&ld.lak)||null,score:null,geslaagd:null,gHand:false,initialen:"",handtekening:""}}
-function krFrom(r){return {id:r.id,datum:r.datum||"",lak:r.lak||null,score:r.score??null,geslaagd:r.geslaagd??null,gHand:r.geslaagd!=null,initialen:r.initialen||"",handtekening:r.handtekening||""}}
+function krFrom(r){return {id:r.id,datum:r.datum||"",lak:r.lak||null,score:krKlasse(r),geslaagd:r.geslaagd??null,gHand:r.geslaagd!=null,initialen:r.initialen||"",handtekening:r.handtekening||""}}
 function krSorted(){return krasRows.slice().sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||(b.aangemaakt||0)-(a.aangemaakt||0))}
-const krScoreTxt=s=>{const x=KR_SCORE.find(k=>k[0]===s);return x?`${x[0]} · ${x[1]}`:""};
+const krScoreTxt=s=>{const x=KR_SCORE.find(k=>k[0]===s);return x?`Klasse ${x[0]} · ${x[1]}`:""};
 function krOpen(id){if(krDirty)return vraagOpslaan("krastest",()=>krOpen(id));const x=krasRows.find(r=>r.id===id);krEdit=x?krFrom(x):krBlank();krDel=false;krErr="";krSaved=false;renderKras();if(innerWidth<900)setTimeout(()=>{const f=$("#krForm");if(f)f.scrollIntoView({behavior:"smooth",block:"start"})},30)}
 function renderKras(){
   const el=$("#krasView");if(!krEdit)krEdit=krBlank();const r=krEdit,isNew=!r.id,rows=krSorted();
@@ -2893,10 +2895,10 @@ function renderKras(){
       <div class="field"><label for="kr-datum">Datum</label><div class="inp"><input id="kr-datum" type="date" value="${esc(r.datum)}" style="font-size:16px"></div></div>
       <div class="field lak-veld"><label>Lak</label>${lakKeuze(r.lak,"klak")}</div>
     </div>
-    <div class="field"><label>Score <span class="hint" style="font-family:var(--f-body)">1 is slecht, 5 is perfect</span></label>
-      <div class="kr-score" role="radiogroup" aria-label="Score">${KR_SCORE.slice().reverse().map(([n,t])=>`<button type="button" role="radio" aria-checked="${r.score===n}" data-ks="${n}"><b>${n}</b><span>${t}</span></button>`).join("")}</div>
-      ${r.score?`<span class="hint" style="font-family:var(--f-body)">${esc(KR_SCORE.find(k=>k[0]===r.score)[2])}</span>`:""}</div>
-    <div class="field"><label>Krastest geslaagd?</label><div class="kr-jn"><button type="button" class="kj-ja" aria-pressed="${r.geslaagd===true}" data-kg="ja">Ja</button><button type="button" class="kj-nee" aria-pressed="${r.geslaagd===false}" data-kg="nee">Nee</button></div>${r.geslaagd===false?`<div class="kr-tip"><b>Test niet geslaagd?</b> Zoek de oorzaak op in de werkwijze: zijn de omstandigheden goed, klopt de tape en is de snede goed gezet? Bij score 1 of 2 na 4 weken opnieuw testen. <button type="button" class="btn" id="krTipDoc">Werkwijze openen</button></div>`:""}</div>
+    <div class="field"><label>SKH-klasse <span class="hint" style="font-family:var(--f-body)">0 = geen onthechting, 5 = meer dan 35% los</span></label>
+      <div class="kr-score" role="radiogroup" aria-label="Score">${KR_SCORE.map(([n,t])=>`<button type="button" role="radio" aria-checked="${r.score===n}" data-ks="${n}"><b>${n}</b><span>${t}</span></button>`).join("")}</div>
+      ${r.score!=null?`<span class="hint" style="font-family:var(--f-body)">${esc(KR_SCORE.find(k=>k[0]===r.score)[2])}</span>`:""}</div>
+    <div class="field"><label>Krastest geslaagd?</label><div class="kr-jn"><button type="button" class="kj-ja" aria-pressed="${r.geslaagd===true}" data-kg="ja">Ja</button><button type="button" class="kj-nee" aria-pressed="${r.geslaagd===false}" data-kg="nee">Nee</button></div>${r.geslaagd===false?`<div class="kr-tip"><b>Test niet geslaagd?</b> Zoek de oorzaak op in de werkwijze: zijn de omstandigheden goed, klopt de tape en is de snede goed gezet? Bij klasse 3, 4 of 5 na 4 weken opnieuw testen. <button type="button" class="btn" id="krTipDoc">Werkwijze openen</button></div>`:""}</div>
     <div class="kr-grid">
       <div class="field"><label for="kr-ini">Paraaf: initialen</label><div class="inp"><input id="kr-ini" autocomplete="off" maxlength="6" value="${esc(r.initialen)}" placeholder="bijv. J.J." style="text-transform:uppercase"></div></div>
       <div class="field"><label>Paraaf: handtekening <button type="button" class="linkbtn" id="kr-sig-wis">Wissen</button></label><canvas id="kr-sig" class="kr-sig" width="600" height="180" aria-label="Zet hier je handtekening met je vinger"></canvas></div>
@@ -2908,14 +2910,14 @@ function renderKras(){
   </div>
   <div class="section"><h3>Uitslagen</h3><ul class="kr-lijst">${rows.length?rows.map(x=>`<li><button type="button" data-kid="${esc(x.id)}" aria-current="${x.id===r.id}">
     <span class="kr-d"><b>${esc(shortDate(x.datum))}</b> ${lakBadge(x.lak)}</span>
-    <span class="kr-s">${esc(krScoreTxt(x.score)||"–")}</span>
+    <span class="kr-s">${esc(krScoreTxt(krKlasse(x))||"–")}</span>
     <span class="kr-g ${x.geslaagd===true?"ja":x.geslaagd===false?"nee":""}">${x.geslaagd===true?"Geslaagd":x.geslaagd===false?"Niet geslaagd":"–"}</span>
     <span class="kr-p"><b>${esc(x.initialen||"")}</b>${x.handtekening?`<img src="${x.handtekening}" alt="handtekening">`:""}</span></button></li>`).join(""):`<li class="empty">${krLoaded?"Nog geen krastesten ingevuld.":"Laden…"}</li>`}</ul></div>
   </div>`;
   const touch=()=>{krDirty=true;krSaved=false;krErr="";const s=$("#krSave");if(s)s.disabled=false;const sub=el.querySelector(".sheet-head .sub");if(sub)sub.innerHTML=sub.innerHTML.replace(/<span class="status[^"]*">[^<]*<\/span>/,"")+statusHtml(false,true,false)};
   const dt=$("#kr-datum");dt.onclick=()=>{try{dt.showPicker()}catch(e){}};dt.onchange=()=>{r.datum=dt.value;touch()};
   el.querySelectorAll("[data-klak]").forEach(b=>b.onclick=()=>{r.lak=b.dataset.klak;krDirty=true;krSaved=false;renderKras()});
-  el.querySelectorAll("[data-ks]").forEach(b=>b.onclick=()=>{r.score=+b.dataset.ks;if(!r.gHand)r.geslaagd=r.score>=3;krDirty=true;krSaved=false;renderKras()});
+  el.querySelectorAll("[data-ks]").forEach(b=>b.onclick=()=>{r.score=+b.dataset.ks;if(!r.gHand)r.geslaagd=r.score<=2;krDirty=true;krSaved=false;renderKras()});
   el.querySelectorAll("[data-kg]").forEach(b=>b.onclick=()=>{r.geslaagd=b.dataset.kg==="ja";r.gHand=true;krDirty=true;krSaved=false;renderKras()});
   $("#kr-ini").oninput=e=>{r.initialen=e.target.value.toUpperCase();touch()};
   const cv=$("#kr-sig"),cx=cv.getContext("2d");cx.lineWidth=4;cx.lineCap="round";cx.lineJoin="round";cx.strokeStyle="#0b1f44";
@@ -2935,11 +2937,11 @@ function renderKras(){
   const tip=$("#krTipDoc");if(tip)tip.onclick=krWerkwijze;
 }
 async function saveKras(){const r=krEdit;
-  krErr=!r.datum?"Vul een datum in.":!r.score?"Kies een score.":r.geslaagd==null?"Kies of de krastest geslaagd is.":!r.initialen.trim()?"Vul je initialen in.":!r.handtekening?"Zet je handtekening.":"";
+  krErr=!r.datum?"Vul een datum in.":r.score==null?"Kies een klasse.":r.geslaagd==null?"Kies of de krastest geslaagd is.":!r.initialen.trim()?"Vul je initialen in.":!r.handtekening?"Zet je handtekening.":"";
   if(krErr)return renderKras();
   krSaving=true;renderKras();
   try{const oud=r.id&&krasRows.find(x=>x.id===r.id);
-    const rec={datum:r.datum,lak:r.lak||null,score:r.score,geslaagd:r.geslaagd,initialen:r.initialen.trim().toUpperCase(),handtekening:r.handtekening,aangemaakt:(oud&&oud.aangemaakt)||Date.now(),bijgewerkt:Date.now()};
+    const rec={datum:r.datum,lak:r.lak||null,klasse:r.score,score:null,geslaagd:r.geslaagd,initialen:r.initialen.trim().toUpperCase(),handtekening:r.handtekening,aangemaakt:(oud&&oud.aangemaakt)||Date.now(),bijgewerkt:Date.now()};
     const id=r.id||DOC_ID("kras_");await db.collection("instellingen").doc(id).set(rec);
     krasRows=krasRows.filter(x=>x.id!==id).concat([{id,...rec}]);krDirty=false;krSaved=true;krEdit=krBlank()}
   catch(e){krErr=saveErr(e)}
