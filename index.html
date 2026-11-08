@@ -2299,7 +2299,7 @@ function storingTekst(s){return [`Storing: ${s.titel||""}`,s.onderdeel?`Wals / o
 function bestandsnaam(s){return ("Storing "+(s.datum||"")+" "+(s.titel||"")).replace(/[\\/:*?"<>|]+/g,"").replace(/\s+/g," ").trim().slice(0,80)+".pdf"}
 // ===================== MICROSOFT (automatisch mailen via Outlook) =====================
 const MS={client:"81a83bb6-905f-4c56-8337-80bffa9b134c",base:"https://login.microsoftonline.com/consumers/oauth2/v2.0",
-  redirect:"https://flapser66.github.io/lakstraat/",scope:"openid offline_access https://graph.microsoft.com/Mail.Send"};
+  redirect:location.origin+(location.pathname.startsWith("/lakstraat/")?"/lakstraat/":"/"),scope:"openid offline_access https://graph.microsoft.com/Mail.Send"};
 const lsG=k=>{try{return localStorage.getItem(k)}catch(e){return null}},lsS=(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}};
 const b64url=buf=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 function msTok(){try{return JSON.parse(lsG("ms_tok")||"null")}catch(e){return null}}
