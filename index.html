@@ -386,6 +386,9 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .modal-breed{align-items:start;overflow:auto}
 .kr-form-box{max-width:960px;border-top-color:var(--accent);padding:16px}
 .kr-form-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.vs-paraaf{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:15px}
+.vs-paraaf span{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+.vs-paraaf img{height:44px;max-width:180px;background:#fff;border-radius:6px;border:1px solid var(--line);padding:2px}
 .kr-doc .row{display:flex;gap:8px;flex-wrap:wrap}
 /* materialen */
 .mat-kies{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:100%;max-width:560px;margin:6px 0}
@@ -2142,8 +2145,10 @@ async function maakStoringPdf(s,fotos,T={kop:"Storingsmelding",l1:"Oorzaak",l2:"
   const blok=(kop,tekst,kleur)=>{y-=10;ruimte(40);ops.push(`${kleur} rg ${M} ${y-4} 4 18 re f`);txt(kop.toUpperCase(),M+12,y,11,true,"0.34 0.39 0.48");y-=20;
     for(const l of wrap(tekst||"Niet ingevuld.",11.5,false,CW-12)){ruimte(16);txt(l,M+12,y,11.5,false);y-=16}};
   blok(T.l1,s.oorzaak,"0.6 0.36 0");if(T.l2)blok(T.l2,s.oplossing,"0.055 0.298 0.573");
-  // foto's
   const imgs=[];
+  if(s.paraaf){y-=14;ruimte(80);txt("PARAAF",M,y,11,true,"0.34 0.39 0.48");y-=18;if(s.paraaf.ini){txt(s.paraaf.ini,M,y,13,true);}
+    const m=s.paraaf.sig&&await imgMaat(s.paraaf.sig);if(m){const h=48,w=h*m.w/m.h;imgs.push({name:"Sig",bytes:b64bytes(s.paraaf.sig),pw:m.w,ph:m.h});ops.push(`q ${w.toFixed(1)} 0 0 ${h} ${M+90} ${(y-h+14).toFixed(1)} cm /Sig Do Q`);y-=h-4}else y-=6}
+  // foto's
   if(fotos.length){y-=14;ruimte(30);txt(`FOTO'S (${fotos.length})`,M,y,11,true,"0.34 0.39 0.48");y-=12;
     for(const f of fotos){const m=await imgMaat(f.data);if(!m)continue;let w=CW,h=w*m.h/m.w;if(h>340){h=340;w=h*m.w/m.h}
       if(y-h<M+20)nieuwePagina();const name="Im"+imgs.length;imgs.push({name,bytes:b64bytes(f.data),pw:m.w,ph:m.h});
@@ -2534,6 +2539,15 @@ function renderStoringen(){
   const q=$("#stQ");q.oninput=()=>{stQ=q.value;renderStLijst()};
   $("#stNew").onclick=()=>{if(stEdit&&!stGuard(()=>$("#stNew").click()))return;stEdit={...ST_LEEG(),fotos:[]};stDirty=false;stErr="";stDel=false;renderStForm();$("#st-titel").focus()};
 }
+// ===== handtekening (gedeeld) =====
+function tekenPad(cv,data,onChange){const cx=cv.getContext("2d");cx.lineWidth=4;cx.lineCap="round";cx.lineJoin="round";cx.strokeStyle="#0b1f44";
+  if(data){const im=new Image();im.onload=()=>cx.drawImage(im,0,0,cv.width,cv.height);im.src=data}
+  let teken=false;const pos=e=>{const b=cv.getBoundingClientRect();return [(e.clientX-b.left)*cv.width/b.width,(e.clientY-b.top)*cv.height/b.height]};
+  cv.onpointerdown=e=>{teken=true;try{cv.setPointerCapture(e.pointerId)}catch(x){}const [x,y]=pos(e);cx.beginPath();cx.moveTo(x,y);cx.lineTo(x+0.1,y);cx.stroke();e.preventDefault()};
+  cv.onpointermove=e=>{if(!teken)return;const [x,y]=pos(e);cx.lineTo(x,y);cx.stroke();e.preventDefault()};
+  cv.onpointerup=cv.onpointercancel=()=>{if(!teken)return;teken=false;onChange(cv.toDataURL("image/png"))};
+  return ()=>{cx.clearRect(0,0,cv.width,cv.height);onChange("")}}
+function sigJpg(d){return new Promise(r=>{if(!d)return r(null);const im=new Image();im.onload=()=>{const c=document.createElement("canvas");c.width=im.width;c.height=im.height;const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0);r(c.toDataURL("image/jpeg",0.9))};im.onerror=()=>r(null);im.src=d})}
 // ===================== DAGVERSLAG =====================
 const MAX_VSL_FOTOS=8;
 let verslagen=[],vsLoaded=false,vsQ="",vsOpen=null,vsEdit=null,vsDirty=false,vsSaving=false,vsErr="",vsDel=false;
@@ -2553,7 +2567,7 @@ function vsItemHtml(v,open){const n=(v.fotos||[]).length,kort=(v.tekst||"").repl
     ${open?`<div class="st-body">
       <div class="vs-tekst">${esc(v.tekst||"").replace(/\n/g,"<br>")||"<span class='hint'>Geen tekst</span>"}</div>
       ${n?`<div class="st-fotos">${v.fotos.map((id,i)=>`<button type="button" class="st-thumb" data-foto="${esc(id)}" aria-label="Foto ${i+1} vergroten"><span class="hint">laden…</span></button>`).join("")}</div>`:""}
-      <div class="st-meta" style="margin-top:8px">${v.door?`Geschreven door ${esc(v.door)}`:""}</div>
+      ${v.initialen||v.handtekening?`<div class="vs-paraaf"><span>Paraaf</span><b>${esc(v.initialen||"")}</b>${v.handtekening?`<img src="${v.handtekening}" alt="handtekening">`:""}</div>`:`<div class="st-meta" style="margin-top:8px">${v.door?`Geschreven door ${esc(v.door)}`:""}</div>`}
       <div class="st-acties"><button class="btn" type="button" data-vedit="${esc(v.id)}">Bewerken</button><button class="btn primary" type="button" data-send="${esc(v.id)}">Versturen</button></div>
     </div>`:""}
   </article>`}
@@ -2578,6 +2592,8 @@ function vsFormHtml(){if(!vsEdit)return "";const e=vsEdit,isNew=!e.id;
       <div class="field full"><label for="vs-tekst">Verslag</label><textarea id="vs-tekst" class="vs-area" placeholder="Hoe ging de dag? Wat is er gelakt, wat viel op, wat moet de volgende ploeg weten?">${esc(e.tekst)}</textarea></div>
       <div class="field full"><label>Foto's <span class="hint" style="font-family:var(--f-body)">(maximaal ${MAX_VSL_FOTOS})</span></label><div class="st-fotos" id="vsFotos"></div>
         <input type="file" id="vs-cam" accept="image/*" capture="environment" hidden><input type="file" id="vs-file" accept="image/*" multiple hidden></div>
+      <div class="field"><label for="vs-ini">Paraaf: initialen</label><div class="inp"><input id="vs-ini" maxlength="6" autocomplete="off" value="${esc(e.initialen||"")}" placeholder="bijv. J.J." style="text-transform:uppercase"></div></div>
+      <div class="field full" style="max-width:520px"><label>Paraaf: handtekening <button type="button" class="linkbtn" id="vs-sig-wis">Wissen</button></label><canvas id="vs-sig" class="kr-sig" width="600" height="180" aria-label="Zet hier je handtekening met je vinger"></canvas></div>
     </div>
     <div class="foot">
       <div class="grp">${isNew?"":vsDel?`<span class="confirm">Dit verslag verwijderen? <button class="btn danger-solid" type="button" id="vsDelYes">Ja, verwijderen</button><button class="btn" type="button" id="vsDelNo">Annuleren</button></span>`:`<button class="btn danger" type="button" id="vsDelBtn">Verwijderen</button>`}</div>
@@ -2598,6 +2614,8 @@ function renderVsForm(){const holder=$("#vsFormHolder");if(!holder)return;holder
   const voeg=async files=>{if(e.fotos==null)return;for(const f of files){if(e.fotos.length>=MAX_VSL_FOTOS)break;e.fotoBezig=true;renderVsFotos();
       try{e.fotos.push({data:await verklein(f)});vsTouch()}catch(er){vsErr=er.message}}e.fotoBezig=false;renderVsFotos()};
   ["vs-cam","vs-file"].forEach(id=>{const i=$("#"+id);i.onchange=()=>{voeg([...i.files]);i.value=""}});
+  $("#vs-ini").oninput=x=>{e.initialen=x.target.value.toUpperCase();vsTouch()};
+  const wis=tekenPad($("#vs-sig"),e.handtekening,d=>{e.handtekening=d;vsTouch()});$("#vs-sig-wis").onclick=wis;
   renderVsFotos();
   $("#vsCancel").onclick=()=>{vsEdit=null;vsDirty=false;vsErr="";vsDel=false;renderVsForm()};
   $("#vsSave").onclick=saveVerslag;
@@ -2609,12 +2627,14 @@ function renderVsForm(){const holder=$("#vsFormHolder");if(!holder)return;holder
 async function saveVerslag(){const e=vsEdit;if(!e)return;
   if(!e.datum){vsErr="Vul een datum in.";return renderVsForm()}
   if(!(e.tekst||"").trim()&&!(e.fotos||[]).length){vsErr="Schrijf een verslag of voeg een foto toe.";return renderVsForm()}
+  if(!(e.initialen||"").trim()){vsErr="Vul je initialen in.";return renderVsForm()}
+  if(!e.handtekening){vsErr="Zet je handtekening.";return renderVsForm()}
   vsSaving=true;vsErr="";const s=$("#vsSave");if(s){s.disabled=true;s.textContent="Opslaan…"}
   try{const id=e.id||DOC_ID("vsl_");const oud=verslagen.find(x=>x.id===id);const ids=[];
     for(const f of e.fotos||[]){if(f.id){ids.push(f.id);continue}
       const fid=DOC_ID("foto_vsl_"+id.slice(4)+"_");await db.collection("instellingen").doc(fid).set({verslag:id,data:f.data,aangemaakt:Date.now()});fotoCache[fid]=f.data;f.id=fid;ids.push(fid)}
     for(const fid of e.fotoIds||[])if(!ids.includes(fid))db.collection("instellingen").doc(fid).delete().catch(()=>{});
-    const rec={datum:e.datum,lak:e.lak||null,titel:(e.titel||"").trim(),tekst:(e.tekst||"").trim(),fotos:ids,door:(oud&&oud.door)||(((window.firebase&&firebase.auth&&firebase.auth().currentUser)||{}).email||""),aangemaakt:(oud&&(oud.aangemaakt||oud.bijgewerkt))||Date.now(),bijgewerkt:Date.now()};
+    const rec={datum:e.datum,lak:e.lak||null,titel:(e.titel||"").trim(),tekst:(e.tekst||"").trim(),fotos:ids,initialen:(e.initialen||"").trim().toUpperCase(),handtekening:e.handtekening||"",door:(oud&&oud.door)||(((window.firebase&&firebase.auth&&firebase.auth().currentUser)||{}).email||""),aangemaakt:(oud&&(oud.aangemaakt||oud.bijgewerkt))||Date.now(),bijgewerkt:Date.now()};
     await db.collection("instellingen").doc(id).set(rec);
     verslagen=verslagen.filter(x=>x.id!==id).concat([{id,...rec}]);vsEdit=null;vsDirty=false;vsOpen=id}
   catch(er){vsErr=saveErr(er)}
@@ -2632,10 +2652,10 @@ function renderVerslag(){const el=$("#verslagView");
 // ===== dagverslag versturen =====
 const VS_PDF={kop:"Dagverslag",l1:"Verslag",l2:null,rij1:"Lak",rij3:"Geschreven door"};
 let vsMail="peter@ideaal.nl";
-function vsPdfObj(v){return {titel:v.titel||("Dagverslag "+(v.datum?longDate(v.datum):"")),onderdeel:v.lak?LAKKEN[v.lak]:"",datum:v.datum,oorzaak:v.tekst,trefwoorden:v.door||""}}
+function vsPdfObj(v,sig){return {titel:v.titel||("Dagverslag "+(v.datum?longDate(v.datum):"")),onderdeel:v.lak?LAKKEN[v.lak]:"",datum:v.datum,oorzaak:v.tekst,trefwoorden:v.initialen||v.handtekening?"":v.door||"",paraaf:v.initialen||sig?{ini:v.initialen||"",sig}:null}}
 function vsOnderwerp(v){return "Dagverslag lakstraat "+(v.datum?longDate(v.datum):"")+(v.titel?": "+v.titel:"")}
 function vsTekst(v){const n=(v.fotos||[]).length;return [vsOnderwerp(v),v.lak?"Lak: "+LAKKEN[v.lak]:"","",v.tekst||"",
-  n?`\nIn de bijgevoegde PDF ${n===1?"staat 1 foto":"staan "+n+" foto's"}.`:"",v.door?"\nGeschreven door "+v.door:"","","Verstuurd vanuit het Lakstraat Logboek."].filter((x,i)=>x!==""||i===2||i===6).join("\n")}
+  n?`\nIn de bijgevoegde PDF ${n===1?"staat 1 foto":"staan "+n+" foto's"}.`:"",v.initialen?"\nParaaf: "+v.initialen:v.door?"\nGeschreven door "+v.door:"","","Verstuurd vanuit het Lakstraat Logboek."].filter((x,i)=>x!==""||i===2||i===6).join("\n")}
 function vsBestand(v){return ("Dagverslag "+(v.datum||"")+" "+(v.titel||"")).replace(/[\\/:*?"<>|]+/g,"").replace(/\s+/g," ").trim().slice(0,80)+".pdf"}
 async function verstuurVerslag(id,knop,bevestigd){
   const s=verslagen.find(x=>x.id===id);if(!s)return;
@@ -2648,7 +2668,7 @@ async function verstuurVerslag(id,knop,bevestigd){
     let token=await msToken();
     if(!token){knop.textContent="Aanmelden bij Microsoft…";return msLogin(id)}
     knop.textContent="PDF maken…";
-    const fotos=await laadFotos(s.fotos||[]),bytes=await maakStoringPdf(vsPdfObj(s),fotos,VS_PDF);
+    const fotos=await laadFotos(s.fotos||[]),bytes=await maakStoringPdf(vsPdfObj(s,await sigJpg(s.handtekening)),fotos,VS_PDF);
     if(bytes.length>3000000){knop.disabled=false;knop.textContent=oud;return deelVerslag(id,knop)} // te groot voor automatisch
     knop.textContent="Verzenden…";
     const res=await msVerstuur(s,bytes,vsBestand(s),vsOnderwerp(s),vsTekst(s),token,vsMail);
@@ -2664,7 +2684,7 @@ async function deelVerslag(id,knop){
   const oud=knop.textContent;knop.disabled=true;knop.textContent="PDF maken…";
   try{
     const fotos=await laadFotos(s.fotos||[]);
-    const bytes=await maakStoringPdf(vsPdfObj(s),fotos,VS_PDF);
+    const bytes=await maakStoringPdf(vsPdfObj(s,await sigJpg(s.handtekening)),fotos,VS_PDF);
     const file=new File([bytes],vsBestand(s),{type:"application/pdf"});
     const tekst=vsTekst(s),onderwerp=vsOnderwerp(s);
     const deel=async()=>{await navigator.share({files:[file],title:onderwerp,text:(vsMail?`Aan: ${vsMail}\n\n`:"")+tekst})};
