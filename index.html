@@ -3081,9 +3081,11 @@ function vrdOpen(id){if(vrdDirty)return vraagOpslaan("voorraad",()=>vrdOpen(id))
   vrdEdit=x?{...x,keys:vrdN(x).keys,min:vrdN(x).min,per:vrdN(x).per,mutaties:undefined}:vrdBlank();vrdDel=false;vrdErr="";vrdMsg="";renderVoorraad();if(innerWidth<900)setTimeout(()=>{const f=$("#vrdForm");if(f)f.scrollIntoView({behavior:"smooth",block:"start"})},30)}
 const VRD_STD=()=>[["Primer",["primer"],"alle"],["Grondlak",["grondlak"],"alle"],["Deklak wit (RAL 9010)",["deklak"],"wit"],["Deklak zwart (RAL 9005)",["deklak"],"zwart"],...VRD_KORRELS.map(g=>["Schuurpapier P"+g,["p"+g,"a"+g],"alle"])];
 const vrdOntbreekt=()=>VRD_STD().filter(([n,k,kl])=>!vrdRows.some(r=>vrdN(r).keys.join()===k.join()&&(r.kleur||"alle")===kl));
-async function vrdStandaard(){const mis=vrdOntbreekt();let i=vrdRows.length;
+let vrdStdBezig=false;
+async function vrdStandaard(){if(vrdStdBezig)return;vrdStdBezig=true;const mis=vrdOntbreekt();let i=vrdRows.length;
   try{for(const [naam,keys,kleur] of mis){const sch=/^p/.test(keys[0]);const rec={naam,keys,kleur,per:sch?10:1,min:0,telAantal:0,telDatum:today(),mutaties:[],volgorde:i++,aangemaakt:Date.now(),bijgewerkt:Date.now()};
-    const id=DOC_ID("vrd_");await db.collection("instellingen").doc(id).set(rec);vrdRows.push({id,...rec})}}catch(e){vrdErr=saveErr(e)}renderVoorraad()}
+    const id="vrd_std_"+keys.join("_")+"_"+kleur;if(vrdRows.some(r=>r.id===id||(vrdN(r).keys.join()===keys.join()&&(r.kleur||"alle")===kleur)))continue;
+    const ref=db.collection("instellingen").doc(id);if((await ref.get()).exists)continue;await ref.set(rec);vrdRows.push({id,...rec})}}catch(e){vrdErr=saveErr(e)}vrdStdBezig=false;renderVoorraad()}
 function renderVoorraad(){const el=$("#vrdView");const rows=vrdSorted(),r=vrdEdit,isNew=r&&!r.id,orig=r&&r.id&&vrdRows.find(x=>x.id===r.id);const mis=vrdLoaded?vrdOntbreekt():[];
   const rn=r?vrdN(r):null;
   el.innerHTML=`<div class="sheet vrd-sheet">
@@ -3123,7 +3125,7 @@ function renderVoorraad(){const el=$("#vrdView");const rows=vrdSorted(),r=vrdEdi
     $("#vrdLtNee").onclick=renderVoorraad;$("#vrdLtOk").onclick=async()=>{const w=+$("#vrdLtW").value,m=+$("#vrdLtM").value;if(!(w>=0)||!(m>=0))return;
       try{await db.collection("instellingen").doc("vrdinst").set({levertijd:w,marge:m,bijgewerkt:Date.now()});vrdInst={levertijd:w,marge:m}}catch(e){vrdErr=saveErr(e)}renderVoorraad()}};
   $("#vrdNew").onclick=()=>vrdOpen(null);
-  const std=$("#vrdStd");if(std)std.onclick=()=>{std.disabled=true;vrdStandaard()};
+  const std=$("#vrdStd");if(std){if(vrdStdBezig)std.disabled=true;std.onclick=()=>{std.disabled=true;vrdStandaard()}}
   el.querySelectorAll("[data-vid]").forEach(b=>b.onclick=()=>vrdOpen(b.dataset.vid));
   if(!r)return;
   const touch=()=>{vrdDirty=true;vrdErr="";const s=$("#vrdSave");if(s)s.disabled=false};
