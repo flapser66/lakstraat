@@ -411,6 +411,7 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .vrd-acties{display:flex;flex-direction:column;gap:10px;margin-bottom:8px}
 .vrd-actie{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.vrd-actie label{min-width:150px;font-weight:600}.vrd-actie .inp{width:120px}.vrd-actie select{height:44px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--fg);padding:0 8px}
 .vrd-sel{width:100%;height:48px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--fg);padding:0 12px;font-size:16px}
+.vrd-e{height:44px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--fg);padding:0 8px;font-size:15px}
 .vrd-ok{background:#e3f4e8;color:#1f7a3a;border-radius:8px;padding:8px 12px;font-weight:600}
 .vrd-hist{list-style:none;padding:0;margin:8px 0 0;font-size:13px;color:var(--muted)}.vrd-hist li{padding:3px 0;border-top:1px solid var(--line)}
 .vrd-meld{border-top-color:#d0383b}.vrd-meld h2{color:#d0383b}.vrd-meld ul{padding-left:18px;margin:8px 0 14px}.vrd-meld li{margin:4px 0}.vrd-meld .row{display:flex;gap:8px;flex-wrap:wrap}
@@ -3101,17 +3102,17 @@ function renderVoorraad(){const el=$("#vrdView");const rows=vrdSorted(),r=vrdEdi
       ${rn.schuur?`<div class="field"><label for="vrd-per">Stuks per bundel</label><div class="inp"><input id="vrd-per" type="number" inputmode="numeric" min="1" step="1" value="${esc(r.per||10)}"></div></div>`
         :`<div class="field"><label for="vrd-kleur">Welke lak</label><select id="vrd-kleur" class="vrd-sel">${Object.entries(VRD_KLEUR).map(([k,t])=>`<option value="${k}"${(r.kleur||"alle")===k?" selected":""}>${t}</option>`).join("")}</select></div>`}
       <div class="field"><label for="vrd-min">Bestellen onder (${rn.meer})</label><div class="inp"><input id="vrd-min" type="number" inputmode="decimal" min="0" step="${rn.schuur?1:0.5}" value="${esc(r.min||"")}" placeholder="bijv. ${rn.schuur?3:4}"></div></div>
-      ${isNew?`<div class="field"><label for="vrd-tel">Huidige voorraad (${rn.meer})</label><div class="inp"><input id="vrd-tel" type="number" inputmode="decimal" min="0" step="0.5" value="${esc(r.telAantal||"")}" placeholder="geteld aantal"></div></div>`:""}
+      ${isNew?`<div class="field"><label for="vrd-tel">Huidige voorraad (${rn.schuur?"stuks":rn.meer})</label><div class="inp"><input id="vrd-tel" type="number" inputmode="decimal" min="0" step="0.5" value="${esc(r.telAantal||"")}" placeholder="geteld aantal"></div></div>`:""}
     </div></div>
     <div class="foot"><div class="grp">${isNew?"":vrdDel?`<span class="confirm">Product verwijderen? <button class="btn danger-solid" type="button" id="vrdDelJa">Ja</button><button class="btn" type="button" id="vrdDelNee">Annuleren</button></span>`:`<button class="btn danger" type="button" id="vrdDelBtn">Verwijderen</button>`} <button class="btn" type="button" id="vrdSluit">Sluiten</button></div>
       <div class="grp">${vrdErr?`<span class="err">${esc(vrdErr)}</span>`:""}<button class="btn primary" type="button" id="vrdSave" ${vrdSaving||!vrdDirty?"disabled":""}>Opslaan</button></div></div>
     ${orig?(()=>{const on=vrdN(orig),hist=(orig.mutaties||[]).filter(m=>(m.datum||"")>=(orig.telDatum||""));return `<div class="section"><h3>Voorraad bijwerken</h3>${vrdMsg?`<p class="vrd-ok">${esc(vrdMsg)}</p>`:""}
       <div class="vrd-acties">
-        <div class="vrd-actie"><label for="vrd-lev">Levering binnen (${on.meer})</label><div class="inp"><input id="vrd-lev" type="number" inputmode="decimal" min="0" step="1" placeholder="aantal"></div><button class="btn primary" type="button" id="vrdLevBtn">Boeken</button></div>
-        <div class="vrd-actie"><label for="vrd-tel2">Geteld (${on.meer})</label><div class="inp"><input id="vrd-tel2" type="number" inputmode="decimal" min="0" step="0.5" placeholder="${f1(vrdStand(orig))}"></div><button class="btn" type="button" id="vrdTelBtn">Telling opslaan</button></div>
+        <div class="vrd-actie"><label for="vrd-lev">Levering binnen${on.schuur?"":` (${on.meer})`}</label><div class="inp"><input id="vrd-lev" type="number" inputmode="decimal" min="0" step="1" placeholder="aantal"></div>${on.schuur?`<select id="vrd-lev-e" class="vrd-e" aria-label="Eenheid levering"><option value="b">bundels</option><option value="s">stuks</option></select>`:""}<button class="btn primary" type="button" id="vrdLevBtn">Boeken</button></div>
+        <div class="vrd-actie"><label for="vrd-tel2">Geteld${on.schuur?"":` (${on.meer})`}</label><div class="inp"><input id="vrd-tel2" type="number" inputmode="decimal" min="0" step="${on.schuur?1:0.5}" placeholder="${on.schuur?Math.round(vrdStand(orig)*on.per):f1(vrdStand(orig))}"></div>${on.schuur?`<select id="vrd-tel-e" class="vrd-e" aria-label="Eenheid telling"><option value="s">stuks</option><option value="b">bundels</option></select>`:""}<button class="btn" type="button" id="vrdTelBtn">Telling opslaan</button></div>
       </div>
       <p class="hint" style="font-family:var(--f-body)">Telling op ${esc(shortDate(orig.telDatum||""))}: ${f1(+orig.telAantal||0)} · leveringen +${f1(vrdMut(orig))} · verbruik −${f1(vrdVerbruik(orig))} = <b>${vrdTxt(orig,vrdStand(orig))}</b></p>
-      ${hist.length?`<ul class="vrd-hist">${hist.slice(-8).reverse().map(m=>`<li>${esc(shortDate(m.datum))} · levering +${f1(+m.aantal)} ${vrdEenh(orig,+m.aantal)}${m.door?` · ${esc(m.door)}`:""}</li>`).join("")}</ul>`:""}
+      ${hist.length?`<ul class="vrd-hist">${hist.slice(-8).reverse().map(m=>`<li>${esc(shortDate(m.datum))} · levering +${vrdTxt(orig,+m.aantal)}${m.door?` · ${esc(m.door)}`:""}</li>`).join("")}</ul>`:""}
     </div>`})():""}`:""}
   </div>`;
   renderVrdMail();vrdBadge();
@@ -3127,11 +3128,12 @@ function renderVoorraad(){const el=$("#vrdView");const rows=vrdSorted(),r=vrdEdi
   const d1=$("#vrdDelBtn");if(d1)d1.onclick=()=>{vrdDel=true;renderVoorraad()};
   const dn=$("#vrdDelNee");if(dn)dn.onclick=()=>{vrdDel=false;renderVoorraad()};
   const dy=$("#vrdDelJa");if(dy)dy.onclick=async()=>{try{await db.collection("instellingen").doc(r.id).delete();vrdRows=vrdRows.filter(x=>x.id!==r.id);vrdEdit=null;vrdDirty=false}catch(e){vrdErr="Verwijderen mislukt."}vrdDel=false;renderVoorraad()};
-  const lev=$("#vrdLevBtn");if(lev)lev.onclick=async()=>{const n=+$("#vrd-lev").value;if(!(n>0)){vrdErr="Vul het aantal van de levering in.";return renderVoorraad()}
+  const omz=(v,sel)=>{const e=$(sel);return e&&e.value==="s"?v/vrdN(orig).per:v};
+  const lev=$("#vrdLevBtn");if(lev)lev.onclick=async()=>{const n=omz(+$("#vrd-lev").value,"#vrd-lev-e");if(!(n>0)){vrdErr="Vul het aantal van de levering in.";return renderVoorraad()}
     const muts=(orig.mutaties||[]).concat([{datum:today(),aantal:n,door:vrdDoor(),t:Date.now()}]);
-    if(await vrdBewaar(orig,{mutaties:muts,besteldOp:null}))vrdMsg=`Levering geboekt: +${f1(n)} ${vrdEenh(orig,n)}.`;renderVoorraad()};
+    if(await vrdBewaar(orig,{mutaties:muts,besteldOp:null}))vrdMsg=`Levering geboekt: +${vrdTxt(orig,n)}.`;renderVoorraad()};
   const tel=$("#vrdTelBtn");if(tel)tel.onclick=async()=>{const v=$("#vrd-tel2").value;if(v===""||!(+v>=0)){vrdErr="Vul het getelde aantal in.";return renderVoorraad()}
-    if(await vrdBewaar(orig,{telAantal:+v,telDatum:today()}))vrdMsg=`Telling opgeslagen: ${f1(+v)} ${vrdEenh(orig,+v)}.`;renderVoorraad()};
+    const t=omz(+v,"#vrd-tel-e");if(await vrdBewaar(orig,{telAantal:t,telDatum:today()}))vrdMsg=`Telling opgeslagen: ${vrdTxt(orig,t)}.`;renderVoorraad()};
 }
 const vrdDoor=()=>(((window.firebase&&firebase.auth&&firebase.auth().currentUser)||{}).email||"");
 async function vrdBewaar(orig,velden){try{const rec={...orig,...velden,bijgewerkt:Date.now()};delete rec.id;await db.collection("instellingen").doc(orig.id).set(rec);Object.assign(orig,velden,{bijgewerkt:rec.bijgewerkt});vrdErr="";return true}catch(e){vrdErr=saveErr(e);return false}}
@@ -3141,7 +3143,7 @@ async function saveVoorraad(){const r=vrdEdit;if(!r)return;const n=vrdN(r);
   vrdSaving=true;renderVoorraad();
   try{const oud=r.id&&vrdRows.find(x=>x.id===r.id);
     const rec={naam:r.naam.trim(),keys:n.keys,kleur:n.schuur?"alle":r.kleur||"alle",per:n.schuur?Math.round(+r.per||10):1,min:+r.min||0,
-      telAantal:oud?oud.telAantal||0:(+r.telAantal||0),telDatum:oud?oud.telDatum||today():today(),mutaties:oud?oud.mutaties||[]:[],
+      telAantal:oud?oud.telAantal||0:(n.schuur?(+r.telAantal||0)/(Math.round(+r.per||10)):(+r.telAantal||0)),telDatum:oud?oud.telDatum||today():today(),mutaties:oud?oud.mutaties||[]:[],
       volgorde:oud?oud.volgorde??99:vrdRows.length,aangemaakt:oud?oud.aangemaakt||Date.now():Date.now(),bijgewerkt:Date.now()};
     const id=r.id||DOC_ID("vrd_");await db.collection("instellingen").doc(id).set(rec);
     vrdRows=vrdRows.filter(x=>x.id!==id).concat([{id,...rec}]);vrdDirty=false;vrdEdit={...rec,id};
