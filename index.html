@@ -416,6 +416,7 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .vrd-c span{display:block}
 .vrd-knoppen{gap:8px}.vrd-knoppen .btn{flex:1;min-width:180px}
 .vrd-nu{margin:0;font-size:14px;color:var(--muted)}.vrd-nu b{color:var(--fg)}
+.vrd-leeg{color:#d0383b;font-weight:600}
 .vrd-ok{background:#e3f4e8;color:#1f7a3a;border-radius:8px;padding:8px 12px;font-weight:600}
 .vrd-hist{list-style:none;padding:0;margin:8px 0 0;font-size:13px;color:var(--muted)}.vrd-hist li{padding:3px 0;border-top:1px solid var(--line)}
 .vrd-meld{border-top-color:#d0383b}.vrd-meld h2{color:#d0383b}.vrd-meld ul{padding-left:18px;margin:8px 0 14px}.vrd-meld li{margin:4px 0}.vrd-meld .row{display:flex;gap:8px;flex-wrap:wrap}
@@ -3098,7 +3099,8 @@ function renderVoorraad(){const el=$("#vrdView");const rows=vrdSorted(),r=vrdEdi
   <div class="section"><ul class="vrd-lijst">${rows.map(it=>{const s=vrdStand(it),n=vrdN(it),laag=vrdLaag(it);return `<li><button type="button" data-vid="${esc(it.id)}" aria-current="${!!r&&it.id===r.id}" class="${laag?"laag":""}">
       <span class="vrd-n"><b>${esc(it.naam)}</b><span>${n.keys.length?esc(n.sub)+(!n.schuur&&it.kleur&&it.kleur!=="alle"?" · "+it.kleur:""):"niet gekoppeld"}</span></span>
       <span class="vrd-s"><b>${f1(s)}</b> ${vrdEenh(it,s)}${n.schuur?`<span>${Math.round(s*n.per)} stuks</span>`:""}${(()=>{const w=vrdWekenOver(it);return w!=null?`<span>± ${f1(w)} weken</span>`:""})()}</span>
-      <span class="vrd-c">${(()=>{const bp=vrdBestelpunt(it),bd=vrdBestelDatum(it);return bp>0?`bestellen onder <b>${f1(bp)}</b>${bd?`<span>uiterlijk ${esc(shortDate(bd))}</span>`:""}`:"<i>minimum instellen</i>"})()}</span>
+      <span class="vrd-c">${(()=>{const bp=vrdBestelpunt(it),bd=vrdBestelDatum(it);const n2=vrdN(it),pw=vrdPerWeek(it),door=pw&&bp>n2.min;const leeg=pw&&!bd?new Date(Date.now()+Math.max(0,vrdStand(it))/pw*7*864e5).toISOString().slice(0,10):null;
+        return bp>0?`bestellen onder <b>${f1(bp)}</b><span>${door?`door levertijd (min. ${f1(n2.min)})`:"minimale voorraad"}</span>${bd?`<span>uiterlijk ${esc(shortDate(bd))}</span>`:leeg?`<span class="vrd-leeg">op rond ${esc(shortDate(leeg))}</span>`:""}`:"<i>minimum instellen</i>"})()}</span>
       <span class="vrd-st ${laag?(vrdBesteld(it)?"bes":"nee"):vrdBestelpunt(it)>0?"ja":""}">${laag?(vrdBesteld(it)?"Besteld":"Bestellen"):vrdBestelpunt(it)>0?"Op voorraad":"–"}</span></button></li>`}).join("")}
     ${vrdLoaded&&!rows.length?`<li class="empty">Nog geen producten.</li>`:""}</ul>
     ${mis.length?`<p style="margin-top:10px"><button class="btn" type="button" id="vrdStd">${rows.length?"Ontbrekende standaardproducten toevoegen ("+mis.length+")":"Standaard lakblikken en schuurpapier toevoegen"}</button></p>`:""}${vrdMsg&&!orig?`<p class="vrd-ok" style="margin-top:10px">${esc(vrdMsg)}</p>`:""}</div>
@@ -3109,7 +3111,7 @@ function renderVoorraad(){const el=$("#vrdView");const rows=vrdSorted(),r=vrdEdi
       <div class="field"><label for="vrd-mat">Afboeken bij verbruik van</label><select id="vrd-mat" class="vrd-sel"><option value="">Niet koppelen</option>${VRD_KOPPEL().map(o=>`<option value="${o.v}"${rn.keys.join()===o.v?" selected":""}>${esc(o.t)}</option>`).join("")}</select></div>
       ${rn.schuur?`<div class="field"><label for="vrd-per">Stuks per bundel</label><div class="inp"><input id="vrd-per" type="number" inputmode="numeric" min="1" step="1" value="${esc(r.per||10)}"></div></div>`
         :`<div class="field"><label for="vrd-kleur">Welke lak</label><select id="vrd-kleur" class="vrd-sel">${Object.entries(VRD_KLEUR).map(([k,t])=>`<option value="${k}"${(r.kleur||"alle")===k?" selected":""}>${t}</option>`).join("")}</select></div>`}
-      <div class="field"><label for="vrd-min">Minimale voorraad (${rn.meer})</label><div class="inp"><input id="vrd-min" type="number" inputmode="decimal" min="0" step="${rn.schuur?1:0.5}" value="${esc(r.min||"")}" placeholder="bijv. ${rn.schuur?3:4}"></div></div>
+      <div class="field"><label for="vrd-min">Minimale voorraad (${rn.meer})</label><div class="inp"><input id="vrd-min" type="number" inputmode="decimal" min="0" step="${rn.schuur?1:0.5}" value="${esc(r.min||"")}" placeholder="bijv. ${rn.schuur?3:4}"></div>${orig&&vrdPerWeek(orig)?`<span class="hint" style="font-family:var(--f-body)">Verbruik ± ${vrdTxt(orig,vrdPerWeek(orig))} per week. Om de ${vrdInst.levertijd} weken levertijd + ${vrdInst.marge} week marge te overbruggen is ${vrdTxt(orig,vrdPerWeek(orig)*((+vrdInst.levertijd||0)+(+vrdInst.marge||0)))} nodig. Er wordt besteld onder het hoogste van de twee.</span>`:""}</div>
       ${isNew?`<div class="field"><label for="vrd-tel">Huidige voorraad (${rn.schuur?"stuks":rn.meer})</label><div class="inp"><input id="vrd-tel" type="number" inputmode="decimal" min="0" step="0.5" value="${esc(r.telAantal||"")}" placeholder="geteld aantal"></div></div>`:""}
     </div></div>
     <div class="foot"><div class="grp">${isNew?"":vrdDel?`<span class="confirm">Product verwijderen? <button class="btn danger-solid" type="button" id="vrdDelJa">Ja</button><button class="btn" type="button" id="vrdDelNee">Annuleren</button></span>`:`<button class="btn danger" type="button" id="vrdDelBtn">Verwijderen</button>`} <button class="btn" type="button" id="vrdSluit">Sluiten</button></div>
