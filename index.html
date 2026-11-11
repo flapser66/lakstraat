@@ -2941,8 +2941,28 @@ function renderPaMail(){const el=$("#paMail");if(!el)return;
 const KR_SCORE=[[0,"geen","De randen van de sneden zijn glad, geen kruispunt is losgekomen: geen onthechting."],[1,"< 2%","Kleine stukjes los op kruispunten en/of langs de sneden, hooguit 2% weg, plekjes max. 2 mm²."],[2,"2–5%","Lak los langs de randen en/of kruispunten, 2 tot 5% weg, plekjes max. 5 mm²."],[3,"5–15%","Lak los langs de sneden en/of deels ernaast, 5 tot 15% weg, plekjes max. 50 mm². Na 4 weken opnieuw testen."],[4,"15–35%","Lak los langs de sneden en/of deels ernaast, 15 tot 35% weg. Na 4 weken opnieuw testen."],[5,"> 35%","Meer dan 35% van de lak is weg. Na 4 weken opnieuw testen."]];
 const krKlasse=r=>r.klasse!=null?r.klasse:r.score!=null?Math.min(5,5-r.score):null;
 let krasRows=[],krLoaded=false,krEdit=null,krDirty=false,krSaving=false,krSaved=false,krErr="",krDel=false,krIsAdmin=false;
-function krBlank(){const ld=dagen.find(d=>d.datum===today());return {id:null,datum:today(),lak:(ld&&ld.lak)||null,score:null,geslaagd:null,gHand:false,initialen:"",handtekening:""}}
-function krFrom(r){return {id:r.id,datum:r.datum||"",lak:r.lak||null,score:krKlasse(r),geslaagd:r.geslaagd??null,gHand:r.geslaagd!=null,initialen:r.initialen||"",handtekening:r.handtekening||""}}
+function krBlank(){const ld=dagen.find(d=>d.datum===today());return {id:null,datum:today(),lak:(ld&&ld.lak)||null,score:null,geslaagd:null,gHand:false,initialen:"",handtekening:"",fotos:[]}}
+function fotoStempel(data,wanneer,regel2){return new Promise(res=>{const im=new Image();im.onload=()=>{const c=document.createElement("canvas");c.width=im.width;c.height=im.height;const x=c.getContext("2d");x.drawImage(im,0,0);
+  const d=new Date(wanneer||Date.now()),p=n=>String(n).padStart(2,"0"),t1=`${p(d.getDate())}-${p(d.getMonth()+1)}-${d.getFullYear()}  ${p(d.getHours())}:${p(d.getMinutes())}`;
+  const fs=Math.max(18,Math.round(Math.min(c.width,c.height)*0.05)),pad=Math.round(fs*0.5);x.font=`700 ${fs}px Arial, sans-serif`;const f2=Math.round(fs*0.7);
+  const w1=x.measureText(t1).width;x.font=`600 ${f2}px Arial, sans-serif`;const w2=regel2?x.measureText(regel2).width:0;
+  const bw=Math.max(w1,w2)+pad*2,bh=fs+(regel2?f2+pad*0.5:0)+pad*2,bx=c.width-bw-pad,by=c.height-bh-pad;
+  x.fillStyle="rgba(0,0,0,.6)";if(x.roundRect){x.beginPath();x.roundRect(bx,by,bw,bh,pad*0.6);x.fill()}else x.fillRect(bx,by,bw,bh);
+  x.fillStyle="#fff";x.textBaseline="top";x.font=`700 ${fs}px Arial, sans-serif`;x.fillText(t1,bx+pad,by+pad);
+  if(regel2){x.font=`600 ${f2}px Arial, sans-serif`;x.fillStyle="#ffd34d";x.fillText(regel2,bx+pad,by+pad+fs+pad*0.5)}
+  res(c.toDataURL("image/jpeg",0.82))};im.onerror=()=>res(data);im.src=data})}
+function renderKrFotos(){const el=$("#krFotos");if(!el||!krEdit)return;const f=krEdit.fotos||[];
+  el.innerHTML=f.map((x,i)=>`<div class="st-thumb edit">${x.data?`<img src="${x.data}" alt="Foto krastest ${i+1}" data-kfz="${i}">`:`<span class="laden">laden…</span>`}<button type="button" class="st-fx" data-kfd="${i}" aria-label="Foto verwijderen">×</button></div>`).join("")
+   +(f.length<MAX_FOTOS?`<button type="button" class="btn" id="krCamBtn">📷 Foto maken</button><button type="button" class="btn" id="krGalBtn">Uit galerij</button>`:"");
+  el.querySelectorAll("[data-kfz]").forEach(i=>i.onclick=()=>toonFoto(f[+i.dataset.kfz].data));
+  el.querySelectorAll("[data-kfd]").forEach(b=>b.onclick=()=>{f.splice(+b.dataset.kfd,1);krDirty=true;krSaved=false;const sv=$("#krSave");if(sv)sv.disabled=false;renderKrFotos()});
+  const cb=$("#krCamBtn");if(cb)cb.onclick=()=>$("#krCam").click();const gb=$("#krGalBtn");if(gb)gb.onclick=()=>$("#krGal").click()}
+async function krFotoErbij(files){const e=krEdit;if(!e)return;e.fotos=e.fotos||[];
+  for(const file of [...files]){if(e.fotos.length>=MAX_FOTOS)break;try{const d=await verklein(file);
+    const tekst="Krastest"+(e.lak==="wit"?" · wit":e.lak==="zwart"?" · zwart":"")+(e.score!=null?" · klasse "+e.score:"");
+    e.fotos.push({data:await fotoStempel(d,file.lastModified||Date.now(),tekst)})}catch(x){krErr=x.message||"Foto kon niet worden gelezen."}}
+  krDirty=true;krSaved=false;const sv=$("#krSave");if(sv)sv.disabled=false;renderKrFotos()}
+function krFrom(r){return {id:r.id,datum:r.datum||"",lak:r.lak||null,score:krKlasse(r),geslaagd:r.geslaagd??null,gHand:r.geslaagd!=null,initialen:r.initialen||"",handtekening:r.handtekening||"",fotos:(r.fotos||[]).map(id=>({id,data:fotoCache[id]||null}))}}
 function krSorted(){return krasRows.slice().sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||(b.aangemaakt||0)-(a.aangemaakt||0))}
 const krScoreTxt=s=>{const x=KR_SCORE.find(k=>k[0]===s);return x?`Klasse ${x[0]} · ${x[1]}`:""};
 function krOpen(id){if(krDirty)return vraagOpslaan("krastest",()=>krOpen(id));const x=krasRows.find(r=>r.id===id);krEdit=x?krFrom(x):krBlank();krDel=false;krErr="";krSaved=false;renderKras();if(innerWidth<900)setTimeout(()=>{const f=$("#krForm");if(f)f.scrollIntoView({behavior:"smooth",block:"start"})},30)}
@@ -2960,6 +2980,8 @@ function renderKras(){
       <div class="kr-score" role="radiogroup" aria-label="Score">${KR_SCORE.map(([n,t])=>`<button type="button" role="radio" aria-checked="${r.score===n}" data-ks="${n}"><b>${n}</b><span>${t}</span></button>`).join("")}</div>
       ${r.score!=null?`<span class="hint" style="font-family:var(--f-body)">${esc(KR_SCORE.find(k=>k[0]===r.score)[2])}</span>`:""}</div>
     <div class="field"><label>Krastest geslaagd?</label><div class="kr-jn"><button type="button" class="kj-ja" aria-pressed="${r.geslaagd===true}" data-kg="ja">Ja</button><button type="button" class="kj-nee" aria-pressed="${r.geslaagd===false}" data-kg="nee">Nee</button></div>${r.geslaagd===false?`<div class="kr-tip"><b>Test niet geslaagd?</b> Zoek de oorzaak op in de werkwijze: zijn de omstandigheden goed, klopt de tape en is de snede goed gezet? Bij klasse 3, 4 of 5 na 4 weken opnieuw testen. <button type="button" class="btn" id="krTipDoc">Werkwijze openen</button></div>`:""}</div>
+    <div class="field"><label>Foto's van de test <span class="hint" style="font-family:var(--f-body)">datum en tijd komen automatisch in beeld</span></label><div class="st-fotos" id="krFotos" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"></div>
+      <input type="file" id="krCam" accept="image/*" capture="environment" hidden><input type="file" id="krGal" accept="image/*" multiple hidden></div>
     <div class="kr-grid">
       <div class="field"><label for="kr-ini">Paraaf: initialen</label><div class="inp"><input id="kr-ini" autocomplete="off" maxlength="6" value="${esc(r.initialen)}" placeholder="bijv. J.J." style="text-transform:uppercase"></div></div>
       <div class="field"><label>Paraaf: handtekening <button type="button" class="linkbtn" id="kr-sig-wis">Wissen</button></label><canvas id="kr-sig" class="kr-sig" width="600" height="180" aria-label="Zet hier je handtekening met je vinger"></canvas></div>
@@ -2973,7 +2995,7 @@ function renderKras(){
     <span class="kr-d"><b>${esc(shortDate(x.datum))}</b> ${lakBadge(x.lak)}</span>
     <span class="kr-s">${esc(krScoreTxt(krKlasse(x))||"–")}</span>
     <span class="kr-g ${x.geslaagd===true?"ja":x.geslaagd===false?"nee":""}">${x.geslaagd===true?"Geslaagd":x.geslaagd===false?"Niet geslaagd":"–"}</span>
-    <span class="kr-p"><b>${esc(x.initialen||"")}</b>${x.handtekening?`<img src="${x.handtekening}" alt="handtekening">`:""}</span></button></li>`).join(""):`<li class="empty">${krLoaded?"Nog geen krastesten ingevuld.":"Laden…"}</li>`}</ul></div>
+    <span class="kr-p">${(x.fotos||[]).length?`<span title="foto's">📷${x.fotos.length}</span>`:""}<b>${esc(x.initialen||"")}</b>${x.handtekening?`<img src="${x.handtekening}" alt="handtekening">`:""}</span></button></li>`).join(""):`<li class="empty">${krLoaded?"Nog geen krastesten ingevuld.":"Laden…"}</li>`}</ul></div>
   </div>`;
   const touch=()=>{krDirty=true;krSaved=false;krErr="";const s=$("#krSave");if(s)s.disabled=false;const sub=el.querySelector(".sheet-head .sub");if(sub)sub.innerHTML=sub.innerHTML.replace(/<span class="status[^"]*">[^<]*<\/span>/,"")+statusHtml(false,true,false)};
   const dt=$("#kr-datum");dt.onclick=()=>{try{dt.showPicker()}catch(e){}};dt.onchange=()=>{r.datum=dt.value;touch()};
@@ -2989,10 +3011,12 @@ function renderKras(){
   cv.onpointerup=cv.onpointercancel=()=>{if(!teken)return;teken=false;r.handtekening=cv.toDataURL("image/png");touch()};
   $("#kr-sig-wis").onclick=()=>{cx.clearRect(0,0,cv.width,cv.height);r.handtekening="";touch()};
   $("#krSave").onclick=saveKras;
+  $("#krCam").onchange=ev=>{krFotoErbij(ev.target.files);ev.target.value=""};$("#krGal").onchange=ev=>{krFotoErbij(ev.target.files);ev.target.value=""};
+  renderKrFotos();if((r.fotos||[]).some(f=>!f.data))(async()=>{for(const f of r.fotos)if(!f.data)f.data=await laadFoto(f.id);if(krEdit===r)renderKrFotos()})();
   const an=$("#krAnn");if(an)an.onclick=()=>{krEdit=krBlank();krDirty=false;krDel=false;krErr="";krSaved=false;renderKras()};
   const db1=$("#krDelBtn");if(db1)db1.onclick=()=>{krDel=true;renderKras()};
   const dn=$("#krDelNee");if(dn)dn.onclick=()=>{krDel=false;renderKras()};
-  const dy=$("#krDelJa");if(dy)dy.onclick=async()=>{try{await db.collection("instellingen").doc(r.id).delete();krasRows=krasRows.filter(x=>x.id!==r.id);krEdit=krBlank();krDirty=false}catch(e){krErr="Verwijderen mislukt."}krDel=false;renderKras()};
+  const dy=$("#krDelJa");if(dy)dy.onclick=async()=>{try{const o=krasRows.find(x=>x.id===r.id);for(const fid of (o&&o.fotos)||[]){try{await db.collection("instellingen").doc(fid).delete()}catch(x){}}await db.collection("instellingen").doc(r.id).delete();krasRows=krasRows.filter(x=>x.id!==r.id);krEdit=krBlank();krDirty=false}catch(e){krErr="Verwijderen mislukt."}krDel=false;renderKras()};
   el.querySelectorAll("[data-kid]").forEach(b=>b.onclick=()=>krOpen(b.dataset.kid));
   $("#krWerk").onclick=krWerkwijze;$("#krForm2").onclick=()=>{krFormMaand=(krEdit&&krEdit.datum||today()).slice(0,7);krFormulier()};
   const tip=$("#krTipDoc");if(tip)tip.onclick=krWerkwijze;
@@ -3032,7 +3056,10 @@ async function saveKras(){const r=krEdit;
   krSaving=true;renderKras();
   try{const oud=r.id&&krasRows.find(x=>x.id===r.id);
     const rec={datum:r.datum,lak:r.lak||null,klasse:r.score,score:null,geslaagd:r.geslaagd,initialen:r.initialen.trim().toUpperCase(),handtekening:r.handtekening,aangemaakt:(oud&&oud.aangemaakt)||Date.now(),bijgewerkt:Date.now()};
-    const id=r.id||DOC_ID("kras_");await db.collection("instellingen").doc(id).set(rec);
+    const id=r.id||DOC_ID("kras_");const ids=[];
+    for(const f of r.fotos||[]){if(f.id){ids.push(f.id);continue}const fid=DOC_ID("foto_kr_"+id.slice(5)+"_");await db.collection("instellingen").doc(fid).set({krastest:id,data:f.data,aangemaakt:Date.now()});fotoCache[fid]=f.data;f.id=fid;ids.push(fid)}
+    for(const fid of (oud&&oud.fotos)||[])if(!ids.includes(fid)){try{await db.collection("instellingen").doc(fid).delete()}catch(x){}delete fotoCache[fid]}
+    rec.fotos=ids;await db.collection("instellingen").doc(id).set(rec);
     krasRows=krasRows.filter(x=>x.id!==id).concat([{id,...rec}]);krDirty=false;krSaved=true;krEdit=krBlank()}
   catch(e){krErr=saveErr(e)}
   krSaving=false;renderKras()}
