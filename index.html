@@ -3073,7 +3073,7 @@ const vrdTxt=(it,x)=>{const n=vrdN(it);return `${f1(x)} ${vrdEenh(it,x)}${n.schu
 function vrdMeld(ids,welkom){const its=vrdRows.filter(r=>ids.includes(r.id));if(!its.length)return;const m=$("#modal");if(!m||!m.hidden&&m.innerHTML)return;
   m.innerHTML=`<div class="modal-box vrd-meld" role="alertdialog" aria-modal="true" aria-labelledby="vrdmT"><h2 id="vrdmT">Bestellen</h2>
     <p>${welkom?"De voorraad van deze producten is te laag:":"Door dit verbruik is de voorraad te laag. Bestel:"}</p>
-    <ul>${its.map(it=>`<li><b>${esc(it.naam)}</b>: nog ${vrdTxt(it,vrdStand(it))}. Bestelpunt ${vrdTxt(it,vrdBestelpunt(it))} (levertijd ${vrdInst.levertijd} weken).</li>`).join("")}</ul>
+    <ul>${its.map(it=>`<li><b>${esc(it.naam)}</b>: nog ${vrdTxt(it,vrdStand(it))}. Bestelpunt ${vrdTxt(it,vrdBestelpunt(it))} (levertijd ${vrdLt(it)} weken).</li>`).join("")}</ul>
     <div class="row"><button class="btn primary" type="button" id="vrdmNaar">Naar voorraad</button><button class="btn" type="button" id="vrdmOk">OK</button></div></div>`;
   m.hidden=false;const sluit=()=>{m.hidden=true;m.innerHTML=""};m.onclick=e=>{if(e.target===m)sluit()};$("#vrdmOk").onclick=sluit;
   $("#vrdmNaar").onclick=()=>{sluit();setTab("voorraad")};
@@ -3094,7 +3094,7 @@ function renderVoorraad(){const el=$("#vrdView");const rows=vrdSorted(),r=vrdEdi
   const rn=r?vrdN(r):null;
   el.innerHTML=`<div class="sheet vrd-sheet">
   <div class="sheet-head"><div><div class="title">Voorraad</div><div class="sub">${vrdLoaded?rows.length+" product"+(rows.length===1?"":"en"):"Laden…"} · verbruik uit Materialen gaat er automatisch af</div>
-    <div class="vrd-lt" id="vrdLt">Levertijd <b>${vrdInst.levertijd} weken</b> + <b>${vrdInst.marge} week</b> marge <button type="button" class="linkbtn" id="vrdLtEdit">Wijzigen</button></div></div>
+    <div class="vrd-lt" id="vrdLt">Levertijd lak <b>${vrdInst.levertijd} weken</b> · schuurpapier <b>${vrdInst.levertijdS} weken</b> · marge <b>${vrdInst.marge} week</b> <button type="button" class="linkbtn" id="vrdLtEdit">Wijzigen</button></div></div>
     <button class="btn primary" type="button" id="vrdNew">+ Nieuw product</button></div>
   <div class="section"><ul class="vrd-lijst">${rows.map(it=>{const s=vrdStand(it),n=vrdN(it),laag=vrdLaag(it);return `<li><button type="button" data-vid="${esc(it.id)}" aria-current="${!!r&&it.id===r.id}" class="${laag?"laag":""}">
       <span class="vrd-n"><b>${esc(it.naam)}</b><span>${n.keys.length?esc(n.sub)+(!n.schuur&&it.kleur&&it.kleur!=="alle"?" · "+it.kleur:""):"niet gekoppeld"}</span></span>
@@ -3111,7 +3111,7 @@ function renderVoorraad(){const el=$("#vrdView");const rows=vrdSorted(),r=vrdEdi
       <div class="field"><label for="vrd-mat">Afboeken bij verbruik van</label><select id="vrd-mat" class="vrd-sel"><option value="">Niet koppelen</option>${VRD_KOPPEL().map(o=>`<option value="${o.v}"${rn.keys.join()===o.v?" selected":""}>${esc(o.t)}</option>`).join("")}</select></div>
       ${rn.schuur?`<div class="field"><label for="vrd-per">Stuks per bundel</label><div class="inp"><input id="vrd-per" type="number" inputmode="numeric" min="1" step="1" value="${esc(r.per||10)}"></div></div>`
         :`<div class="field"><label for="vrd-kleur">Welke lak</label><select id="vrd-kleur" class="vrd-sel">${Object.entries(VRD_KLEUR).map(([k,t])=>`<option value="${k}"${(r.kleur||"alle")===k?" selected":""}>${t}</option>`).join("")}</select></div>`}
-      <div class="field"><label for="vrd-min">Minimale voorraad (${rn.meer})</label><div class="inp"><input id="vrd-min" type="number" inputmode="decimal" min="0" step="${rn.schuur?1:0.5}" value="${esc(r.min||"")}" placeholder="bijv. ${rn.schuur?3:4}"></div>${orig&&vrdPerWeek(orig)?`<span class="hint" style="font-family:var(--f-body)">Verbruik ± ${vrdTxt(orig,vrdPerWeek(orig))} per week. Om de ${vrdInst.levertijd} weken levertijd + ${vrdInst.marge} week marge te overbruggen is ${vrdTxt(orig,vrdPerWeek(orig)*((+vrdInst.levertijd||0)+(+vrdInst.marge||0)))} nodig. Er wordt besteld onder het hoogste van de twee.</span>`:""}</div>
+      <div class="field"><label for="vrd-min">Minimale voorraad (${rn.meer})</label><div class="inp"><input id="vrd-min" type="number" inputmode="decimal" min="0" step="${rn.schuur?1:0.5}" value="${esc(r.min||"")}" placeholder="bijv. ${rn.schuur?3:4}"></div>${orig&&vrdPerWeek(orig)?`<span class="hint" style="font-family:var(--f-body)">Verbruik ± ${vrdTxt(orig,vrdPerWeek(orig))} per week. Om de ${vrdLt(orig)} weken levertijd + ${vrdInst.marge} week marge te overbruggen is ${vrdTxt(orig,vrdPerWeek(orig)*(vrdLt(orig)+(+vrdInst.marge||0)))} nodig. Er wordt besteld onder het hoogste van de twee.</span>`:""}</div>
       ${isNew?`<div class="field"><label for="vrd-tel">Huidige voorraad (${rn.schuur?"stuks":rn.meer})</label><div class="inp"><input id="vrd-tel" type="number" inputmode="decimal" min="0" step="0.5" value="${esc(r.telAantal||"")}" placeholder="geteld aantal"></div></div>`:""}
     </div></div>
     <div class="foot"><div class="grp">${isNew?"":vrdDel?`<span class="confirm">Product verwijderen? <button class="btn danger-solid" type="button" id="vrdDelJa">Ja</button><button class="btn" type="button" id="vrdDelNee">Annuleren</button></span>`:`<button class="btn danger" type="button" id="vrdDelBtn">Verwijderen</button>`} <button class="btn" type="button" id="vrdSluit">Sluiten</button></div>
@@ -3128,9 +3128,9 @@ function renderVoorraad(){const el=$("#vrdView");const rows=vrdSorted(),r=vrdEdi
     </div>`})():""}`:""}
   </div>`;
   renderVrdMail();vrdBadge();
-  $("#vrdLtEdit").onclick=()=>{$("#vrdLt").innerHTML=`Levertijd <div class="inp vrd-num"><input id="vrdLtW" type="number" min="0" step="1" value="${vrdInst.levertijd}" aria-label="Levertijd in weken"></div> weken + marge <div class="inp vrd-num"><input id="vrdLtM" type="number" min="0" step="1" value="${vrdInst.marge}" aria-label="Marge in weken"></div> week <button type="button" class="btn primary" id="vrdLtOk">Opslaan</button><button type="button" class="btn" id="vrdLtNee">Annuleren</button>`;
-    $("#vrdLtNee").onclick=renderVoorraad;$("#vrdLtOk").onclick=async()=>{const w=+$("#vrdLtW").value,m=+$("#vrdLtM").value;if(!(w>=0)||!(m>=0))return;
-      try{await db.collection("instellingen").doc("vrdinst").set({levertijd:w,marge:m,bijgewerkt:Date.now()});vrdInst={levertijd:w,marge:m}}catch(e){vrdErr=saveErr(e)}renderVoorraad()}};
+  $("#vrdLtEdit").onclick=()=>{$("#vrdLt").innerHTML=`Levertijd lak <div class="inp vrd-num"><input id="vrdLtW" type="number" min="0" step="1" value="${vrdInst.levertijd}" aria-label="Levertijd lak in weken"></div> weken · schuurpapier <div class="inp vrd-num"><input id="vrdLtS" type="number" min="0" step="1" value="${vrdInst.levertijdS}" aria-label="Levertijd schuurpapier in weken"></div> weken · marge <div class="inp vrd-num"><input id="vrdLtM" type="number" min="0" step="1" value="${vrdInst.marge}" aria-label="Marge in weken"></div> week <button type="button" class="btn primary" id="vrdLtOk">Opslaan</button><button type="button" class="btn" id="vrdLtNee">Annuleren</button>`;
+    $("#vrdLtNee").onclick=renderVoorraad;$("#vrdLtOk").onclick=async()=>{const w=+$("#vrdLtW").value,ws=+$("#vrdLtS").value,m=+$("#vrdLtM").value;if(!(w>=0)||!(ws>=0)||!(m>=0))return;
+      try{await db.collection("instellingen").doc("vrdinst").set({levertijd:w,levertijdS:ws,marge:m,bijgewerkt:Date.now()});vrdInst={levertijd:w,levertijdS:ws,marge:m}}catch(e){vrdErr=saveErr(e)}renderVoorraad()}};
   $("#vrdNew").onclick=()=>vrdOpen(null);
   const std=$("#vrdStd");if(std){if(vrdStdBezig)std.disabled=true;std.onclick=()=>{std.disabled=true;vrdStandaard()}}
   el.querySelectorAll("[data-vid]").forEach(b=>b.onclick=()=>vrdOpen(b.dataset.vid));
@@ -3166,19 +3166,20 @@ async function saveVoorraad(){const r=vrdEdit;if(!r)return;const n=vrdN(r);
   catch(e){vrdErr=saveErr(e)}
   vrdSaving=false;renderVoorraad()}
 // ===== voorraad: voorspelling, bestellen, stip =====
-let vrdInst={levertijd:6,marge:1};
+let vrdInst={levertijd:6,levertijdS:3,marge:1};
+const vrdLt=it=>vrdN(it).schuur?(+vrdInst.levertijdS||0):(+vrdInst.levertijd||0);
 function vrdPerWeek(it){const n=vrdN(it);if(!n.keys.length)return null;const nu=Date.now(),van=new Date(nu-28*864e5).toISOString().slice(0,10);
   const eerste=matRows.reduce((m,r)=>r.datum&&r.datum<m?r.datum:m,"9999");if(eerste==="9999")return null;
   const dagen=Math.max(7,Math.min(28,(nu-new Date(eerste).getTime())/864e5));
   const tot=matRows.filter(r=>(r.datum||"")>=van&&(n.schuur||r.soort!=="afschuren")&&(n.schuur||!it.kleur||it.kleur==="alle"||matLak(r)===it.kleur)).reduce((s,r)=>s+n.keys.reduce((t,k)=>t+matTot(r,k),0),0)/n.per;
   return tot>0?tot/dagen*7:null}
 function vrdWekenOver(it){const p=vrdPerWeek(it);return p?Math.max(0,vrdStand(it))/p:null}
-function vrdBestelpunt(it){const p=vrdPerWeek(it),n=vrdN(it);return Math.max(n.min,p?p*((+vrdInst.levertijd||0)+(+vrdInst.marge||0)):0)}
+function vrdBestelpunt(it){const p=vrdPerWeek(it),n=vrdN(it);return Math.max(n.min,p?p*(vrdLt(it)+(+vrdInst.marge||0)):0)}
 function vrdBestelDatum(it){const p=vrdPerWeek(it),bp=vrdBestelpunt(it),s=vrdStand(it);if(!p||s<=bp)return null;return new Date(Date.now()+(s-bp)/p*7*864e5).toISOString().slice(0,10)}
 const vrdBesteld=it=>it.besteldOp&&(Date.now()-new Date(it.besteldOp).getTime())<14*864e5;
 function vrdBadge(){const n=vrdRows.filter(r=>vrdLaag(r)&&!vrdBesteld(r)).length;document.querySelectorAll('[data-tab="voorraad"]').forEach(b=>b.classList.toggle("badge-rood",n>0))}
 let vrdMailAdres="";
-function vrdBestelTekst(its){return ["Graag bestellen voor de lakstraat (levertijd ± "+vrdInst.levertijd+" weken):","",...its.map(it=>{const s=vrdStand(it),w=vrdWekenOver(it),p=vrdPerWeek(it);return `- ${it.naam}: nog ${vrdTxt(it,s)}${w!=null?`, genoeg voor ongeveer ${f1(w)} weken`:""}${p?` (verbruik ± ${vrdTxt(it,p)} per week)`:""}`}),"","Verstuurd vanuit het Lakstraat Logboek"+(vrdDoor()?" door "+vrdDoor():"")+"."].join("\n")}
+function vrdBestelTekst(its){return ["Graag bestellen voor de lakstraat:","",...its.map(it=>{const s=vrdStand(it),w=vrdWekenOver(it),p=vrdPerWeek(it);return `- ${it.naam}: nog ${vrdTxt(it,s)}${w!=null?`, genoeg voor ongeveer ${f1(w)} weken`:""}${p?` (verbruik ± ${vrdTxt(it,p)} per week, levertijd ± ${vrdLt(it)} weken)`:""}`}),"","Verstuurd vanuit het Lakstraat Logboek"+(vrdDoor()?" door "+vrdDoor():"")+"."].join("\n")}
 function vrdBestelHtml(){const its=vrdRows.filter(vrdLaag);if(!its.length)return "";
   return `<div class="section vrd-bestel"><h3>Te bestellen (${its.length})</h3>
     <ul>${its.map(it=>`<li><b>${esc(it.naam)}</b>: nog ${vrdTxt(it,vrdStand(it))}${vrdBesteld(it)?` · <span class="vrd-bes">besteld op ${esc(shortDate(it.besteldOp))}</span>`:""}</li>`).join("")}</ul>
@@ -3437,7 +3438,7 @@ async function start(user){
   unsubs.push(db.collection("instellingen").where(firebase.firestore.FieldPath.documentId(),">=","g").onSnapshot(s=>{
     const docs=s.docs.map(d=>({id:d.id,...d.data()}));
     lampRows=docs.filter(d=>d.id.startsWith("lamp_")); regSheets=docs.filter(d=>d.id.startsWith("reg_"));
-    storingen=docs.filter(d=>d.id.startsWith("stor_")); const tdd=docs.find(d=>d.id==="tdmail"); tdMail=(tdd&&tdd.email)||""; if(tab==="storingen")renderTdMail(); matRows=docs.filter(d=>d.id.startsWith("mat_")); matLoaded=true; krasRows=docs.filter(d=>d.id.startsWith("kras_")); krLoaded=true; vrdRows=docs.filter(d=>d.id.startsWith("vrd_")); vrdLoaded=true; {const vm=docs.find(d=>d.id==="vrdmail");vrdMailAdres=(vm&&vm.email)||"";const vi=docs.find(d=>d.id==="vrdinst");if(vi)vrdInst={levertijd:vi.levertijd??6,marge:vi.marge??1}} if(tab==="voorraad"&&!vrdDirty&&!vrdSaving&&!vrdDel)renderVoorraad(); vrdBadge(); vrdDagMelding(); if(tab==="krastest"&&!krDirty&&!krSaving&&!krDel)renderKras();
+    storingen=docs.filter(d=>d.id.startsWith("stor_")); const tdd=docs.find(d=>d.id==="tdmail"); tdMail=(tdd&&tdd.email)||""; if(tab==="storingen")renderTdMail(); matRows=docs.filter(d=>d.id.startsWith("mat_")); matLoaded=true; krasRows=docs.filter(d=>d.id.startsWith("kras_")); krLoaded=true; vrdRows=docs.filter(d=>d.id.startsWith("vrd_")); vrdLoaded=true; {const vm=docs.find(d=>d.id==="vrdmail");vrdMailAdres=(vm&&vm.email)||"";const vi=docs.find(d=>d.id==="vrdinst");if(vi)vrdInst={levertijd:vi.levertijd??6,levertijdS:vi.levertijdS??3,marge:vi.marge??1}} if(tab==="voorraad"&&!vrdDirty&&!vrdSaving&&!vrdDel)renderVoorraad(); vrdBadge(); vrdDagMelding(); if(tab==="krastest"&&!krDirty&&!krSaving&&!krDel)renderKras();
     if(tab==="materialen"){renderMatList();if(!matDirty&&!matSaving){if(matDraft&&matDraft.id){const r=matRows.find(x=>x.id===matDraft.id);matDraft=r?matFrom(r):null;if(!r)matSel=null}renderMatSheet()}}
     planning=docs.filter(d=>d.id.startsWith("plan_"));
     verslagen=docs.filter(d=>d.id.startsWith("vsl_"));vsLoaded=true;{const vm=docs.find(d=>d.id==="vsmail");vsMail=(vm&&vm.email!=null)?vm.email:"peter@ideaal.nl"}
