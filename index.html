@@ -3055,7 +3055,7 @@ const VRD_KORRELS=["500","360","220","150","100"];
 const VRD_KOPPEL=()=>[...MATS.filter(m=>m.groep==="lak"||m.groep==="verdunner").map(m=>({v:m.k,t:m.naam})),...VRD_KORRELS.map(g=>({v:"p"+g+",a"+g,t:"Schuurpapier P"+g+" (lakdag en afschuren)"}))];
 function vrdN(it){const keys=it.keys||(it.matKey?[it.matKey]:[]);const schuur=keys.some(k=>/^[pa]\d+$/.test(k));const m=MATS.find(x=>x.k===keys[0]);
   return {keys,schuur,per:schuur?(+it.per||10):1,min:+(it.min??it.minColli??0)||0,een:schuur?"bundel":(m&&m.eenheid)||"blik",meer:schuur?"bundels":(m&&m.meer)||"blikken",sub:schuur?`bundel van ${+it.per||10} stuks`:(m&&m.sub)||""}}
-function vrdSorted(){return vrdRows.slice().sort((a,b)=>(a.volgorde??99)-(b.volgorde??99)||(a.naam||"").localeCompare(b.naam||""))}
+function vrdSorted(){return vrdRows.filter((r,i,a)=>a.findIndex(x=>x.id===r.id)===i).sort((a,b)=>(a.volgorde??99)-(b.volgorde??99)||(a.naam||"").localeCompare(b.naam||""))}
 function vrdVerbruik(it){const n=vrdN(it);if(!n.keys.length)return 0;const van=it.telDatum||"";
   const st=matRows.filter(r=>(r.datum||"")>=van&&(n.schuur||r.soort!=="afschuren")&&(n.schuur||!it.kleur||it.kleur==="alle"||matLak(r)===it.kleur)).reduce((s,r)=>s+n.keys.reduce((t,k)=>t+matTot(r,k),0),0);
   return st/n.per}
@@ -3085,7 +3085,7 @@ let vrdStdBezig=false;
 async function vrdStandaard(){if(vrdStdBezig)return;vrdStdBezig=true;const mis=vrdOntbreekt();let i=vrdRows.length;
   try{for(const [naam,keys,kleur] of mis){const sch=/^p/.test(keys[0]);const rec={naam,keys,kleur,per:sch?10:1,min:0,telAantal:0,telDatum:today(),mutaties:[],volgorde:i++,aangemaakt:Date.now(),bijgewerkt:Date.now()};
     const id="vrd_std_"+keys.join("_")+"_"+kleur;if(vrdRows.some(r=>r.id===id||(vrdN(r).keys.join()===keys.join()&&(r.kleur||"alle")===kleur)))continue;
-    const ref=db.collection("instellingen").doc(id);if((await ref.get()).exists)continue;await ref.set(rec);vrdRows.push({id,...rec})}}catch(e){vrdErr=saveErr(e)}vrdStdBezig=false;renderVoorraad()}
+    const ref=db.collection("instellingen").doc(id);if((await ref.get()).exists)continue;await ref.set(rec);vrdRows=vrdRows.filter(r=>r.id!==id).concat([{id,...rec}])}}catch(e){vrdErr=saveErr(e)}vrdStdBezig=false;renderVoorraad()}
 function renderVoorraad(){const el=$("#vrdView");const rows=vrdSorted(),r=vrdEdit,isNew=r&&!r.id,orig=r&&r.id&&vrdRows.find(x=>x.id===r.id);const mis=vrdLoaded?vrdOntbreekt():[];
   const rn=r?vrdN(r):null;
   el.innerHTML=`<div class="sheet vrd-sheet">
