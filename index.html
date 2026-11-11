@@ -383,6 +383,7 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .kr-g.nee{background:#fbe5e5;color:#b3262a}
 .kr-p{display:flex;align-items:center;gap:8px;min-width:0}
 .kr-p img{height:32px;max-width:100px;object-fit:contain;background:#fff;border-radius:4px}
+.kr-mail{font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%}.kr-mail b{color:var(--fg)}
 .kr-tip{margin-top:10px;padding:10px 12px;border-radius:10px;background:#fbe5e5;color:#7a1c1e;font-size:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .modal-breed{align-items:start;overflow:auto}
 .kr-form-box{max-width:960px;border-top-color:var(--accent);padding:16px}
@@ -2970,6 +2971,7 @@ function renderKras(){
   const el=$("#krasView");if(!krEdit)krEdit=krBlank();const r=krEdit,isNew=!r.id,rows=krSorted();
   el.innerHTML=`<div class="sheet kr-sheet">
   <div class="sheet-head"><div><div class="title">Krastest</div><div class="sub">${krLoaded?rows.length+" test"+(rows.length===1?"":"s"):"Laden…"} ${statusHtml(krSaving,krDirty,krSaved)}</div></div>
+    <div class="kr-mail" id="krMailRegel">Mailen naar: <b>${esc(krMail()||"nog niet ingesteld")}</b> <button type="button" class="linkbtn" id="krMailEdit">${krMail()?"Wijzigen":"Instellen"}</button></div>
     <div class="kr-acties"><button class="btn primary" type="button" id="krForm2">Formulier bekijken</button><button class="btn" type="button" id="krWerk">Werkwijze</button><a class="btn" href="krastest-formulier.pdf" download="Krastest formulier.pdf">Leeg formulier</a></div></div>
   <div class="section" id="krForm"><h3>${isNew?"Nieuwe krastest":"Krastest van "+esc(shortDate(r.datum))+" wijzigen"}</h3>
     <div class="kr-grid">
@@ -2989,7 +2991,7 @@ function renderKras(){
   </div>
   <div class="foot">
     <div class="grp">${isNew?"":krDel?`<span class="confirm">Deze krastest verwijderen? <button class="btn danger-solid" type="button" id="krDelJa">Ja</button><button class="btn" type="button" id="krDelNee">Annuleren</button></span>`:`<button class="btn danger" type="button" id="krDelBtn">Verwijderen</button>`}${!isNew||krDirty?` <button class="btn" type="button" id="krAnn">${isNew?"Leegmaken":"Terug naar nieuw"}</button>`:""}</div>
-    <div class="grp">${krErr?`<span class="err">${esc(krErr)}</span>`:""}<button class="btn primary" type="button" id="krSave" ${krSaving||!krDirty?"disabled":""}>Opslaan</button></div>
+    <div class="grp">${krErr?`<span class="err">${esc(krErr)}</span>`:""}${!isNew&&!krDirty?`<button class="btn" type="button" id="krMailBtn">Versturen per e-mail</button>`:""}<button class="btn primary" type="button" id="krSave" ${krSaving||!krDirty?"disabled":""}>Opslaan</button></div>
   </div>
   <div class="section"><h3>Uitslagen</h3><ul class="kr-lijst">${rows.length?rows.map(x=>`<li><button type="button" data-kid="${esc(x.id)}" aria-current="${x.id===r.id}">
     <span class="kr-d"><b>${esc(shortDate(x.datum))}</b> ${lakBadge(x.lak)}</span>
@@ -3011,6 +3013,10 @@ function renderKras(){
   cv.onpointerup=cv.onpointercancel=()=>{if(!teken)return;teken=false;r.handtekening=cv.toDataURL("image/png");touch()};
   $("#kr-sig-wis").onclick=()=>{cx.clearRect(0,0,cv.width,cv.height);r.handtekening="";touch()};
   $("#krSave").onclick=saveKras;
+  const mb=$("#krMailBtn");if(mb)mb.onclick=()=>{const o=krasRows.find(x=>x.id===r.id);if(o)krVerstuur(o,mb)};
+  $("#krMailEdit").onclick=()=>{const el2=$("#krMailRegel");el2.innerHTML=`<div class="inp" style="max-width:300px"><input id="krMi" type="email" value="${esc(krMail())}" placeholder="kwaliteit@ideaal.nl" aria-label="E-mailadres voor krastesten" style="font-family:var(--f-body);font-size:15px"></div><button type="button" class="btn primary" id="krMiOk">Opslaan</button><button type="button" class="btn" id="krMiNee">Annuleren</button>`;
+    $("#krMi").focus();$("#krMiNee").onclick=renderKras;$("#krMiOk").onclick=async()=>{const v=$("#krMi").value.trim();if(v&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){$("#krMi").style.outline="2px solid var(--danger)";return}
+      try{await db.collection("instellingen").doc("krmail").set({email:v,bijgewerkt:Date.now()});krMailAdres=v}catch(e){}renderKras()}};
   $("#krCam").onchange=ev=>{krFotoErbij(ev.target.files);ev.target.value=""};$("#krGal").onchange=ev=>{krFotoErbij(ev.target.files);ev.target.value=""};
   renderKrFotos();if((r.fotos||[]).some(f=>!f.data))(async()=>{for(const f of r.fotos)if(!f.data)f.data=await laadFoto(f.id);if(krEdit===r)renderKrFotos()})();
   const an=$("#krAnn");if(an)an.onclick=()=>{krEdit=krBlank();krDirty=false;krDel=false;krErr="";krSaved=false;renderKras()};
@@ -3042,14 +3048,42 @@ function krFormulier(){const m=$("#modal");const sluit=()=>{m.hidden=true;m.inne
   const nu=today().slice(0,7);const maanden=[...new Set(krasRows.map(r=>(r.datum||"").slice(0,7)).filter(Boolean).concat([nu,krFormMaand]))].sort().reverse();
   m.innerHTML=`<div class="modal-box kr-form-box" role="dialog" aria-modal="true" aria-label="Krastestformulier"><style>${KRP_CSS}</style>
     <div class="kr-form-bar"><div class="maandkiezer" style="border:0;padding:0;flex:1;max-width:340px"><button type="button" id="kfPrev" aria-label="Vorige maand">◀</button><select id="kfSel" aria-label="Kies maand">${maanden.map(k=>`<option value="${k}"${k===krFormMaand?" selected":""}>${maandNaam(k)}</option>`).join("")}</select><button type="button" id="kfNext" aria-label="Volgende maand" ${krFormMaand>=nu?"disabled":""}>▶</button></div>
-    <button class="btn primary" type="button" id="kfPrint">Printen / PDF</button><button class="btn" type="button" id="kfSluit">Sluiten</button></div>
+    <button class="btn primary" type="button" id="kfPrint">Printen / PDF</button><button class="btn" type="button" id="kfMail">Mailen</button><button class="btn" type="button" id="kfSluit">Sluiten</button></div>
     ${krPapier(krFormMaand)}</div>`;
   m.classList.add("modal-breed");m.hidden=false;m.onclick=e=>{if(e.target===m)sluit()};
   const ga=k=>{krFormMaand=k;krFormulier()};
-  $("#kfPrev").onclick=()=>ga(maandStap(krFormMaand,-1));$("#kfNext").onclick=()=>{if(krFormMaand<nu)ga(maandStap(krFormMaand,1))};$("#kfSel").onchange=e=>ga(e.target.value);$("#kfSluit").onclick=sluit;
+  $("#kfPrev").onclick=()=>ga(maandStap(krFormMaand,-1));$("#kfNext").onclick=()=>{if(krFormMaand<nu)ga(maandStap(krFormMaand,1))};$("#kfSel").onchange=e=>ga(e.target.value);$("#kfSluit").onclick=sluit;{const km=$("#kfMail");km.onclick=()=>krMaandMail(krFormMaand,km)}
   $("#kfPrint").onclick=()=>{const w=window.open("","_blank");if(!w){alert("Pop-up geblokkeerd. Sta pop-ups toe om te printen.");return}
     w.document.write(`<!DOCTYPE html><html lang="nl"><head><meta charset="utf-8"><title>Krastest ${esc(maandNaam(krFormMaand))}</title><style>@page{size:A4;margin:12mm}body{margin:0}${KRP_CSS}.krp{padding:0}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}</style></head><body>${krPapier(krFormMaand)}<script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);w.document.close()};
 }
+// ===== krastest per e-mail =====
+let krMailAdres="";const krMail=()=>krMailAdres||vsMail||"";
+const KR_PDF={kop:"Krastest",l1:"Uitslag",l2:null,rij1:"Lak",rij3:""};
+function krUitslag(r){const k=krKlasse(r),x=KR_SCORE.find(q=>q[0]===k);
+  return [`SKH-klasse: ${k??"–"}${x?" ("+x[1]+")":""}`,x?x[2]:"",`Krastest geslaagd: ${r.geslaagd===true?"Ja":r.geslaagd===false?"Nee":"–"}`,"","Bepaling volgens SKH-publicatie 05-01 (dubbele kruissnede)."].filter((l,i)=>l||i===3).join("\n")}
+function krTekst(r){return `Krastest lakstraat ${longDate(r.datum)}${r.lak?" · "+LAKKEN[r.lak]:""}\n\n${krUitslag(r)}${r.initialen?"\n\nParaaf: "+r.initialen:""}\n\nVerstuurd vanuit het Lakstraat Logboek.`}
+async function krVerstuur(r,knop,bevestigd){const aan=krMail();if(!aan){krErr="Stel eerst een e-mailadres in.";return renderKras()}
+  const onderwerp=`Krastest ${longDate(r.datum)}${r.lak?" ("+r.lak+")":""}`;
+  if(!navigator.onLine){location.href=`mailto:${encodeURIComponent(aan)}?subject=${encodeURIComponent(onderwerp)}&body=${encodeURIComponent(krTekst(r))}`;return}
+  if(!bevestigd){knop.textContent="Tik nog eens: mail naar "+aan;knop.onclick=()=>krVerstuur(r,knop,true);setTimeout(()=>{if(knop.isConnected&&!knop.disabled){knop.textContent="Versturen per e-mail";knop.onclick=()=>krVerstuur(r,knop)}},6000);return}
+  knop.disabled=true;
+  try{const token=await msToken();if(!token){knop.textContent="Aanmelden bij Microsoft…";return msLogin(null)}
+    knop.textContent="PDF maken…";const fotos=await laadFotos(r.fotos||[]);
+    const bytes=await maakStoringPdf({titel:"Krastest "+longDate(r.datum),onderdeel:r.lak?LAKKEN[r.lak]:"",datum:r.datum,oorzaak:krUitslag(r),trefwoorden:"",paraaf:r.initialen||r.handtekening?{ini:r.initialen||"",sig:await sigJpg(r.handtekening)}:null},fotos,KR_PDF);
+    knop.textContent="Verzenden…";const res=await msVerstuur(null,bytes.length>3000000?null:bytes,`Krastest ${r.datum}.pdf`,onderwerp,krTekst(r),token,aan);
+    if(res==="login"){knop.textContent="Aanmelden bij Microsoft…";return msLogin(null)}
+    knop.textContent="✓ Verstuurd naar "+aan}
+  catch(e){knop.disabled=false;knop.textContent="Mislukt: tik om via mail-app te sturen";knop.onclick=()=>{location.href=`mailto:${encodeURIComponent(aan)}?subject=${encodeURIComponent(onderwerp)}&body=${encodeURIComponent(krTekst(r))}`}}}
+function krMaandTekst(mk){const rows=krasRows.filter(r=>(r.datum||"").slice(0,7)===mk).sort((a,b)=>(a.datum||"").localeCompare(b.datum||""));
+  return [`Krastesten lakstraat ${maandNaam(mk)} (SKH-publicatie 05-01)`,"",...(rows.length?rows.map(r=>`${paperDate(r.datum)}  ${r.lak==="wit"?"Wit  ":r.lak==="zwart"?"Zwart":"     "}  klasse ${krKlasse(r)??"–"}  geslaagd: ${r.geslaagd===true?"ja":r.geslaagd===false?"NEE":"–"}  paraaf: ${r.initialen||"–"}`):["Geen krastesten in deze maand."]),"",`${rows.length} test${rows.length===1?"":"en"}, ${rows.filter(r=>r.geslaagd===true).length} geslaagd, ${rows.filter(r=>r.geslaagd===false).length} niet geslaagd.`,"","Verstuurd vanuit het Lakstraat Logboek."].join("\n")}
+async function krMaandMail(mk,knop,bevestigd){const aan=krMail();if(!aan){knop.textContent="Stel eerst een e-mailadres in (tab Krastest)";return}
+  const onderwerp="Krastesten lakstraat "+maandNaam(mk),tekst=krMaandTekst(mk);
+  if(!navigator.onLine){location.href=`mailto:${encodeURIComponent(aan)}?subject=${encodeURIComponent(onderwerp)}&body=${encodeURIComponent(tekst)}`;return}
+  if(!bevestigd){knop.textContent="Tik nog eens: mail naar "+aan;knop.onclick=()=>krMaandMail(mk,knop,true);return}
+  knop.disabled=true;knop.textContent="Verzenden…";
+  try{const token=await msToken();if(!token){knop.textContent="Aanmelden bij Microsoft…";return msLogin(null)}
+    const res=await msVerstuur(null,null,null,onderwerp,tekst,token,aan);if(res==="login")return msLogin(null);knop.textContent="✓ Verstuurd naar "+aan}
+  catch(e){knop.disabled=false;knop.textContent="Mislukt: tik om via mail-app te sturen";knop.onclick=()=>{location.href=`mailto:${encodeURIComponent(aan)}?subject=${encodeURIComponent(onderwerp)}&body=${encodeURIComponent(tekst)}`}}}
 async function saveKras(){const r=krEdit;
   krErr=!r.datum?"Vul een datum in.":r.score==null?"Kies een klasse.":r.geslaagd==null?"Kies of de krastest geslaagd is.":!r.initialen.trim()?"Vul je initialen in.":!r.handtekening?"Zet je handtekening.":"";
   if(krErr)return renderKras();
@@ -3468,7 +3502,7 @@ async function start(user){
   unsubs.push(db.collection("instellingen").where(firebase.firestore.FieldPath.documentId(),">=","g").onSnapshot(s=>{
     const docs=s.docs.map(d=>({id:d.id,...d.data()}));
     lampRows=docs.filter(d=>d.id.startsWith("lamp_")); regSheets=docs.filter(d=>d.id.startsWith("reg_"));
-    storingen=docs.filter(d=>d.id.startsWith("stor_")); const tdd=docs.find(d=>d.id==="tdmail"); tdMail=(tdd&&tdd.email)||""; if(tab==="storingen")renderTdMail(); matRows=docs.filter(d=>d.id.startsWith("mat_")); matLoaded=true; krasRows=docs.filter(d=>d.id.startsWith("kras_")); krLoaded=true; vrdRows=docs.filter(d=>d.id.startsWith("vrd_")); vrdLoaded=true; {const vm=docs.find(d=>d.id==="vrdmail");vrdMailAdres=(vm&&vm.email)||"";const vi=docs.find(d=>d.id==="vrdinst");if(vi)vrdInst={levertijd:vi.levertijd??6,levertijdS:vi.levertijdS??3,marge:vi.marge??1}} if(tab==="voorraad"&&!vrdDirty&&!vrdSaving&&!vrdDel)renderVoorraad(); vrdBadge(); vrdDagMelding(); if(tab==="krastest"&&!krDirty&&!krSaving&&!krDel)renderKras();
+    storingen=docs.filter(d=>d.id.startsWith("stor_")); const tdd=docs.find(d=>d.id==="tdmail"); tdMail=(tdd&&tdd.email)||""; if(tab==="storingen")renderTdMail(); matRows=docs.filter(d=>d.id.startsWith("mat_")); matLoaded=true; krasRows=docs.filter(d=>d.id.startsWith("kras_")); krLoaded=true; {const km=docs.find(d=>d.id==="krmail");krMailAdres=(km&&km.email)||""} vrdRows=docs.filter(d=>d.id.startsWith("vrd_")); vrdLoaded=true; {const vm=docs.find(d=>d.id==="vrdmail");vrdMailAdres=(vm&&vm.email)||"";const vi=docs.find(d=>d.id==="vrdinst");if(vi)vrdInst={levertijd:vi.levertijd??6,levertijdS:vi.levertijdS??3,marge:vi.marge??1}} if(tab==="voorraad"&&!vrdDirty&&!vrdSaving&&!vrdDel)renderVoorraad(); vrdBadge(); vrdDagMelding(); if(tab==="krastest"&&!krDirty&&!krSaving&&!krDel)renderKras();
     if(tab==="materialen"){renderMatList();if(!matDirty&&!matSaving){if(matDraft&&matDraft.id){const r=matRows.find(x=>x.id===matDraft.id);matDraft=r?matFrom(r):null;if(!r)matSel=null}renderMatSheet()}}
     planning=docs.filter(d=>d.id.startsWith("plan_"));
     verslagen=docs.filter(d=>d.id.startsWith("vsl_"));vsLoaded=true;{const vm=docs.find(d=>d.id==="vsmail");vsMail=(vm&&vm.email!=null)?vm.email:"peter@ideaal.nl"}
