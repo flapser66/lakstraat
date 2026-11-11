@@ -390,6 +390,23 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .vs-paraaf span{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
 .vs-paraaf img{height:44px;max-width:180px;background:#fff;border-radius:6px;border:1px solid var(--line);padding:2px}
 .kr-doc .row{display:flex;gap:8px;flex-wrap:wrap}
+/* voorraad */
+.vrd-sheet .sheet-head{flex-wrap:wrap;gap:10px}
+.vrd-lijst{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.vrd-lijst button{width:100%;display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) minmax(0,1fr) auto;gap:10px;align-items:center;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:12px 14px;color:var(--fg)}
+.vrd-lijst button[aria-current="true"]{border-color:var(--accent)}
+.vrd-lijst button.laag{border-color:#d0383b;background:color-mix(in srgb,#d0383b 8%,var(--panel))}
+.vrd-n{display:flex;flex-direction:column;min-width:0}.vrd-n span{font-size:12px;color:var(--muted)}
+.vrd-s b,.vrd-c b{font-size:18px}.vrd-c span{font-size:12px;color:var(--muted)}
+.vrd-st{font-weight:700;border-radius:999px;padding:4px 12px;font-size:13px;white-space:nowrap}
+.vrd-st.ja{background:#e3f4e8;color:#1f7a3a}.vrd-st.nee{background:#d0383b;color:#fff}
+@media (max-width:620px){.vrd-lijst button{grid-template-columns:minmax(0,1fr) auto}.vrd-s,.vrd-c{font-size:13px}}
+.vrd-acties{display:flex;flex-direction:column;gap:10px;margin-bottom:8px}
+.vrd-actie{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.vrd-actie label{min-width:150px;font-weight:600}.vrd-actie .inp{width:120px}.vrd-actie select{height:44px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--fg);padding:0 8px}
+.vrd-sel{width:100%;height:48px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--fg);padding:0 12px;font-size:16px}
+.vrd-ok{background:#e3f4e8;color:#1f7a3a;border-radius:8px;padding:8px 12px;font-weight:600}
+.vrd-hist{list-style:none;padding:0;margin:8px 0 0;font-size:13px;color:var(--muted)}.vrd-hist li{padding:3px 0;border-top:1px solid var(--line)}
+.vrd-meld{border-top-color:#d0383b}.vrd-meld h2{color:#d0383b}.vrd-meld ul{padding-left:18px;margin:8px 0 14px}.vrd-meld li{margin:4px 0}.vrd-meld .row{display:flex;gap:8px;flex-wrap:wrap}
 /* materialen */
 .mat-kies{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:100%;max-width:560px;margin:6px 0}
 @media (max-width:520px){.mat-kies{grid-template-columns:minmax(0,1fr)}}
@@ -728,6 +745,7 @@ input.landt{animation:landt .7s cubic-bezier(.2,1.4,.4,1) both}
         <button type="button" data-tab="registratie" aria-selected="false">Registratieblad</button>
         <button type="button" data-tab="krastest" aria-selected="false">Krastest</button>
         <button type="button" data-tab="materialen" aria-selected="false">Materialen</button>
+        <button type="button" data-tab="voorraad" aria-selected="false">Voorraad</button>
         <button type="button" data-tab="storingen" aria-selected="false">Storingen</button>
         <button type="button" data-tab="punten" aria-selected="false">Punten van aandacht</button>
         <button type="button" data-tab="verslag" aria-selected="false">Dagverslag</button>
@@ -769,6 +787,7 @@ input.landt{animation:landt .7s cubic-bezier(.2,1.4,.4,1) both}
 
   <section id="lampenView" hidden></section>
   <section id="krasView" hidden></section>
+  <section id="vrdView" hidden></section>
 
   <section id="storView" hidden></section>
   <section id="puntView" hidden></section>
@@ -903,7 +922,7 @@ const SCHRIK_SVG=`<svg class="schrik" viewBox="0 0 120 140" aria-hidden="true">
     <path class="sk-lijf" d="M60 70 L60 108 M60 108 L46 134 M60 108 L74 134"/>
     <path class="sk-arm sk-arm-l" d="M60 80 L36 64 L28 46"/><path class="sk-arm sk-arm-r" d="M60 80 L84 64 L92 46"/>
   </g></svg>`;
-const SAVERS={krastest:()=>saveKras(),walsen:()=>save(),lampen:()=>saveLampen(),registratie:()=>saveReg(),materialen:()=>saveMat(),storingen:()=>saveStoring(),punten:()=>savePunt(),verslag:()=>saveVerslag()};
+const SAVERS={voorraad:()=>saveVoorraad(),krastest:()=>saveKras(),walsen:()=>save(),lampen:()=>saveLampen(),registratie:()=>saveReg(),materialen:()=>saveMat(),storingen:()=>saveStoring(),punten:()=>savePunt(),verslag:()=>saveVerslag()};
 // "Good job"-afbeelding na elke geslaagde opslag
 function toonOpgeslagen(){
   const oud=document.querySelector(".goedjob");if(oud)oud.remove();
@@ -1622,9 +1641,10 @@ function renderAuth(){
 // ===================== TABBLADEN =====================
 let tab="start", tabArmed=false;
 function warn(msg){const n=$("#leaveWarn");if(msg){n.textContent=msg;n.hidden=false}else n.hidden=true}
-function tabDirty(t){return t==="start"?false:t==="walsen"?dirty:t==="lampen"?lampDirty:t==="storingen"?stDirty:t==="punten"?paDirty:t==="verslag"?vsDirty:t==="materialen"?matDirty:t==="krastest"?krDirty:regDirty}
+function tabDirty(t){return t==="start"?false:t==="walsen"?dirty:t==="lampen"?lampDirty:t==="storingen"?stDirty:t==="punten"?paDirty:t==="verslag"?vsDirty:t==="materialen"?matDirty:t==="krastest"?krDirty:t==="voorraad"?vrdDirty:regDirty}
 function discardTab(t){
   if(t==="walsen"){dirty=false;mode="dag";if(draft&&!draft.id){draft=null;selectedId=null}else if(draft){const r=dagen.find(x=>x.id===draft.id);draft=r?draftFrom(r):null}}
+  if(t==="voorraad"){vrdDirty=false;vrdDel=false;vrdErr="";vrdEdit=null}
   if(t==="krastest"){krDirty=false;krDel=false;krErr="";krEdit=null}
   if(t==="lampen"){lampEdits={};lampNew=blankLampRows();lampDirty=false;lampDel=null}
   if(t==="storingen"){stEdit=null;stDirty=false;stDel=false;stErr=""}
@@ -1641,12 +1661,13 @@ function setTab(t){
 function renderTabs(){
   document.querySelectorAll("#tabs [data-tab]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===tab)));
   if(typeof zetPil==="function")requestAnimationFrame(zetPil);
-  $("#startView").hidden=tab!=="start"; $("#appLayout").hidden=tab!=="walsen"; $("#lampenView").hidden=tab!=="lampen"; $("#krasView").hidden=tab!=="krastest"; $("#regLayout").hidden=tab!=="registratie"; $("#storView").hidden=tab!=="storingen"; $("#puntView").hidden=tab!=="punten"; $("#verslagView").hidden=tab!=="verslag"; $("#matLayout").hidden=tab!=="materialen"; $("#matActions").hidden=tab!=="materialen";
+  $("#startView").hidden=tab!=="start"; $("#appLayout").hidden=tab!=="walsen"; $("#lampenView").hidden=tab!=="lampen"; $("#krasView").hidden=tab!=="krastest"; $("#vrdView").hidden=tab!=="voorraad"; $("#regLayout").hidden=tab!=="registratie"; $("#storView").hidden=tab!=="storingen"; $("#puntView").hidden=tab!=="punten"; $("#verslagView").hidden=tab!=="verslag"; $("#matLayout").hidden=tab!=="materialen"; $("#matActions").hidden=tab!=="materialen";
   $("#walsActions").hidden=tab!=="walsen"; $("#regActions").hidden=tab!=="registratie";
-  {const v=$({start:"#startView",walsen:"#appLayout",lampen:"#lampenView",krastest:"#krasView",registratie:"#regLayout",storingen:"#storView",punten:"#puntView",verslag:"#verslagView",materialen:"#matLayout"}[tab]);if(v){v.classList.remove("anim-in");void v.offsetWidth;v.classList.add("anim-in");clearTimeout(v._at);v._at=setTimeout(()=>v.classList.remove("anim-in"),900)}}
+  {const v=$({start:"#startView",walsen:"#appLayout",lampen:"#lampenView",krastest:"#krasView",voorraad:"#vrdView",registratie:"#regLayout",storingen:"#storView",punten:"#puntView",verslag:"#verslagView",materialen:"#matLayout"}[tab]);if(v){v.classList.remove("anim-in");void v.offsetWidth;v.classList.add("anim-in");clearTimeout(v._at);v._at=setTimeout(()=>v.classList.remove("anim-in"),900)}}
   if(tab==="walsen")render();
   if(tab==="lampen")renderLampen();
   if(tab==="krastest")renderKras();
+  if(tab==="voorraad")renderVoorraad();
   if(tab==="registratie"){renderRegList();renderRegSheet()}
   if(tab==="storingen")renderStoringen();
   if(tab==="punten")renderPunten();
@@ -3013,6 +3034,99 @@ async function krWerkwijze(){const m=$("#modal");const sluit=()=>{m.hidden=true;
   const up=$("#krdUp");if(up)up.onchange=()=>{const f=up.files[0];if(!f)return;if(f.size>950000){t.textContent="Het bestand is te groot (maximaal 0,9 MB).";return}
     const fr=new FileReader();fr.onload=async()=>{t.textContent="Uploaden…";try{await db.collection("instellingen").doc("doc_krastest").set({naam:f.name,data:fr.result,bijgewerkt:Date.now()});krWerkwijze()}catch(e){t.textContent=saveErr(e)}};fr.readAsDataURL(f)};
 }
+// ===================== VOORRAAD =====================
+let vrdRows=[],vrdLoaded=false,vrdEdit=null,vrdDirty=false,vrdSaving=false,vrdErr="",vrdDel=false,vrdMsg="";
+const VRD_KLEUR={alle:"Wit en zwart samen",wit:"Alleen witte lak",zwart:"Alleen zwarte lak"};
+const VRD_KOPPEL=()=>MATS.filter(m=>m.groep==="lak"||m.groep==="verdunner");
+function vrdSorted(){return vrdRows.slice().sort((a,b)=>(a.volgorde??99)-(b.volgorde??99)||(a.naam||"").localeCompare(b.naam||""))}
+function vrdVerbruik(it){if(!it.matKey)return 0;const van=it.telDatum||"";
+  return matRows.filter(r=>r.soort!=="afschuren"&&(r.datum||"")>=van&&(!it.kleur||it.kleur==="alle"||matLak(r)===it.kleur)).reduce((s,r)=>s+matTot(r,it.matKey),0)}
+function vrdMut(it){const van=it.telDatum||"";return (it.mutaties||[]).filter(m=>(m.datum||"")>=van).reduce((s,m)=>s+(+m.aantal||0),0)}
+function vrdStand(it){return (+it.telAantal||0)+vrdMut(it)-vrdVerbruik(it)}
+function vrdColli(it){return it.perColli>0?vrdStand(it)/it.perColli:null}
+function vrdLaag(it){const c=vrdColli(it);return c!=null&&+it.minColli>0&&c<+it.minColli}
+const vrdLaagIds=()=>vrdRows.filter(vrdLaag).map(r=>r.id);
+const vrdEenh=(it,n)=>{const m=MATS.find(x=>x.k===it.matKey);return Math.abs(n)===1?(m&&m.eenheid)||"blik":(m&&m.meer)||"blikken"};
+const f1=n=>(Math.round(n*10)/10).toLocaleString("nl-NL");
+function vrdMeld(ids,welkom){const its=vrdRows.filter(r=>ids.includes(r.id));if(!its.length)return;const m=$("#modal");if(!m||!m.hidden&&m.innerHTML)return;
+  m.innerHTML=`<div class="modal-box vrd-meld" role="alertdialog" aria-modal="true" aria-labelledby="vrdmT"><h2 id="vrdmT">Bestellen</h2>
+    <p>${welkom?"De voorraad van deze producten is te laag:":"Door dit verbruik is de voorraad te laag. Bestel:"}</p>
+    <ul>${its.map(it=>{const s=vrdStand(it);return `<li><b>${esc(it.naam)}</b>: nog ${f1(vrdColli(it))} colli (${f1(s)} ${vrdEenh(it,s)}). Minimaal ${f1(+it.minColli)} colli.</li>`}).join("")}</ul>
+    <div class="row"><button class="btn primary" type="button" id="vrdmNaar">Naar voorraad</button><button class="btn" type="button" id="vrdmOk">OK</button></div></div>`;
+  m.hidden=false;const sluit=()=>{m.hidden=true;m.innerHTML=""};m.onclick=e=>{if(e.target===m)sluit()};$("#vrdmOk").onclick=sluit;
+  $("#vrdmNaar").onclick=()=>{sluit();setTab("voorraad")};
+  try{localStorage.setItem("vrdMelding",today())}catch(e){}}
+function vrdDagMelding(){if(!vrdLoaded||!matLoaded)return;let al="";try{al=localStorage.getItem("vrdMelding")||""}catch(e){}
+  if(al===today())return;const ids=vrdLaagIds();if(ids.length)setTimeout(()=>vrdMeld(ids,true),1500)}
+function vrdBlank(){return {id:null,naam:"",matKey:"",kleur:"alle",perColli:"",minColli:"",telAantal:"",telDatum:today()}}
+function vrdOpen(id){if(vrdDirty)return vraagOpslaan("voorraad",()=>vrdOpen(id));const x=vrdRows.find(r=>r.id===id);
+  vrdEdit=x?{...x,mutaties:undefined}:vrdBlank();vrdDel=false;vrdErr="";vrdMsg="";renderVoorraad();if(innerWidth<900)setTimeout(()=>{const f=$("#vrdForm");if(f)f.scrollIntoView({behavior:"smooth",block:"start"})},30)}
+async function vrdStandaard(){const lijst=[["Primer","primer","alle"],["Grondlak","grondlak","alle"],["Deklak wit (RAL 9010)","deklak","wit"],["Deklak zwart (RAL 9005)","deklak","zwart"]];
+  try{for(let i=0;i<lijst.length;i++){const [naam,matKey,kleur]=lijst[i];const rec={naam,matKey,kleur,perColli:0,minColli:0,telAantal:0,telDatum:today(),mutaties:[],volgorde:i,aangemaakt:Date.now(),bijgewerkt:Date.now()};
+    const id=DOC_ID("vrd_");await db.collection("instellingen").doc(id).set(rec);vrdRows.push({id,...rec})}}catch(e){vrdErr=saveErr(e)}renderVoorraad()}
+function renderVoorraad(){const el=$("#vrdView");const rows=vrdSorted(),r=vrdEdit,isNew=r&&!r.id,orig=r&&r.id&&vrdRows.find(x=>x.id===r.id);
+  el.innerHTML=`<div class="sheet vrd-sheet">
+  <div class="sheet-head"><div><div class="title">Voorraad</div><div class="sub">${vrdLoaded?rows.length+" product"+(rows.length===1?"":"en"):"Laden…"} · verbruik uit Materialen gaat er automatisch af</div></div>
+    <button class="btn primary" type="button" id="vrdNew">+ Nieuw product</button></div>
+  <div class="section"><ul class="vrd-lijst">${rows.length?rows.map(it=>{const s=vrdStand(it),c=vrdColli(it),laag=vrdLaag(it);return `<li><button type="button" data-vid="${esc(it.id)}" aria-current="${!!r&&it.id===r.id}" class="${laag?"laag":""}">
+      <span class="vrd-n"><b>${esc(it.naam)}</b><span>${it.matKey?esc((MATS.find(m=>m.k===it.matKey)||{}).naam||"")+(it.kleur&&it.kleur!=="alle"?" · "+it.kleur:""):"niet gekoppeld"}</span></span>
+      <span class="vrd-s"><b>${f1(s)}</b> ${vrdEenh(it,s)}</span>
+      <span class="vrd-c">${c==null?"<i>colli instellen</i>":`<b>${f1(c)}</b> colli${+it.minColli>0?` <span>min. ${f1(+it.minColli)}</span>`:""}`}</span>
+      <span class="vrd-st ${laag?"nee":c==null?"":"ja"}">${laag?"Bestellen":c==null?"–":"Op voorraad"}</span></button></li>`}).join(""):`<li class="empty">${vrdLoaded?`Nog geen producten. <button class="btn" type="button" id="vrdStd">Standaard lakblikken toevoegen</button>`:"Laden…"}</li>`}</ul></div>
+  ${r?`<div class="section" id="vrdForm"><h3>${isNew?"Nieuw product":esc(r.naam||"Product")+" instellen"}</h3>
+    <div class="kr-grid">
+      <div class="field"><label for="vrd-naam">Naam</label><div class="inp"><input id="vrd-naam" value="${esc(r.naam||"")}" placeholder="bijv. Primer" autocomplete="off"></div></div>
+      <div class="field"><label for="vrd-mat">Afboeken bij verbruik van</label><select id="vrd-mat" class="vrd-sel"><option value="">Niet koppelen</option>${VRD_KOPPEL().map(m=>`<option value="${m.k}"${r.matKey===m.k?" selected":""}>${esc(m.naam)}</option>`).join("")}</select></div>
+      <div class="field"><label for="vrd-kleur">Welke lak</label><select id="vrd-kleur" class="vrd-sel">${Object.entries(VRD_KLEUR).map(([k,t])=>`<option value="${k}"${(r.kleur||"alle")===k?" selected":""}>${t}</option>`).join("")}</select></div>
+      <div class="field"><label for="vrd-pc">Blikken per colli</label><div class="inp"><input id="vrd-pc" type="number" inputmode="decimal" min="0" step="1" value="${esc(r.perColli||"")}" placeholder="bijv. 6"></div></div>
+      <div class="field"><label for="vrd-min">Bestellen onder (colli)</label><div class="inp"><input id="vrd-min" type="number" inputmode="decimal" min="0" step="0.5" value="${esc(r.minColli||"")}" placeholder="bijv. 2"></div></div>
+      ${isNew?`<div class="field"><label for="vrd-tel">Huidige voorraad (blikken)</label><div class="inp"><input id="vrd-tel" type="number" inputmode="decimal" min="0" step="0.5" value="${esc(r.telAantal||"")}" placeholder="geteld aantal"></div></div>`:""}
+    </div></div>
+    <div class="foot"><div class="grp">${isNew?"":vrdDel?`<span class="confirm">Product verwijderen? <button class="btn danger-solid" type="button" id="vrdDelJa">Ja</button><button class="btn" type="button" id="vrdDelNee">Annuleren</button></span>`:`<button class="btn danger" type="button" id="vrdDelBtn">Verwijderen</button>`} <button class="btn" type="button" id="vrdSluit">Sluiten</button></div>
+      <div class="grp">${vrdErr?`<span class="err">${esc(vrdErr)}</span>`:""}<button class="btn primary" type="button" id="vrdSave" ${vrdSaving||!vrdDirty?"disabled":""}>Opslaan</button></div></div>
+    ${orig?`<div class="section"><h3>Voorraad bijwerken</h3>${vrdMsg?`<p class="vrd-ok">${esc(vrdMsg)}</p>`:""}
+      <div class="vrd-acties">
+        <div class="vrd-actie"><label for="vrd-lev">Levering binnen</label><div class="inp"><input id="vrd-lev" type="number" inputmode="decimal" min="0" step="1" placeholder="aantal"></div>
+          <select id="vrd-lev-e" aria-label="Eenheid levering"><option value="colli"${orig.perColli>0?"":" disabled"}>colli</option><option value="blik"${orig.perColli>0?"":" selected"}>blikken</option></select><button class="btn primary" type="button" id="vrdLevBtn">Boeken</button></div>
+        <div class="vrd-actie"><label for="vrd-tel2">Geteld (blikken)</label><div class="inp"><input id="vrd-tel2" type="number" inputmode="decimal" min="0" step="0.5" placeholder="${f1(vrdStand(orig))}"></div><button class="btn" type="button" id="vrdTelBtn">Telling opslaan</button></div>
+      </div>
+      <p class="hint" style="font-family:var(--f-body)">Telling op ${esc(shortDate(orig.telDatum||""))}: ${f1(+orig.telAantal||0)} · leveringen +${f1(vrdMut(orig))} · verbruik −${f1(vrdVerbruik(orig))} = <b>${f1(vrdStand(orig))}</b> ${vrdEenh(orig,vrdStand(orig))}</p>
+      ${(orig.mutaties||[]).filter(m=>(m.datum||"")>=(orig.telDatum||"")).length?`<ul class="vrd-hist">${(orig.mutaties||[]).filter(m=>(m.datum||"")>=(orig.telDatum||"")).slice(-8).reverse().map(m=>`<li>${esc(shortDate(m.datum))} · levering +${f1(+m.aantal)} ${vrdEenh(orig,+m.aantal)}${m.door?` · ${esc(m.door)}`:""}</li>`).join("")}</ul>`:""}
+    </div>`:""}`:""}
+  </div>`;
+  $("#vrdNew").onclick=()=>vrdOpen(null);
+  const std=$("#vrdStd");if(std)std.onclick=()=>{std.disabled=true;vrdStandaard()};
+  el.querySelectorAll("[data-vid]").forEach(b=>b.onclick=()=>vrdOpen(b.dataset.vid));
+  if(!r)return;
+  const touch=()=>{vrdDirty=true;vrdErr="";const s=$("#vrdSave");if(s)s.disabled=false};
+  [["vrd-naam","naam"],["vrd-mat","matKey"],["vrd-kleur","kleur"],["vrd-pc","perColli"],["vrd-min","minColli"],["vrd-tel","telAantal"]].forEach(([i,k])=>{const x=$("#"+i);if(x)x.oninput=x.onchange=()=>{r[k]=x.value;touch()}});
+  $("#vrdSave").onclick=saveVoorraad;
+  $("#vrdSluit").onclick=()=>{if(vrdDirty)return vraagOpslaan("voorraad",()=>{vrdEdit=null;renderVoorraad()});vrdEdit=null;vrdErr="";renderVoorraad()};
+  const d1=$("#vrdDelBtn");if(d1)d1.onclick=()=>{vrdDel=true;renderVoorraad()};
+  const dn=$("#vrdDelNee");if(dn)dn.onclick=()=>{vrdDel=false;renderVoorraad()};
+  const dy=$("#vrdDelJa");if(dy)dy.onclick=async()=>{try{await db.collection("instellingen").doc(r.id).delete();vrdRows=vrdRows.filter(x=>x.id!==r.id);vrdEdit=null;vrdDirty=false}catch(e){vrdErr="Verwijderen mislukt."}vrdDel=false;renderVoorraad()};
+  const lev=$("#vrdLevBtn");if(lev)lev.onclick=async()=>{const n=+$("#vrd-lev").value;if(!(n>0)){vrdErr="Vul het aantal van de levering in.";return renderVoorraad()}
+    const per=$("#vrd-lev-e").value==="colli"?(+orig.perColli||1):1;const aantal=n*per;
+    const muts=(orig.mutaties||[]).concat([{datum:today(),aantal,door:vrdDoor(),t:Date.now()}]);
+    if(await vrdBewaar(orig,{mutaties:muts}))vrdMsg=`Levering geboekt: +${f1(aantal)} ${vrdEenh(orig,aantal)}.`;renderVoorraad()};
+  const tel=$("#vrdTelBtn");if(tel)tel.onclick=async()=>{const v=$("#vrd-tel2").value;if(v===""||!(+v>=0)){vrdErr="Vul het getelde aantal in.";return renderVoorraad()}
+    if(await vrdBewaar(orig,{telAantal:+v,telDatum:today()}))vrdMsg=`Telling opgeslagen: ${f1(+v)} ${vrdEenh(orig,+v)}.`;renderVoorraad()};
+}
+const vrdDoor=()=>(((window.firebase&&firebase.auth&&firebase.auth().currentUser)||{}).email||"");
+async function vrdBewaar(orig,velden){try{const rec={...orig,...velden,bijgewerkt:Date.now()};delete rec.id;await db.collection("instellingen").doc(orig.id).set(rec);Object.assign(orig,velden,{bijgewerkt:rec.bijgewerkt});vrdErr="";return true}catch(e){vrdErr=saveErr(e);return false}}
+async function saveVoorraad(){const r=vrdEdit;if(!r)return;
+  vrdErr=!(r.naam||"").trim()?"Vul een naam in.":(r.perColli!==""&&+r.perColli<0)||(r.minColli!==""&&+r.minColli<0)?"Getallen mogen niet negatief zijn.":"";
+  if(vrdErr)return renderVoorraad();
+  vrdSaving=true;renderVoorraad();
+  try{const oud=r.id&&vrdRows.find(x=>x.id===r.id);
+    const rec={naam:r.naam.trim(),matKey:r.matKey||"",kleur:r.kleur||"alle",perColli:+r.perColli||0,minColli:+r.minColli||0,
+      telAantal:oud?oud.telAantal||0:(+r.telAantal||0),telDatum:oud?oud.telDatum||today():today(),mutaties:oud?oud.mutaties||[]:[],
+      volgorde:oud?oud.volgorde??99:vrdRows.length,aangemaakt:oud?oud.aangemaakt||Date.now():Date.now(),bijgewerkt:Date.now()};
+    const id=r.id||DOC_ID("vrd_");await db.collection("instellingen").doc(id).set(rec);
+    vrdRows=vrdRows.filter(x=>x.id!==id).concat([{id,...rec}]);vrdDirty=false;vrdEdit={...rec,id};
+    if(vrdLaag({id,...rec}))setTimeout(()=>vrdMeld([id],true),200)}
+  catch(e){vrdErr=saveErr(e)}
+  vrdSaving=false;renderVoorraad()}
 // ===================== MATERIALEN =====================
 const MATS=[
   {k:"primer",naam:"Primer",sub:"blik 25 kg",eenheid:"blik",meer:"blikken",stap:0.5,groep:"lak"},
@@ -3166,7 +3280,7 @@ ${isAfs?`    <div class="section"><h3>Schuurpapier</h3><div class="mat-grid vier
     matDraft=null;matSel=null;matDirty=false;matDel=false;renderMatList();renderMatSheet()};
   vergrendelBlad(el,r.id,r.datum,matDirty,renderMatSheet,"materialenblad",r.id&&nieuwerBlad(matRows,r));
 }
-async function saveMat(){
+async function saveMat(){const vrdVoor=vrdLaagIds();
   const r=matDraft;if(!r.datum){matErr="Vul een datum in.";return renderMatSheet()}
   matSaving=true;matErr="";renderMatSheet();
   try{const ch=chObj(r.charge,true);
@@ -3176,7 +3290,7 @@ async function saveMat(){
     if(ld&&CH_K.some(k=>((ld.charge&&ld.charge[k])||"")!==ch[k])){await db.collection("lakdagen").doc(ld.id).update({charge:ch});ld.charge=ch;
       if(draft&&draft.id===ld.id&&!dirty)draft.charge={...ch}}
     r.chargeAangepast=false;
-    r.id=id;matSel=id;matRows=matRows.filter(x=>x.id!==id).concat([{id,...rec}]);matDirty=false;matSaved=true;if(rec.datum)matMaand=rec.datum.slice(0,7)}
+    r.id=id;matSel=id;matRows=matRows.filter(x=>x.id!==id).concat([{id,...rec}]);matDirty=false;matSaved=true;if(rec.datum)matMaand=rec.datum.slice(0,7);{const nu=vrdLaagIds().filter(i=>!vrdVoor.includes(i));if(nu.length)setTimeout(()=>vrdMeld(nu),400)}}
   catch(e){matErr=saveErr(e)}
   matSaving=false;renderMatList();renderMatSheet();
 }
@@ -3241,7 +3355,7 @@ async function start(user){
   unsubs.push(db.collection("instellingen").where(firebase.firestore.FieldPath.documentId(),">=","g").onSnapshot(s=>{
     const docs=s.docs.map(d=>({id:d.id,...d.data()}));
     lampRows=docs.filter(d=>d.id.startsWith("lamp_")); regSheets=docs.filter(d=>d.id.startsWith("reg_"));
-    storingen=docs.filter(d=>d.id.startsWith("stor_")); const tdd=docs.find(d=>d.id==="tdmail"); tdMail=(tdd&&tdd.email)||""; if(tab==="storingen")renderTdMail(); matRows=docs.filter(d=>d.id.startsWith("mat_")); matLoaded=true; krasRows=docs.filter(d=>d.id.startsWith("kras_")); krLoaded=true; if(tab==="krastest"&&!krDirty&&!krSaving&&!krDel)renderKras();
+    storingen=docs.filter(d=>d.id.startsWith("stor_")); const tdd=docs.find(d=>d.id==="tdmail"); tdMail=(tdd&&tdd.email)||""; if(tab==="storingen")renderTdMail(); matRows=docs.filter(d=>d.id.startsWith("mat_")); matLoaded=true; krasRows=docs.filter(d=>d.id.startsWith("kras_")); krLoaded=true; vrdRows=docs.filter(d=>d.id.startsWith("vrd_")); vrdLoaded=true; if(tab==="voorraad"&&!vrdDirty&&!vrdSaving&&!vrdDel)renderVoorraad(); vrdDagMelding(); if(tab==="krastest"&&!krDirty&&!krSaving&&!krDel)renderKras();
     if(tab==="materialen"){renderMatList();if(!matDirty&&!matSaving){if(matDraft&&matDraft.id){const r=matRows.find(x=>x.id===matDraft.id);matDraft=r?matFrom(r):null;if(!r)matSel=null}renderMatSheet()}}
     planning=docs.filter(d=>d.id.startsWith("plan_"));
     verslagen=docs.filter(d=>d.id.startsWith("vsl_"));vsLoaded=true;{const vm=docs.find(d=>d.id==="vsmail");vsMail=(vm&&vm.email!=null)?vm.email:"peter@ideaal.nl"}
@@ -3263,8 +3377,8 @@ $("#btnNew").onclick=()=>startChecklist();
 $("#btnSetup").onclick=openSetup;
 $("#btnExport").onclick=exportPdf;
 // ===== frisse look: tab-iconen, schuivende pil, groet, lak-thema =====
-const TAB_ICON={krastest:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 17 14 6M10 18l7-11"/><path d="M7 7l10 10"/>',start:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',walsen:'<circle cx="7" cy="12" r="4"/><circle cx="17" cy="12" r="4"/><path d="M3 18h18"/>',lampen:'<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/>',registratie:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v3h6V3M9 11h6M9 15h4"/>',materialen:'<path d="M5 7h14v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zM4 7h16M9 3h6v4H9z"/>',storingen:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>',punten:'<path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17.5v.5"/>',verslag:'<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 11h7M9 15h7M9 19h4"/>'};
-const TAB_KORT={krastest:"Kras",start:"Start",verslag:"Verslag",registratie:"Registratie",materialen:"Materiaal",punten:"Punten",storingen:"Storingen"};
+const TAB_ICON={voorraad:'<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>',krastest:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 17 14 6M10 18l7-11"/><path d="M7 7l10 10"/>',start:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',walsen:'<circle cx="7" cy="12" r="4"/><circle cx="17" cy="12" r="4"/><path d="M3 18h18"/>',lampen:'<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/>',registratie:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v3h6V3M9 11h6M9 15h4"/>',materialen:'<path d="M5 7h14v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zM4 7h16M9 3h6v4H9z"/>',storingen:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>',punten:'<path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17.5v.5"/>',verslag:'<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 11h7M9 15h7M9 19h4"/>'};
+const TAB_KORT={voorraad:"Voorraad",krastest:"Kras",start:"Start",verslag:"Verslag",registratie:"Registratie",materialen:"Materiaal",punten:"Punten",storingen:"Storingen"};
 document.querySelectorAll("#tabs [data-tab]").forEach(b=>{const ic=TAB_ICON[b.dataset.tab],lang=b.textContent.trim(),kort=TAB_KORT[b.dataset.tab]||lang;
   b.innerHTML=`${ic?`<svg viewBox="0 0 24 24" aria-hidden="true">${ic}</svg>`:""}<span class="tl">${lang}</span><span class="tk">${kort}</span>`});
 const tabPil=document.createElement("span");tabPil.className="tab-pil";tabPil.setAttribute("aria-hidden","true");$("#tabs").prepend(tabPil);
@@ -3312,7 +3426,7 @@ setInterval(()=>{zetThema();zetPil()},700);
 
 $("#btnUsers").onclick=()=>{if(tab!=="walsen"){setTab("walsen");if(tab!=="walsen")return}mode="users";renderUsers($("#sheet"))};
 $("#btnLogout").onclick=()=>{dagen=[];walsen=[];draft=null;selectedId=null;dirty=false;mode="dag";
-  lampRows=[];lampEdits={};lampNew=blankLampRows();lampDirty=false;storingen=[];stEdit=null;stDirty=false;stQ="";punten=[];paEdit=null;paDirty=false;paQ="";verslagen=[];vsEdit=null;vsDirty=false;vsQ="";matRows=[];matDraft=null;matSel=null;matDirty=false;krasRows=[];krEdit=null;krDirty=false;regSheets=[];regDraft=null;regSel=null;regDirty=false;tab="start";
+  lampRows=[];lampEdits={};lampNew=blankLampRows();lampDirty=false;storingen=[];stEdit=null;stDirty=false;stQ="";punten=[];paEdit=null;paDirty=false;paQ="";verslagen=[];vsEdit=null;vsDirty=false;vsQ="";matRows=[];matDraft=null;matSel=null;matDirty=false;krasRows=[];krEdit=null;krDirty=false;vrdRows=[];vrdEdit=null;vrdDirty=false;vrdLoaded=false;regSheets=[];regDraft=null;regSel=null;regDirty=false;tab="start";
   firebase.auth().signOut()};
 
 if(!window.firebase||!window.LAKSTRAAT_FIREBASE){$("#authBox").hidden=false;$("#authBox").innerHTML="<h2>Niet ingesteld</h2><p>De koppeling met de database ontbreekt (config.js).</p>"}
