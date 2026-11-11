@@ -414,6 +414,7 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .vrd-e{height:44px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--fg);padding:0 8px;font-size:15px}
 .vrd-lt{font-size:13px;color:var(--muted);margin-top:4px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}.vrd-lt b{color:var(--fg)}.vrd-num{width:70px}
 .vrd-c span{display:block}
+.vrd-knoppen{gap:8px}.vrd-knoppen .btn{flex:1;min-width:180px}
 .vrd-ok{background:#e3f4e8;color:#1f7a3a;border-radius:8px;padding:8px 12px;font-weight:600}
 .vrd-hist{list-style:none;padding:0;margin:8px 0 0;font-size:13px;color:var(--muted)}.vrd-hist li{padding:3px 0;border-top:1px solid var(--line)}
 .vrd-meld{border-top-color:#d0383b}.vrd-meld h2{color:#d0383b}.vrd-meld ul{padding-left:18px;margin:8px 0 14px}.vrd-meld li{margin:4px 0}.vrd-meld .row{display:flex;gap:8px;flex-wrap:wrap}
@@ -3056,10 +3057,11 @@ const VRD_KOPPEL=()=>[...MATS.filter(m=>m.groep==="lak"||m.groep==="verdunner").
 function vrdN(it){const keys=it.keys||(it.matKey?[it.matKey]:[]);const schuur=keys.some(k=>/^[pa]\d+$/.test(k));const m=MATS.find(x=>x.k===keys[0]);
   return {keys,schuur,per:schuur?(+it.per||10):1,min:+(it.min??it.minColli??0)||0,een:schuur?"bundel":(m&&m.eenheid)||"blik",meer:schuur?"bundels":(m&&m.meer)||"blikken",sub:schuur?`bundel van ${+it.per||10} stuks`:(m&&m.sub)||""}}
 function vrdSorted(){return vrdRows.filter((r,i,a)=>a.findIndex(x=>x.id===r.id)===i).sort((a,b)=>(a.volgorde??99)-(b.volgorde??99)||(a.naam||"").localeCompare(b.naam||""))}
-function vrdVerbruik(it){const n=vrdN(it);if(!n.keys.length)return 0;const van=it.telDatum||"";
-  const st=matRows.filter(r=>(r.datum||"")>=van&&(n.schuur||r.soort!=="afschuren")&&(n.schuur||!it.kleur||it.kleur==="alle"||matLak(r)===it.kleur)).reduce((s,r)=>s+n.keys.reduce((t,k)=>t+matTot(r,k),0),0);
+const vrdNaTel=(it,datum,t)=>{const van=it.telDatum||"";if((datum||"")>van)return true;if((datum||"")<van)return false;return !it.telT||(t||0)>it.telT};
+function vrdVerbruik(it){const n=vrdN(it);if(!n.keys.length)return 0;
+  const st=matRows.filter(r=>vrdNaTel(it,r.datum,r.aangemaakt||r.bijgewerkt)&&(n.schuur||r.soort!=="afschuren")&&(n.schuur||!it.kleur||it.kleur==="alle"||matLak(r)===it.kleur)).reduce((s,r)=>s+n.keys.reduce((t,k)=>t+matTot(r,k),0),0);
   return st/n.per}
-function vrdMut(it){const van=it.telDatum||"";return (it.mutaties||[]).filter(m=>(m.datum||"")>=van).reduce((s,m)=>s+(+m.aantal||0),0)}
+function vrdMut(it){return (it.mutaties||[]).filter(m=>vrdNaTel(it,m.datum,m.t)).reduce((s,m)=>s+(+m.aantal||0),0)}
 function vrdStand(it){return (+it.telAantal||0)+vrdMut(it)-vrdVerbruik(it)}
 function vrdLaag(it){const bp=vrdBestelpunt(it);return bp>0&&vrdStand(it)<bp}
 const vrdLaagIds=()=>vrdRows.filter(vrdLaag).map(r=>r.id);
@@ -3083,7 +3085,7 @@ const VRD_STD=()=>[["Primer",["primer"],"alle"],["Grondlak",["grondlak"],"alle"]
 const vrdOntbreekt=()=>VRD_STD().filter(([n,k,kl])=>!vrdRows.some(r=>vrdN(r).keys.join()===k.join()&&(r.kleur||"alle")===kl));
 let vrdStdBezig=false;
 async function vrdStandaard(){if(vrdStdBezig)return;vrdStdBezig=true;const mis=vrdOntbreekt();let i=vrdRows.length;
-  try{for(const [naam,keys,kleur] of mis){const sch=/^p/.test(keys[0]);const rec={naam,keys,kleur,per:sch?10:1,min:0,telAantal:0,telDatum:today(),mutaties:[],volgorde:i++,aangemaakt:Date.now(),bijgewerkt:Date.now()};
+  try{for(const [naam,keys,kleur] of mis){const sch=/^p/.test(keys[0]);const rec={naam,keys,kleur,per:sch?10:1,min:0,telAantal:0,telDatum:today(),telT:Date.now(),mutaties:[],volgorde:i++,aangemaakt:Date.now(),bijgewerkt:Date.now()};
     const id="vrd_std_"+keys.join("_")+"_"+kleur;if(vrdRows.some(r=>r.id===id||(vrdN(r).keys.join()===keys.join()&&(r.kleur||"alle")===kleur)))continue;
     const ref=db.collection("instellingen").doc(id);if((await ref.get()).exists)continue;await ref.set(rec);vrdRows=vrdRows.filter(r=>r.id!==id).concat([{id,...rec}])}}catch(e){vrdErr=saveErr(e)}vrdStdBezig=false;renderVoorraad()}
 function renderVoorraad(){const el=$("#vrdView");const rows=vrdSorted(),r=vrdEdit,isNew=r&&!r.id,orig=r&&r.id&&vrdRows.find(x=>x.id===r.id);const mis=vrdLoaded?vrdOntbreekt():[];
@@ -3111,10 +3113,11 @@ function renderVoorraad(){const el=$("#vrdView");const rows=vrdSorted(),r=vrdEdi
     </div></div>
     <div class="foot"><div class="grp">${isNew?"":vrdDel?`<span class="confirm">Product verwijderen? <button class="btn danger-solid" type="button" id="vrdDelJa">Ja</button><button class="btn" type="button" id="vrdDelNee">Annuleren</button></span>`:`<button class="btn danger" type="button" id="vrdDelBtn">Verwijderen</button>`} <button class="btn" type="button" id="vrdSluit">Sluiten</button></div>
       <div class="grp">${vrdErr?`<span class="err">${esc(vrdErr)}</span>`:""}<button class="btn primary" type="button" id="vrdSave" ${vrdSaving||!vrdDirty?"disabled":""}>Opslaan</button></div></div>
-    ${orig?(()=>{const on=vrdN(orig),hist=(orig.mutaties||[]).filter(m=>(m.datum||"")>=(orig.telDatum||""));return `<div class="section"><h3>Voorraad bijwerken</h3>${vrdMsg?`<p class="vrd-ok">${esc(vrdMsg)}</p>`:""}
+    ${orig?(()=>{const on=vrdN(orig),hist=(orig.mutaties||[]).filter(m=>vrdNaTel(orig,m.datum,m.t));return `<div class="section"><h3>Voorraad bijwerken</h3>${vrdMsg?`<p class="vrd-ok">${esc(vrdMsg)}</p>`:""}
       <div class="vrd-acties">
-        <div class="vrd-actie"><label for="vrd-lev">Levering binnen${on.schuur?"":` (${on.meer})`}</label><div class="inp"><input id="vrd-lev" type="number" inputmode="decimal" min="0" step="1" placeholder="aantal"></div>${on.schuur?`<select id="vrd-lev-e" class="vrd-e" aria-label="Eenheid levering"><option value="b">bundels</option><option value="s">stuks</option></select>`:""}<button class="btn primary" type="button" id="vrdLevBtn">Boeken</button></div>
-        <div class="vrd-actie"><label for="vrd-tel2">Geteld${on.schuur?"":` (${on.meer})`}</label><div class="inp"><input id="vrd-tel2" type="number" inputmode="decimal" min="0" step="${on.schuur?1:0.5}" placeholder="${on.schuur?Math.round(vrdStand(orig)*on.per):f1(vrdStand(orig))}"></div>${on.schuur?`<select id="vrd-tel-e" class="vrd-e" aria-label="Eenheid telling"><option value="s">stuks</option><option value="b">bundels</option></select>`:""}<button class="btn" type="button" id="vrdTelBtn">Telling opslaan</button></div>
+        <div class="vrd-actie"><label for="vrd-aant">Aantal</label><div class="inp"><input id="vrd-aant" type="number" inputmode="decimal" min="0" step="${on.schuur?1:0.5}" placeholder="${on.schuur?Math.round(vrdStand(orig)*on.per):f1(vrdStand(orig))}"></div>${on.schuur?`<select id="vrd-aant-e" class="vrd-e" aria-label="Eenheid"><option value="s">stuks</option><option value="b">bundels</option></select>`:`<span>${on.meer}</span>`}</div>
+        <div class="vrd-actie vrd-knoppen"><button class="btn primary" type="button" id="vrdZetBtn">Dit is de voorraad nu</button><button class="btn" type="button" id="vrdBijBtn">Bijtellen (levering)</button></div>
+        <p class="hint" style="font-family:var(--f-body);margin:0"><b>Dit is de voorraad nu</b>: na tellen, het getal vervangt de stand. <b>Bijtellen</b>: bij een levering, het getal komt erbij.</p>
       </div>
       <p class="hint" style="font-family:var(--f-body)">Telling op ${esc(shortDate(orig.telDatum||""))}: ${f1(+orig.telAantal||0)} · leveringen +${f1(vrdMut(orig))} · verbruik −${f1(vrdVerbruik(orig))} = <b>${vrdTxt(orig,vrdStand(orig))}</b></p>
       ${hist.length?`<ul class="vrd-hist">${hist.slice(-8).reverse().map(m=>`<li>${esc(shortDate(m.datum))} · levering +${vrdTxt(orig,+m.aantal)}${m.door?` · ${esc(m.door)}`:""}</li>`).join("")}</ul>`:""}
@@ -3137,11 +3140,11 @@ function renderVoorraad(){const el=$("#vrdView");const rows=vrdSorted(),r=vrdEdi
   const dn=$("#vrdDelNee");if(dn)dn.onclick=()=>{vrdDel=false;renderVoorraad()};
   const dy=$("#vrdDelJa");if(dy)dy.onclick=async()=>{try{await db.collection("instellingen").doc(r.id).delete();vrdRows=vrdRows.filter(x=>x.id!==r.id);vrdEdit=null;vrdDirty=false}catch(e){vrdErr="Verwijderen mislukt."}vrdDel=false;renderVoorraad()};
   const omz=(v,sel)=>{const e=$(sel);return e&&e.value==="s"?v/vrdN(orig).per:v};
-  const lev=$("#vrdLevBtn");if(lev)lev.onclick=async()=>{const n=omz(+$("#vrd-lev").value,"#vrd-lev-e");if(!(n>0)){vrdErr="Vul het aantal van de levering in.";return renderVoorraad()}
+  const lev=$("#vrdBijBtn");if(lev)lev.onclick=async()=>{const n=omz(+$("#vrd-aant").value,"#vrd-aant-e");if(!(n>0)){vrdErr="Vul het aantal in.";return renderVoorraad()}
     const muts=(orig.mutaties||[]).concat([{datum:today(),aantal:n,door:vrdDoor(),t:Date.now()}]);
     if(await vrdBewaar(orig,{mutaties:muts,besteldOp:null}))vrdMsg=`Levering geboekt: +${vrdTxt(orig,n)}.`;renderVoorraad()};
-  const tel=$("#vrdTelBtn");if(tel)tel.onclick=async()=>{const v=$("#vrd-tel2").value;if(v===""||!(+v>=0)){vrdErr="Vul het getelde aantal in.";return renderVoorraad()}
-    const t=omz(+v,"#vrd-tel-e");if(await vrdBewaar(orig,{telAantal:t,telDatum:today()}))vrdMsg=`Telling opgeslagen: ${vrdTxt(orig,t)}.`;renderVoorraad()};
+  const tel=$("#vrdZetBtn");if(tel)tel.onclick=async()=>{const v=$("#vrd-aant").value;if(v===""||!(+v>=0)){vrdErr="Vul het getelde aantal in.";return renderVoorraad()}
+    const t=omz(+v,"#vrd-aant-e");if(await vrdBewaar(orig,{telAantal:t,telDatum:today(),telT:Date.now()}))vrdMsg=`Telling opgeslagen: ${vrdTxt(orig,t)}.`;renderVoorraad()};
 }
 const vrdDoor=()=>(((window.firebase&&firebase.auth&&firebase.auth().currentUser)||{}).email||"");
 async function vrdBewaar(orig,velden){try{const rec={...orig,...velden,bijgewerkt:Date.now()};delete rec.id;await db.collection("instellingen").doc(orig.id).set(rec);Object.assign(orig,velden,{bijgewerkt:rec.bijgewerkt});vrdErr="";return true}catch(e){vrdErr=saveErr(e);return false}}
@@ -3151,7 +3154,7 @@ async function saveVoorraad(){const r=vrdEdit;if(!r)return;const n=vrdN(r);
   vrdSaving=true;renderVoorraad();
   try{const oud=r.id&&vrdRows.find(x=>x.id===r.id);
     const rec={naam:r.naam.trim(),keys:n.keys,kleur:n.schuur?"alle":r.kleur||"alle",per:n.schuur?Math.round(+r.per||10):1,min:+r.min||0,
-      telAantal:oud?oud.telAantal||0:(n.schuur?(+r.telAantal||0)/(Math.round(+r.per||10)):(+r.telAantal||0)),telDatum:oud?oud.telDatum||today():today(),mutaties:oud?oud.mutaties||[]:[],
+      telAantal:oud?oud.telAantal||0:(n.schuur?(+r.telAantal||0)/(Math.round(+r.per||10)):(+r.telAantal||0)),telDatum:oud?oud.telDatum||today():today(),telT:oud?oud.telT||0:Date.now(),mutaties:oud?oud.mutaties||[]:[],
       volgorde:oud?oud.volgorde??99:vrdRows.length,aangemaakt:oud?oud.aangemaakt||Date.now():Date.now(),bijgewerkt:Date.now()};
     const id=r.id||DOC_ID("vrd_");await db.collection("instellingen").doc(id).set(rec);
     vrdRows=vrdRows.filter(x=>x.id!==id).concat([{id,...rec}]);vrdDirty=false;vrdEdit={...rec,id};
