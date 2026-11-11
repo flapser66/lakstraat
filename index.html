@@ -400,7 +400,7 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .herinner{list-style:none;margin:0;padding:0}.herinner li{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}.herinner li:first-child{border-top:0}
 .vrd-sheet .sheet-head{flex-wrap:wrap;gap:10px}
 .vrd-lijst{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
-.vrd-lijst button{width:100%;display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) minmax(0,1fr) auto;gap:10px;align-items:center;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:12px 14px;color:var(--fg)}
+.vrd-lijst button{width:100%;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,.9fr) minmax(0,1.5fr) auto;gap:10px;align-items:center;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:12px 14px;color:var(--fg)}
 .vrd-lijst button[aria-current="true"]{border-color:var(--accent)}
 .vrd-lijst button.laag{border-color:#d0383b;background:color-mix(in srgb,#d0383b 8%,var(--panel))}
 .vrd-n{display:flex;flex-direction:column;min-width:0}.vrd-n span{font-size:12px;color:var(--muted)}
@@ -3098,9 +3098,12 @@ function renderVoorraad(){const el=$("#vrdView");const rows=vrdSorted(),r=vrdEdi
     <button class="btn primary" type="button" id="vrdNew">+ Nieuw product</button></div>
   <div class="section"><ul class="vrd-lijst">${rows.map(it=>{const s=vrdStand(it),n=vrdN(it),laag=vrdLaag(it);return `<li><button type="button" data-vid="${esc(it.id)}" aria-current="${!!r&&it.id===r.id}" class="${laag?"laag":""}">
       <span class="vrd-n"><b>${esc(it.naam)}</b><span>${n.keys.length?esc(n.sub)+(!n.schuur&&it.kleur&&it.kleur!=="alle"?" · "+it.kleur:""):"niet gekoppeld"}</span></span>
-      <span class="vrd-s"><b>${f1(s)}</b> ${vrdEenh(it,s)}${n.schuur?`<span>${Math.round(s*n.per)} stuks</span>`:""}${(()=>{const w=vrdWekenOver(it);return w!=null?`<span>± ${f1(w)} weken</span>`:""})()}</span>
-      <span class="vrd-c">${(()=>{const bp=vrdBestelpunt(it),bd=vrdBestelDatum(it);const n2=vrdN(it),pw=vrdPerWeek(it),door=pw&&bp>n2.min;const leeg=pw&&!bd?new Date(Date.now()+Math.max(0,vrdStand(it))/pw*7*864e5).toISOString().slice(0,10):null;
-        return bp>0?`bestellen onder <b>${f1(bp)}</b><span>${door?`nodig voor ${vrdLt(it)+(+vrdInst.marge||0)} weken (jouw minimum: ${f1(n2.min)})`:"jouw minimale voorraad"}</span>${bd?`<span>uiterlijk ${esc(shortDate(bd))}</span>`:leeg?`<span class="vrd-leeg">op rond ${esc(shortDate(leeg))}</span>`:""}`:"<i>minimum instellen</i>"})()}</span>
+      <span class="vrd-s"><b>${f1(s)}</b> ${vrdEenh(it,s)}${n.schuur?`<span>${Math.round(s*n.per)} stuks</span>`:""}</span>
+      <span class="vrd-c">${(()=>{const bp=vrdBestelpunt(it),bd=vrdBestelDatum(it),w=vrdWekenOver(it);
+        if(!(bp>0))return "<i>minimum instellen</i>";
+        const nog=w!=null?`Je hebt nog voor <b>${f1(w)} weken</b>`:`Bestel onder <b>${vrdTxt(it,bp)}</b>`;
+        const op=laag?(vrdBesteld(it)?`<span class="vrd-bes">Besteld op ${esc(shortDate(it.besteldOp))}</span>`:`<span class="vrd-leeg">Bestel nu</span>`):bd?`<span>Bestel op <b>${esc(shortDate(bd))}</b></span>`:"";
+        return nog+op})()}</span>
       <span class="vrd-st ${laag?(vrdBesteld(it)?"bes":"nee"):vrdBestelpunt(it)>0?"ja":""}">${laag?(vrdBesteld(it)?"Besteld":"Bestellen"):vrdBestelpunt(it)>0?"Op voorraad":"–"}</span></button></li>`}).join("")}
     ${vrdLoaded&&!rows.length?`<li class="empty">Nog geen producten.</li>`:""}</ul>
     ${mis.length?`<p style="margin-top:10px"><button class="btn" type="button" id="vrdStd">${rows.length?"Ontbrekende standaardproducten toevoegen ("+mis.length+")":"Standaard lakblikken en schuurpapier toevoegen"}</button></p>`:""}${vrdMsg&&!orig?`<p class="vrd-ok" style="margin-top:10px">${esc(vrdMsg)}</p>`:""}</div>
