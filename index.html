@@ -415,6 +415,7 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .vrd-lt{font-size:13px;color:var(--muted);margin-top:4px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}.vrd-lt b{color:var(--fg)}.vrd-num{width:70px}
 .vrd-c span{display:block}
 .vrd-knoppen{gap:8px}.vrd-knoppen .btn{flex:1;min-width:180px}
+.vrd-nu{margin:0;font-size:14px;color:var(--muted)}.vrd-nu b{color:var(--fg)}
 .vrd-ok{background:#e3f4e8;color:#1f7a3a;border-radius:8px;padding:8px 12px;font-weight:600}
 .vrd-hist{list-style:none;padding:0;margin:8px 0 0;font-size:13px;color:var(--muted)}.vrd-hist li{padding:3px 0;border-top:1px solid var(--line)}
 .vrd-meld{border-top-color:#d0383b}.vrd-meld h2{color:#d0383b}.vrd-meld ul{padding-left:18px;margin:8px 0 14px}.vrd-meld li{margin:4px 0}.vrd-meld .row{display:flex;gap:8px;flex-wrap:wrap}
@@ -3115,7 +3116,8 @@ function renderVoorraad(){const el=$("#vrdView");const rows=vrdSorted(),r=vrdEdi
       <div class="grp">${vrdErr?`<span class="err">${esc(vrdErr)}</span>`:""}<button class="btn primary" type="button" id="vrdSave" ${vrdSaving||!vrdDirty?"disabled":""}>Opslaan</button></div></div>
     ${orig?(()=>{const on=vrdN(orig),hist=(orig.mutaties||[]).filter(m=>vrdNaTel(orig,m.datum,m.t));return `<div class="section"><h3>Voorraad bijwerken</h3>${vrdMsg?`<p class="vrd-ok">${esc(vrdMsg)}</p>`:""}
       <div class="vrd-acties">
-        <div class="vrd-actie"><label for="vrd-aant">Aantal</label><div class="inp"><input id="vrd-aant" type="number" inputmode="decimal" min="0" step="${on.schuur?1:0.5}" placeholder="${on.schuur?Math.round(vrdStand(orig)*on.per):f1(vrdStand(orig))}"></div>${on.schuur?`<select id="vrd-aant-e" class="vrd-e" aria-label="Eenheid"><option value="s">stuks</option><option value="b">bundels</option></select>`:`<span>${on.meer}</span>`}</div>
+        <div class="vrd-actie"><label for="vrd-aant">Aantal</label><div class="inp"><input id="vrd-aant" type="number" inputmode="decimal" min="0" step="${on.schuur?1:0.5}" placeholder="aantal"></div>${on.schuur?`<select id="vrd-aant-e" class="vrd-e" aria-label="Eenheid"><option value="s">stuks</option><option value="b">bundels</option></select>`:`<span>${on.meer}</span>`}</div>
+        <p class="vrd-nu">Nu op voorraad: <b>${vrdTxt(orig,vrdStand(orig))}</b></p>${vrdErr?`<p class="err" style="margin:0">${esc(vrdErr)}</p>`:""}
         <div class="vrd-actie vrd-knoppen"><button class="btn primary" type="button" id="vrdZetBtn">Dit is de voorraad nu</button><button class="btn" type="button" id="vrdBijBtn">Bijtellen (levering)</button></div>
         <p class="hint" style="font-family:var(--f-body);margin:0"><b>Dit is de voorraad nu</b>: na tellen, het getal vervangt de stand. <b>Bijtellen</b>: bij een levering, het getal komt erbij.</p>
       </div>
