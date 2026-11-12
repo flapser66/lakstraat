@@ -420,6 +420,7 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .vrd-leeg{color:#d0383b;font-weight:600}
 .vrd-n:has(.vrd-mini){position:relative;padding-left:58px;min-height:46px;justify-content:center}.vrd-mini{position:absolute;left:0;top:50%;transform:translateY(-50%);width:46px;height:46px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:zoom-in;background:#fff}
 .vrd-foto{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.vrd-al{opacity:.55}
 .vrd-kies{border-left:4px solid var(--accent)}.vrd-kies-lijst{display:flex;flex-wrap:wrap;gap:8px}
 .vrd-chk{display:flex;gap:8px;align-items:center;font-weight:600;min-height:48px}.vrd-chk input{width:22px;height:22px}
 .vrd-ok{background:#e3f4e8;color:#1f7a3a;border-radius:8px;padding:8px 12px;font-weight:600}
@@ -3155,20 +3156,21 @@ function vrdDagMelding(){if(!vrdLoaded||!matLoaded)return;let al="";try{al=local
 function vrdBlank(){return {id:null,naam:"",keys:[],kleur:"alle",per:10,min:"",telAantal:"",telDatum:today(),eigen:true,eenheid:"stuks",opMat:true}}
 function vrdOpen(id){if(vrdDirty)return vraagOpslaan("voorraad",()=>vrdOpen(id));const x=vrdRows.find(r=>r.id===id);
   vrdEdit=x?{...x,keys:x.eigen?[]:vrdN(x).keys,min:vrdN(x).min,per:vrdN(x).per,mutaties:undefined}:vrdBlank();vrdDel=false;vrdErr="";vrdMsg="";renderVoorraad();if(innerWidth<900)setTimeout(()=>{const f=$("#vrdForm");if(f)f.scrollIntoView({behavior:"smooth",block:"start"})},30)}
-const VRD_STD=()=>[["Primer",["primer"],"alle"],["Grondlak",["grondlak"],"alle"],["Deklak wit (RAL 9010)",["deklak"],"wit"],["Deklak zwart (RAL 9005)",["deklak"],"zwart"],["TM22 verdunner",["tm22"],"alle"],...VRD_KORRELS.map(g=>["Schuurpapier P"+g,["p"+g,"a"+g],"alle"])];
-const vrdOntbreekt=()=>VRD_STD().filter(([n,k,kl])=>!vrdRows.some(r=>vrdN(r).keys.join()===k.join()&&(r.kleur||"alle")===kl));
+const VRD_STD=()=>[["Primer",["primer"],"alle"],["Grondlak",["grondlak"],"alle"],["Deklak wit (RAL 9010)",["deklak"],"wit"],["Deklak zwart (RAL 9005)",["deklak"],"zwart"],["TM22 verdunner",["tm22"],"alle"],["Verharder Likapal AC/PU (28-500-02)",[],"alle",{eigen:true,eenheid:"blikken",opMat:true,code:"28-500-02"}],...VRD_KORRELS.map(g=>["Schuurpapier P"+g,["p"+g,"a"+g],"alle"])];
+const vrdHeeftStd=([n,k,kl,ex])=>vrdRows.some(r=>ex&&ex.eigen?(r.eigen&&(r.naam===n||(ex.code&&r.code===ex.code))):(!r.eigen&&vrdN(r).keys.join()===k.join()&&(kl==="alle"||(r.kleur||"alle")===kl)));
+const vrdOntbreekt=()=>VRD_STD().filter(x=>!vrdHeeftStd(x));
 let vrdStdBezig=false;
 async function vrdStandaard(alleen){if(vrdStdBezig)return;vrdStdBezig=true;const mis=vrdOntbreekt().filter(x=>!alleen||x[0]===alleen);let i=vrdRows.length;
-  try{for(const [naam,keys,kleur] of mis){const sch=/^p/.test(keys[0]);const rec={naam,keys,kleur,per:sch?10:1,min:0,telAantal:0,telDatum:today(),telT:Date.now(),mutaties:[],volgorde:i++,aangemaakt:Date.now(),bijgewerkt:Date.now()};
-    const id="vrd_std_"+keys.join("_")+"_"+kleur;if(vrdRows.some(r=>r.id===id||(vrdN(r).keys.join()===keys.join()&&(r.kleur||"alle")===kleur)))continue;
-    const ref=db.collection("instellingen").doc(id);if((await ref.get()).exists)continue;await ref.set(rec);vrdRows=vrdRows.filter(r=>r.id!==id).concat([{id,...rec}])}}catch(e){vrdErr=saveErr(e)}vrdStdBezig=false;vrdKiezen=false;renderVoorraad()}
+  try{for(const [naam,keys,kleur,ex] of mis){const sch=/^p/.test(keys[0]||"");const rec={naam,keys,kleur,...(ex||{}),per:sch?10:1,min:0,telAantal:0,telDatum:today(),telT:Date.now(),mutaties:[],volgorde:i++,aangemaakt:Date.now(),bijgewerkt:Date.now()};
+    const id="vrd_std_"+(keys.length?keys.join("_"):naam.replace(/[^a-z0-9]+/gi,"_").toLowerCase())+"_"+kleur;if(vrdRows.some(r=>r.id===id)||vrdHeeftStd([naam,keys,kleur,ex]))continue;
+    const ref=db.collection("instellingen").doc(id);if((await ref.get()).exists)continue;await ref.set(rec);vrdRows=vrdRows.filter(r=>r.id!==id).concat([{id,...rec}])}}catch(e){vrdErr=saveErr(e)}vrdStdBezig=false;vrdKiezen=false;syncEigenMats();renderVoorraad()}
 function renderVoorraad(){const el=$("#vrdView");const rows=vrdSorted(),r=vrdEdit,isNew=r&&!r.id,orig=r&&r.id&&vrdRows.find(x=>x.id===r.id);const mis=vrdLoaded?vrdOntbreekt():[];
   const rn=r?vrdN(r):null;
   el.innerHTML=`<div class="sheet vrd-sheet">
   <div class="sheet-head"><div><div class="title">Voorraad</div><div class="sub">${vrdLoaded?rows.length+" product"+(rows.length===1?"":"en"):"Laden…"} · verbruik uit Materialen gaat er automatisch af</div>
     <div class="vrd-lt" id="vrdLt">Levertijd lak <b>${vrdInst.levertijd} weken</b> · schuurpapier <b>${vrdInst.levertijdS} weken</b> · marge <b>${vrdInst.marge} week</b> <button type="button" class="linkbtn" id="vrdLtEdit">Wijzigen</button></div></div>
     <button class="btn primary" type="button" id="vrdNew">+ Product toevoegen</button></div>
-  ${vrdKiezen?`<div class="section vrd-kies"><h3>Product toevoegen</h3>${mis.length?`<p class="hint" style="font-family:var(--f-body);margin:0 0 8px">Vaste producten die nog niet in de lijst staan:</p><div class="vrd-kies-lijst">${mis.map(([n])=>`<button type="button" class="btn" data-vstd="${esc(n)}">+ ${esc(n)}</button>`).join("")}</div>`:`<p class="hint" style="font-family:var(--f-body);margin:0 0 8px">Alle vaste producten staan al in de lijst.</p>`}<div class="vrd-kies-lijst" style="margin-top:10px"><button type="button" class="btn primary" id="vrdEigen">+ Eigen product maken</button><button type="button" class="btn" id="vrdKiesNee">Annuleren</button></div></div>`:""}
+  ${vrdKiezen?`<div class="section vrd-kies"><h3>Product toevoegen</h3><p class="hint" style="font-family:var(--f-body);margin:0 0 8px">Vaste producten (✓ = staat al in de lijst):</p><div class="vrd-kies-lijst">${VRD_STD().map(x=>vrdHeeftStd(x)?`<button type="button" class="btn vrd-al" disabled>✓ ${esc(x[0])}</button>`:`<button type="button" class="btn" data-vstd="${esc(x[0])}">+ ${esc(x[0])}</button>`).join("")}</div><div class="vrd-kies-lijst" style="margin-top:10px"><button type="button" class="btn primary" id="vrdEigen">+ Eigen product maken</button><button type="button" class="btn" id="vrdKiesNee">Annuleren</button></div></div>`:""}
   <div class="section"><ul class="vrd-lijst">${rows.map(it=>{const s=vrdStand(it),n=vrdN(it),laag=vrdLaag(it);return `<li><button type="button" data-vid="${esc(it.id)}" aria-current="${!!r&&it.id===r.id}" class="${laag?"laag":""}">
       <span class="vrd-n">${it.foto?`<img class="vrd-mini" data-vfoto="${esc(it.foto)}" alt="Foto ${esc(it.naam)}" src="${fotoCache[it.foto]||"data:image/gif;base64,R0lGODlhAQABAAAAACw="}">`:""}<b>${esc(it.naam)}</b>${it.code?`<span>art. ${esc(it.code)}</span>`:""}<span>${n.keys.length?esc(n.sub)+(!n.schuur&&it.kleur&&it.kleur!=="alle"?" · "+it.kleur:""):"niet gekoppeld"}</span></span>
       <span class="vrd-s"><b>${f1(s)}</b> ${vrdEenh(it,s)}${n.schuur?`<span>${Math.round(s*n.per)} stuks</span>`:""}</span>
