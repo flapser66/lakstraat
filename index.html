@@ -3222,10 +3222,13 @@ ${vrdMsg&&!orig?`<p class="vrd-ok" style="margin-top:10px">${esc(vrdMsg)}</p>`:"
   [["vrd-naam","naam"],["vrd-code","code"],["vrd-kleur","kleur"],["vrd-per","per"],["vrd-min","min"],["vrd-tel","telAantal"]].forEach(([i,k])=>{const x=$("#"+i);if(x)x.oninput=x.onchange=()=>{r[k]=x.value;touch()}});
   const fotoBox=()=>{const fb=$("#vrdFoto");if(!fb)return;const d=r.fotoData||(r.foto&&fotoCache[r.foto]);
     fb.innerHTML=(d?`<div class="st-thumb edit"><img src="${d}" alt="Productfoto" id="vrdFotoImg"><button type="button" class="st-fx" id="vrdFotoWeg" aria-label="Foto verwijderen">×</button></div>`:r.foto?`<span class="hint">laden…</span>`:"")+`<button type="button" class="btn" id="vrdCamBtn">📷 ${d?"Andere foto":"Foto maken"}</button><button type="button" class="btn" id="vrdGalBtn">Uit galerij</button>`;
-    const im=$("#vrdFotoImg");if(im)im.onclick=()=>toonFoto(d);const w=$("#vrdFotoWeg");if(w)w.onclick=()=>{r.fotoData=null;r.foto=null;r.fotoWeg=true;touch();fotoBox()};
+    const im=$("#vrdFotoImg");if(im)im.onclick=()=>toonFoto(d);const w=$("#vrdFotoWeg");if(w)w.onclick=async()=>{if(orig&&orig.foto){const oudF=orig.foto;if(await vrdBewaar(orig,{foto:null})){try{await db.collection("instellingen").doc(oudF).delete()}catch(x){}delete fotoCache[oudF];r.foto=null;vrdMsg="Foto verwijderd."}renderVoorraad();return}r.fotoData=null;r.foto=null;fotoBox()};
     $("#vrdCamBtn").onclick=()=>$("#vrdCam").click();$("#vrdGalBtn").onclick=()=>$("#vrdGal").click();
     if(r.foto&&!d)laadFoto(r.foto).then(x=>{if(x&&vrdEdit===r)fotoBox()})};
-  const fotoIn=async ev=>{const f=ev.target.files[0];ev.target.value="";if(!f)return;try{r.fotoData=await verklein(f);touch();fotoBox()}catch(e){vrdErr=e.message;renderVoorraad()}};
+  const fotoIn=async ev=>{const f=ev.target.files[0];ev.target.value="";if(!f)return;try{const d=await verklein(f);
+      if(orig){const fid=DOC_ID("foto_vrd_");await db.collection("instellingen").doc(fid).set({voorraad:orig.id,data:d,aangemaakt:Date.now()});fotoCache[fid]=d;const oudF=orig.foto;
+        if(await vrdBewaar(orig,{foto:fid})){if(oudF&&oudF!==fid){try{await db.collection("instellingen").doc(oudF).delete()}catch(x){}delete fotoCache[oudF]}r.foto=fid;r.fotoData=null;vrdMsg="Foto opgeslagen."}renderVoorraad()}
+      else{r.fotoData=d;touch();fotoBox()}}catch(e){vrdErr=e.message||"Foto opslaan mislukt.";renderVoorraad()}};
   $("#vrdCam").onchange=fotoIn;$("#vrdGal").onchange=fotoIn;fotoBox();
   {const ee=$("#vrd-eenh");if(ee)ee.onchange=()=>{r.eenheid=ee.value;vrdDirty=true;vrdErr="";renderVoorraad()};const om=$("#vrd-opmat");if(om)om.onchange=()=>{r.opMat=om.checked;touch()}}
   const vm=$("#vrd-mat");if(vm)vm.onchange=e=>{r.keys=e.target.value?e.target.value.split(","):[];vrdDirty=true;vrdErr="";renderVoorraad()};
