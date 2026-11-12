@@ -3156,7 +3156,27 @@ function vrdDagMelding(){if(!vrdLoaded||!matLoaded)return;let al="";try{al=local
 function vrdBlank(){return {id:null,naam:"",keys:[],kleur:"alle",per:10,min:"",telAantal:"",telDatum:today(),eigen:true,eenheid:"stuks",opMat:true}}
 function vrdOpen(id){if(vrdDirty)return vraagOpslaan("voorraad",()=>vrdOpen(id));const x=vrdRows.find(r=>r.id===id);
   vrdEdit=x?{...x,keys:x.eigen?[]:vrdN(x).keys,min:vrdN(x).min,per:vrdN(x).per,mutaties:undefined}:vrdBlank();vrdDel=false;vrdErr="";vrdMsg="";renderVoorraad();if(innerWidth<900)setTimeout(()=>{const f=$("#vrdForm");if(f)f.scrollIntoView({behavior:"smooth",block:"start"})},30)}
-const VRD_STD=()=>[["Primer",["primer"],"alle"],["Grondlak",["grondlak"],"alle"],["Deklak wit (RAL 9010)",["deklak"],"wit"],["Deklak zwart (RAL 9005)",["deklak"],"zwart"],["TM22 verdunner",["tm22"],"alle"],["Verharder Likapal AC/PU (28-500-02)",[],"alle",{eigen:true,eenheid:"blikken",opMat:true,code:"28-500-02"}],...VRD_KORRELS.map(g=>["Schuurpapier P"+g,["p"+g,"a"+g],"alle"])];
+const VRD_STD=()=>[
+  ["Primer Likapal AC-Walzisolierung wit",["primer"],"alle",{code:"20-124-900",info:"blik 25 kg"}],
+  ["Grondlak Likapal UV-Walzgrund wit",["grondlak"],"wit",{code:"31-124-910",info:"blik 30 kg"}],
+  ["Grondlak Likapal UV-Walzgrund zwart",["grondlak"],"zwart",{code:"31-124-905",info:"blik 30 kg"}],
+  ["Deklak Likapal UV-Decklack RAL 9010",["deklak"],"wit",{code:"33-124-9010-1",info:"blik 30 kg"}],
+  ["Deklak zwart (RAL 9005)",["deklak"],"zwart"],
+  ["Verdunner InterCheM TM22",["tm22"],"alle",{info:"jerrycan"}],
+  ["Verharder Likapal AC/PU-Härter",[],"alle",{eigen:true,eenheid:"blikken",opMat:true,code:"28-500-02",info:"blik 2,5 kg"}],
+  ["Schuurpapier Ekamant EKA 3001 N 500",["p500","a500"],"alle",{code:"EKA 3001 N 500",info:"vel 1350 × 2620 mm"}],
+  ["Schuurpapier Ekamant EKA 3001 N 360",["p360","a360"],"alle",{code:"EKA 3001 N 360",info:"vel 1350 × 2620 mm"}],
+  ["Schuurpapier Ekamant EKA Black 220",["p220","a220"],"alle",{info:"antistatic"}],
+  ["Schuurpapier Ekamant EKA Black 150",["p150","a150"],"alle",{info:"antistatic"}],
+  ["Schuurband Ekamant EKA Black 100",["p100","a100"],"alle",{code:"EKA BLACK 100",info:"band 150 × 4800 mm"}]];
+// eenmalig: bestaande producten de etiketnaam, code en maat geven
+let vrdEtBezig=false;
+async function vrdEtiketten(){if(vrdEtBezig)return;vrdEtBezig=true;
+  try{for(const r of vrdRows){if(r.etiketV===1)continue;
+    const st=VRD_STD().find(([n,k,kl,ex])=>ex&&ex.eigen?(r.eigen&&ex.code&&(r.code===ex.code||/verharder/i.test(r.naam||""))):(!r.eigen&&vrdN(r).keys.join()===k.join()&&(kl==="alle"||(r.kleur||"alle")===kl||(kl==="wit"&&k[0]==="grondlak"&&(r.kleur||"alle")==="alle"))));
+    const v={etiketV:1};if(st&&st[3]){const [n,k,kl,ex]=st;v.naam=n;if(ex&&ex.code)v.code=ex.code;if(ex&&ex.info)v.info=ex.info;if(k[0]==="grondlak")v.kleur=kl}
+    r.etiketV=1;await vrdBewaar(r,v)}}catch(e){}
+  vrdEtBezig=false;if(tab==="voorraad"&&!vrdDirty)renderVoorraad();syncEigenMats()}
 const vrdHeeftStd=([n,k,kl,ex])=>vrdRows.some(r=>ex&&ex.eigen?(r.eigen&&(r.naam===n||(ex.code&&r.code===ex.code))):(!r.eigen&&vrdN(r).keys.join()===k.join()&&(kl==="alle"||(r.kleur||"alle")===kl)));
 const vrdOntbreekt=()=>VRD_STD().filter(x=>!vrdHeeftStd(x));
 let vrdStdBezig=false;
@@ -3172,7 +3192,7 @@ function renderVoorraad(){const el=$("#vrdView");const rows=vrdSorted(),r=vrdEdi
     <button class="btn primary" type="button" id="vrdNew">+ Product toevoegen</button></div>
   ${vrdKiezen?`<div class="section vrd-kies"><h3>Product toevoegen</h3><p class="hint" style="font-family:var(--f-body);margin:0 0 8px">Vaste producten (✓ = staat al in de lijst):</p><div class="vrd-kies-lijst">${VRD_STD().map(x=>vrdHeeftStd(x)?`<button type="button" class="btn vrd-al" disabled>✓ ${esc(x[0])}</button>`:`<button type="button" class="btn" data-vstd="${esc(x[0])}">+ ${esc(x[0])}</button>`).join("")}</div><div class="vrd-kies-lijst" style="margin-top:10px"><button type="button" class="btn primary" id="vrdEigen">+ Eigen product maken</button><button type="button" class="btn" id="vrdKiesNee">Annuleren</button></div></div>`:""}
   <div class="section"><ul class="vrd-lijst">${rows.map(it=>{const s=vrdStand(it),n=vrdN(it),laag=vrdLaag(it);return `<li><button type="button" data-vid="${esc(it.id)}" aria-current="${!!r&&it.id===r.id}" class="${laag?"laag":""}">
-      <span class="vrd-n">${it.foto?`<img class="vrd-mini" data-vfoto="${esc(it.foto)}" alt="Foto ${esc(it.naam)}" src="${fotoCache[it.foto]||"data:image/gif;base64,R0lGODlhAQABAAAAACw="}">`:""}<b>${esc(it.naam)}</b>${it.code?`<span>art. ${esc(it.code)}</span>`:""}<span>${n.keys.length?esc(n.sub)+(!n.schuur&&it.kleur&&it.kleur!=="alle"?" · "+it.kleur:""):"niet gekoppeld"}</span></span>
+      <span class="vrd-n">${it.foto?`<img class="vrd-mini" data-vfoto="${esc(it.foto)}" alt="Foto ${esc(it.naam)}" src="${fotoCache[it.foto]||"data:image/gif;base64,R0lGODlhAQABAAAAACw="}">`:""}<b>${esc(it.naam)}</b>${it.code?`<span>art. ${esc(it.code)}</span>`:""}<span>${it.info?esc(it.info)+(!n.schuur&&!n.eigen&&it.kleur&&it.kleur!=="alle"?" · "+it.kleur:""):n.keys.length?esc(n.sub)+(!n.schuur&&it.kleur&&it.kleur!=="alle"?" · "+it.kleur:""):"niet gekoppeld"}</span></span>
       <span class="vrd-s"><b>${f1(s)}</b> ${vrdEenh(it,s)}${n.schuur?`<span>${Math.round(s*n.per)} stuks</span>`:""}</span>
       <span class="vrd-c">${(()=>{const bp=vrdBestelpunt(it),bd=vrdBestelDatum(it),w=vrdWekenOver(it);
         if(!(bp>0))return "<i>minimum instellen</i>";
@@ -3539,7 +3559,7 @@ async function start(user){
   unsubs.push(db.collection("instellingen").where(firebase.firestore.FieldPath.documentId(),">=","g").onSnapshot(s=>{
     const docs=s.docs.map(d=>({id:d.id,...d.data()}));
     lampRows=docs.filter(d=>d.id.startsWith("lamp_")); regSheets=docs.filter(d=>d.id.startsWith("reg_"));
-    storingen=docs.filter(d=>d.id.startsWith("stor_")); const tdd=docs.find(d=>d.id==="tdmail"); tdMail=(tdd&&tdd.email)||""; if(tab==="storingen")renderTdMail(); matRows=docs.filter(d=>d.id.startsWith("mat_")); matLoaded=true; krasRows=docs.filter(d=>d.id.startsWith("kras_")); krLoaded=true; {const km=docs.find(d=>d.id==="krmail");krMailAdres=(km&&km.email)||""} vrdRows=docs.filter(d=>d.id.startsWith("vrd_")); vrdLoaded=true; syncEigenMats(); if(tab==="materialen"&&!matDirty)renderMatSheet&&renderMatSheet(); {const vm=docs.find(d=>d.id==="vrdmail");vrdMailAdres=(vm&&vm.email)||"";const vi=docs.find(d=>d.id==="vrdinst");if(vi)vrdInst={levertijd:vi.levertijd??6,levertijdS:vi.levertijdS??3,marge:vi.marge??1}} if(tab==="voorraad"&&!vrdDirty&&!vrdSaving&&!vrdDel)renderVoorraad(); vrdBadge(); vrdDagMelding(); if(tab==="krastest"&&!krDirty&&!krSaving&&!krDel)renderKras();
+    storingen=docs.filter(d=>d.id.startsWith("stor_")); const tdd=docs.find(d=>d.id==="tdmail"); tdMail=(tdd&&tdd.email)||""; if(tab==="storingen")renderTdMail(); matRows=docs.filter(d=>d.id.startsWith("mat_")); matLoaded=true; krasRows=docs.filter(d=>d.id.startsWith("kras_")); krLoaded=true; {const km=docs.find(d=>d.id==="krmail");krMailAdres=(km&&km.email)||""} vrdRows=docs.filter(d=>d.id.startsWith("vrd_")); vrdLoaded=true; syncEigenMats(); if(vrdRows.some(r=>r.etiketV!==1))vrdEtiketten(); if(tab==="materialen"&&!matDirty)renderMatSheet&&renderMatSheet(); {const vm=docs.find(d=>d.id==="vrdmail");vrdMailAdres=(vm&&vm.email)||"";const vi=docs.find(d=>d.id==="vrdinst");if(vi)vrdInst={levertijd:vi.levertijd??6,levertijdS:vi.levertijdS??3,marge:vi.marge??1}} if(tab==="voorraad"&&!vrdDirty&&!vrdSaving&&!vrdDel)renderVoorraad(); vrdBadge(); vrdDagMelding(); if(tab==="krastest"&&!krDirty&&!krSaving&&!krDel)renderKras();
     if(tab==="materialen"){renderMatList();if(!matDirty&&!matSaving){if(matDraft&&matDraft.id){const r=matRows.find(x=>x.id===matDraft.id);matDraft=r?matFrom(r):null;if(!r)matSel=null}renderMatSheet()}}
     planning=docs.filter(d=>d.id.startsWith("plan_"));
     verslagen=docs.filter(d=>d.id.startsWith("vsl_"));vsLoaded=true;{const vm=docs.find(d=>d.id==="vsmail");vsMail=(vm&&vm.email!=null)?vm.email:"peter@ideaal.nl"}
