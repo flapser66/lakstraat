@@ -1004,16 +1004,18 @@ function startChecklist(toch){
     <ul class="ck-list">${CHECKLIST.map((t,i)=>`<li><label><input type="checkbox" data-ck="${i}"><span>${esc(t)}</span></label></li>`).join("")}</ul>
     <span class="ck-tel" id="ckTel">0 van ${CHECKLIST.length} afgevinkt</span>
     <div class="field"><label for="ckParaaf">Paraaf</label><div class="inp"><input id="ckParaaf" autocomplete="off" maxlength="12" placeholder="Je initialen, bijv. JJ" style="font-size:16px;text-transform:uppercase"></div></div>
-    <div class="row"><button class="btn primary" type="button" id="ckGo" disabled>Checklist afronden</button></div>
+    <div class="row"><button class="btn primary" type="button" id="ckGo" disabled>Checklist afronden</button><button class="btn" type="button" id="ckNee">Annuleren</button></div>
       </div>`;
   m.hidden=false;
-  m.onclick=null; // niet wegklikken: eerst alles afvinken
+  const ckSluit=()=>{m.hidden=true;m.innerHTML="";document.removeEventListener("keydown",ckEsc)};
+  const ckEsc=e=>{if(e.key==="Escape")ckSluit()};document.addEventListener("keydown",ckEsc);
+  m.onclick=e=>{if(e.target===m)ckSluit()};$("#ckNee").onclick=ckSluit;
   const boxes=[...m.querySelectorAll("[data-ck]")];
   const pf=$("#ckParaaf"),go=$("#ckGo");let lak=null;
   m.querySelectorAll("[data-cklak]").forEach(b=>b.onclick=()=>{lak=b.dataset.cklak;m.querySelectorAll("[data-cklak]").forEach(x=>x.setAttribute("aria-checked",String(x===b)));check()});
   const check=()=>{const n=boxes.filter(x=>x.checked).length;$("#ckTel").textContent=`${n} van ${CHECKLIST.length} afgevinkt`+(!lak?" · kies wit of zwart":"")+(n===CHECKLIST.length&&pf.value.trim().length<2?" · zet je paraaf":"");go.disabled=!lak||n<CHECKLIST.length||pf.value.trim().length<2};
   boxes.forEach(b=>b.onchange=check);pf.oninput=check;
-  go.onclick=()=>{const door=pf.value.trim().toUpperCase();m.hidden=true;m.innerHTML="";dirty=false;nieuweLak=lak;newDay();
+  go.onclick=()=>{const door=pf.value.trim().toUpperCase();ckSluit();dirty=false;nieuweLak=lak;newDay();
     draft.checklist={door,tijd:Date.now(),punten:CHECKLIST.slice()};draft.lak=lak;dirty=true;render();toonDuim()};
   boxes[0].focus();
 }
