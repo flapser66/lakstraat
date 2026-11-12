@@ -1148,10 +1148,10 @@ function renderSheet(){
       </div>
     </div>
 
-    <div class="section">
-      <h3><span>Advies en analyse</span></h3>
+    ${advGestart()&&advOpenVoor!==draft?`<div class="section adv-dicht"><button type="button" class="btn" id="advOpen">Advies en analyse bekijken ▾</button></div>`:`<div class="section">
+      <h3><span>Advies en analyse</span>${advGestart()?`<button class="link" type="button" id="advDicht">Inklappen ▴</button>`:""}</h3>
       <div class="advies" id="advies"></div>
-    </div>
+    </div>`}
 
     <div class="section">
       <h3><span>Walsen: stand en hoogte</span><button class="link" type="button" id="editWalsen">Walsen aanpassen</button></h3>
@@ -2089,7 +2089,10 @@ function analyse(cur){
   return {rated,goed,adv,vergelijkbaar,tips,metWeer};
 }
 function afwijking(a,v){if(!a||v==null)return false;const grens=Math.max(2*a.sd,Math.abs(a.v)*0.05,0.05);return Math.abs(v-a.v)>grens}
-function renderAdvies(){
+let advOpenVoor=null;
+function advGestart(){if(!draft)return false;if(draft.id)return true;return Object.values(draft.walsen||{}).some(w=>w&&(w.stand!=null||w.hoogte!=null||w.eind!=null))}
+function advKnoppen(){const o=$("#advOpen");if(o)o.onclick=()=>{advOpenVoor=draft;render()};const d=$("#advDicht");if(d)d.onclick=()=>{advOpenVoor=null;render()}}
+function renderAdvies(){advKnoppen();
   const box=$("#advies");if(!box||!draft)return;
   if(!draft.lak){box.innerHTML=`<p class="adv-leeg">Kies bovenaan of je vandaag <b>wit</b> of <b>zwart</b> lakt. Het advies kijkt alleen naar lakdagen met dezelfde lak.</p>`;return}
   const A=analyse(draft),NODIG=3,lakNaam=draft.lak==="wit"?"witte":"zwarte";
