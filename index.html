@@ -800,6 +800,41 @@ input.landt{animation:landt .7s cubic-bezier(.2,1.4,.4,1) both}
 .meer-box{padding-bottom:calc(22px + env(safe-area-inset-bottom))}
 .dash .tegel h3,.tegel h3{font-family:var(--f-body);font-size:15px;font-weight:700;letter-spacing:0;text-transform:none;color:var(--fg)}
 .tegel-sub{font-family:var(--f-body);text-transform:none;letter-spacing:0;font-weight:500;color:var(--muted)}
+/* op het oog */
+.title{text-transform:none}
+.list h2,aside.list h2{font-family:var(--f-body);font-size:14px;font-weight:700;letter-spacing:0;text-transform:none;color:var(--fg)}
+.list h2 #count,.list h2 span+span{font-weight:500;color:var(--muted)}
+@media (max-width:640px){
+ header.top{flex-wrap:nowrap;padding:10px 14px;gap:12px;border-radius:12px}
+ .brand-logo{height:34px}
+ .brand{border-left:1px solid rgba(255,255,255,.35);padding-left:12px}
+ .brand .eyebrow{display:none}
+ .brand h1{font-size:17px;margin:0;letter-spacing:.02em}
+ .groet{font-size:12px;margin-top:2px}
+}
+.modal-box h2{font-family:var(--f-body);font-size:20px;font-weight:700;text-transform:none;letter-spacing:0}
+.st-blk h4,.mc-head,.plan-dag,.wals .lbl{font-family:var(--f-body);text-transform:none;letter-spacing:0}
+.st-blk h4,.mc-head{font-size:14px;font-weight:700;color:var(--fg)}
+.plan-dag{font-size:13px;font-weight:600}
+.wals .lbl{font-size:12.5px;font-weight:600}
+.st-zoek .unit{font-size:0;width:34px;background:no-repeat center/18px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237a828f' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E")}
+div.sheet.kr-sheet,div.sheet.vrd-sheet{background:var(--panel);border:1px solid color-mix(in srgb,var(--line) 70%,transparent);border-radius:16px;box-shadow:0 6px 24px rgba(16,40,80,.08)}
+@media (max-width:640px){
+ .todo-rij{grid-template-columns:1fr;gap:8px}
+ .todo-t{padding:10px 12px}
+ .plan-form{grid-template-columns:1fr}
+ .plan-form>*{grid-column:1/-1}
+ .plan-form .lakkeuze{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+ .plan-form .lakk{justify-content:center}
+ .kr-acties{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+ .kr-acties #krNieuw{grid-column:1/-1}
+ .kr-acties .btn{padding-left:8px;padding-right:8px}
+ .sheet-head{gap:10px}
+ .toolbar{gap:8px}
+}
+.st-zoek .unit{display:inline-block;align-self:stretch;min-height:22px;padding:0;margin-left:8px}
+@media (min-width:700px) and (max-width:1099px){#tabs.tabs{left:0;right:0;margin:0 auto;max-width:600px}}
+@media (max-width:420px){.lakk{padding-left:10px;padding-right:10px;gap:8px}}
 </style>
 </head>
 <body>
@@ -1140,7 +1175,7 @@ function renderSheet(){
     const first=dagenLoaded&&!dagen.length;
     el.innerHTML=first
       ? `<div class="blank"><strong>Welkom bij het logboek</strong><span>Stel eerst de walsen van de lakstraat in (namen en volgorde). Daarna vul je per lakdag de standen en hoogtes, temperatuur, luchtvochtigheid en bijzonderheden in.</span><div class="top-actions"><button class="btn" type="button" id="blankSetup">Walsen instellen</button><button class="btn primary" type="button" id="blankNew">+ Nieuwe lakdag</button></div></div>`
-      : `<div class="blank"><strong>${dagenLoaded?"Kies een lakdag":"Laden…"}</strong><span>Selecteer links een dag, of begin een nieuw blad.</span><button class="btn primary" type="button" id="blankNew">+ Nieuwe lakdag</button></div>`;
+      : `<div class="blank"><strong>${dagenLoaded?"Kies een lakdag":"Laden…"}</strong><span>Kies een dag uit de lijst, of begin een nieuw blad.</span><button class="btn primary" type="button" id="blankNew">+ Nieuwe lakdag</button></div>`;
     $("#blankNew").onclick=()=>startChecklist(); const bs=$("#blankSetup"); if(bs)bs.onclick=openSetup; return;
   }
   const rows=sorted();
@@ -1928,7 +1963,7 @@ function schaalHtml(i,m,schalen){
 function renderRegSheet(){
   const el=$("#regSheet");
   if(!regDraft){
-    el.innerHTML=`<div class="blank"><strong>${regLoaded?"Kies een registratieblad":"Laden…"}</strong><span>Selecteer links een blad, of begin een nieuw registratieblad.</span><button class="btn primary" type="button" id="regBlankNew">+ Nieuw registratieblad</button></div>`;
+    el.innerHTML=`<div class="blank"><strong>${regLoaded?"Kies een registratieblad":"Laden…"}</strong><span>Kies een blad uit de lijst, of begin een nieuw registratieblad.</span><button class="btn primary" type="button" id="regBlankNew">+ Nieuw registratieblad</button></div>`;
     $("#regBlankNew").onclick=regNew;return;
   }
   const r=regDraft,isNew=!r.id,BL=regBlad(r.kleur);
@@ -2999,7 +3034,7 @@ async function savePunt(){
 function renderPunten(){
   const el=$("#puntView");
   el.innerHTML=`<main class="sheet solo">
-    <div class="sheet-head"><div><div class="title">Punten van aandacht</div><div class="sub">Wat opvalt, wat beter kan en wat er is afgesproken</div></div><button class="btn primary" type="button" id="paNew">+ Nieuw punt</button></div>
+    <div class="sheet-head"><div><div class="title">Aandachtspunten</div><div class="sub">Wat opvalt, wat beter kan en wat er is afgesproken</div></div><button class="btn primary" type="button" id="paNew">+ Nieuw punt</button></div>
     <div class="td-mail" id="paMail"></div>
     <div class="st-zoek"><div class="inp"><span class="unit" aria-hidden="true">Zoek</span><input id="paQ" type="search" placeholder="Trefwoorden, bijv. lak wals 3" value="${esc(paQ)}" autocomplete="off" aria-label="Zoeken in punten van aandacht"></div><span class="hint" id="paCount"></span></div>
     <div class="reg-filter statusf" id="paStatusF"></div>
