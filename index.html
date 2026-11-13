@@ -3231,7 +3231,7 @@ async function krFormPdf(mk,ids){const W=1240,H=1754,c=document.createElement("c
   x.fillStyle="#fff";x.fillRect(0,0,W,H);const M=70,BL="#0E4C92";
   const rows=krKies(mk,ids);
   await cvBand(x,W,130,"Krastest "+krPeriode(mk,ids));x.save();x.translate(0,110);
-  x.fillStyle=BL;x.font="700 46px Arial";x.fillText("Krastest lakstraat",M,M+40);
+  x.translate(0,-40);
   x.fillStyle="#111";x.font="26px Arial";x.fillText((ids?"Periode: ":"Maand: ")+krPeriode(mk,ids),M,M+90);
   x.fillStyle="#555";x.font="19px Arial";x.fillText("Volgens SKH-publicatie 05-01 · "+rows.length+" test"+(rows.length===1?"":"en")+(rows.length?` · ${rows.filter(r=>r.geslaagd===true).length} geslaagd, ${rows.filter(r=>r.geslaagd===false).length} niet geslaagd`:""),M,M+125);
   const lw=330,lx=W-M-lw,ly=M;x.strokeStyle=BL;x.lineWidth=3;x.strokeRect(lx,ly,lw,230);x.fillStyle=BL;x.font="700 22px Arial";x.fillText("SKH-klasse",lx+18,ly+34);x.fillStyle="#666";x.font="16px Arial";x.fillText("0 = beste",lx+lw-95,ly+34);
