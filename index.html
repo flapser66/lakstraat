@@ -386,7 +386,12 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .kr-p>span{white-space:nowrap}
 @media (max-width:620px){.kr-p{grid-column:1/-1;justify-content:flex-start}.kr-s{text-align:right}}
 .kr-mail{font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%}.kr-mail b{color:var(--fg)}
+.kr-selbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:8px}.kr-selbar span{color:var(--muted);font-size:13px;flex:1}
+.kr-li{display:flex;gap:8px;align-items:stretch}.kr-li>button{flex:1;min-width:0}.kr-chk{display:flex;align-items:center;padding:0 4px}.kr-chk input{width:26px;height:26px}
 .kr-tip{margin-top:10px;padding:10px 12px;border-radius:10px;background:#fbe5e5;color:#7a1c1e;font-size:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.kf-fotos{background:#fff;color:#111;border-radius:6px;padding:16px 22px;margin-top:10px}.kf-fotos h3{margin:0 0 10px;color:#0E4C92;font-size:16px}.kf-dag{margin-bottom:12px}.kf-dag b{font-size:13px}.kf-rij{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}.kf-rij img{width:150px;height:112px;object-fit:cover;border-radius:6px;border:1px solid #ccc;cursor:zoom-in;background:#eee}
+.kf-geen{color:var(--muted);font-size:13px;margin:10px 0 0}
+.kf-groot{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px}.kf-groot img{max-width:100%;max-height:85vh;border-radius:8px}
 .modal-breed{align-items:start;overflow:auto}
 .kr-form-box{max-width:960px;border-top-color:var(--accent);padding:16px}
 .kr-form-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -3005,7 +3010,7 @@ function renderKras(){
     <div class="grp">${isNew?"":krDel?`<span class="confirm">Deze krastest verwijderen? <button class="btn danger-solid" type="button" id="krDelJa">Ja</button><button class="btn" type="button" id="krDelNee">Annuleren</button></span>`:`<button class="btn danger" type="button" id="krDelBtn">Verwijderen</button>`}${!isNew||krDirty?` <button class="btn" type="button" id="krAnn">${isNew?"Leegmaken":"Terug naar nieuw"}</button>`:""}</div>
     <div class="grp">${krErr?`<span class="err">${esc(krErr)}</span>`:""}${!isNew&&!krDirty?`<button class="btn" type="button" id="krMailBtn">Versturen per e-mail</button>`:""}<button class="btn primary" type="button" id="krSave" ${krSaving||!krDirty?"disabled":""}>Opslaan</button></div>
   </div>
-  <div class="section"><h3>Uitslagen</h3><ul class="kr-lijst">${rows.length?rows.map(x=>`<li><button type="button" data-kid="${esc(x.id)}" aria-current="${x.id===r.id}">
+  <div class="section"><h3>Uitslagen</h3>${rows.length?`<div class="kr-selbar"><button type="button" class="linkbtn" id="krSelAll">${krSel.size===rows.length?"Niets selecteren":"Alles selecteren"}</button><span>${krSel.size} geselecteerd</span><button type="button" class="btn primary" id="krSelMail" ${krSel.size?"":"disabled"}>Geselecteerde mailen${krSel.size?" ("+krSel.size+")":""}</button></div>`:""}<ul class="kr-lijst">${rows.length?rows.map(x=>`<li class="kr-li"><label class="kr-chk" aria-label="Selecteer krastest ${esc(shortDate(x.datum))}"><input type="checkbox" data-ksel="${esc(x.id)}"${krSel.has(x.id)?" checked":""}></label><button type="button" data-kid="${esc(x.id)}" aria-current="${x.id===r.id}">
     <span class="kr-d"><b>${esc(shortDate(x.datum))}</b> ${lakBadge(x.lak)}</span>
     <span class="kr-s">${esc(krScoreTxt(krKlasse(x))||"–")}</span>
     <span class="kr-g ${x.geslaagd===true?"ja":x.geslaagd===false?"nee":""}">${x.geslaagd===true?"Geslaagd":x.geslaagd===false?"Niet geslaagd":"–"}</span>
@@ -3036,6 +3041,9 @@ function renderKras(){
   const dn=$("#krDelNee");if(dn)dn.onclick=()=>{krDel=false;renderKras()};
   const dy=$("#krDelJa");if(dy)dy.onclick=async()=>{try{const o=krasRows.find(x=>x.id===r.id);for(const fid of (o&&o.fotos)||[]){try{await db.collection("instellingen").doc(fid).delete()}catch(x){}}await db.collection("instellingen").doc(r.id).delete();krasRows=krasRows.filter(x=>x.id!==r.id);krEdit=krBlank();krDirty=false}catch(e){krErr="Verwijderen mislukt."}krDel=false;renderKras()};
   el.querySelectorAll("[data-kid]").forEach(b=>b.onclick=()=>krOpen(b.dataset.kid));
+  el.querySelectorAll("[data-ksel]").forEach(c=>c.onchange=()=>{c.checked?krSel.add(c.dataset.ksel):krSel.delete(c.dataset.ksel);renderKras()});
+  {const sa=$("#krSelAll");if(sa)sa.onclick=()=>{if(krSel.size===rows.length)krSel.clear();else rows.forEach(x=>krSel.add(x.id));renderKras()};
+   const sm=$("#krSelMail");if(sm)sm.onclick=()=>krMaandMail(today().slice(0,7),sm,false,[...krSel].filter(id=>krasRows.some(k=>k.id===id)))}
   $("#krWerk").onclick=krWerkwijze;{const fm=$("#krFormMail");fm.onclick=()=>krMaandMail((krEdit&&krEdit.datum||today()).slice(0,7),fm)}$("#krForm2").onclick=()=>{krFormMaand=(krEdit&&krEdit.datum||today()).slice(0,7);krFormulier()};
   const tip=$("#krTipDoc");if(tip)tip.onclick=krWerkwijze;
 }
@@ -3061,9 +3069,12 @@ function krFormulier(){const m=$("#modal");const sluit=()=>{m.hidden=true;m.inne
   m.innerHTML=`<div class="modal-box kr-form-box" role="dialog" aria-modal="true" aria-label="Krastestformulier"><style>${KRP_CSS}</style>
     <div class="kr-form-bar"><div class="maandkiezer" style="border:0;padding:0;flex:1;max-width:340px"><button type="button" id="kfPrev" aria-label="Vorige maand">◀</button><select id="kfSel" aria-label="Kies maand">${maanden.map(k=>`<option value="${k}"${k===krFormMaand?" selected":""}>${maandNaam(k)}</option>`).join("")}</select><button type="button" id="kfNext" aria-label="Volgende maand" ${krFormMaand>=nu?"disabled":""}>▶</button></div>
     <button class="btn primary" type="button" id="kfPrint">Printen / PDF</button><button class="btn" type="button" id="kfMail">Mailen</button><button class="btn" type="button" id="kfSluit">Sluiten</button></div>
-    ${krPapier(krFormMaand)}</div>`;
+    ${krPapier(krFormMaand)}
+    ${(()=>{const fr=krKies(krFormMaand).filter(r=>(r.fotos||[]).length);return fr.length?`<div class="kf-fotos"><h3>Foto's die worden meegestuurd (${fr.reduce((a,r)=>a+r.fotos.length,0)})</h3>${fr.map(r=>`<div class="kf-dag"><b>${esc(shortDate(r.datum))}${r.lak?" · "+r.lak:""} · klasse ${krKlasse(r)??"–"}</b><div class="kf-rij">${r.fotos.map(f=>`<img data-kff="${esc(f)}" alt="Foto krastest ${esc(shortDate(r.datum))}" src="${fotoCache[f]||"data:image/gif;base64,R0lGODlhAQABAAAAACw="}">`).join("")}</div></div>`).join("")}</div>`:`<p class="kf-geen">Er zijn deze maand geen foto's bij de krastesten.</p>`})()}</div>`;
   m.classList.add("modal-breed");m.hidden=false;m.onclick=e=>{if(e.target===m)sluit()};
   const ga=k=>{krFormMaand=k;krFormulier()};
+  m.querySelectorAll("[data-kff]").forEach(im=>{const id=im.dataset.kff;if(!fotoCache[id])laadFoto(id).then(d=>{if(d)im.src=d});
+    im.onclick=()=>{const d=fotoCache[id];if(!d)return;const ov=document.createElement("div");ov.className="kf-groot";ov.innerHTML=`<img src="${d}" alt="Foto groot"><button type="button" class="btn">Sluiten</button>`;ov.onclick=()=>ov.remove();document.body.appendChild(ov)}});
   $("#kfPrev").onclick=()=>ga(maandStap(krFormMaand,-1));$("#kfNext").onclick=()=>{if(krFormMaand<nu)ga(maandStap(krFormMaand,1))};$("#kfSel").onchange=e=>ga(e.target.value);$("#kfSluit").onclick=sluit;{const km=$("#kfMail");km.onclick=()=>krMaandMail(krFormMaand,km)}
   $("#kfPrint").onclick=()=>{const w=window.open("","_blank");if(!w){alert("Pop-up geblokkeerd. Sta pop-ups toe om te printen.");return}
     w.document.write(`<!DOCTYPE html><html lang="nl"><head><meta charset="utf-8"><title>Krastest ${esc(maandNaam(krFormMaand))}</title><style>@page{size:A4;margin:12mm}body{margin:0}${KRP_CSS}.krp{padding:0}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}</style></head><body>${krPapier(krFormMaand)}<script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);w.document.close()};
@@ -3086,8 +3097,11 @@ async function krVerstuur(r,knop,bevestigd){const aan=krMail();if(!aan){krErr="S
     if(res==="login"){knop.textContent="Aanmelden bij Microsoft…";return msLogin(null)}
     knop.textContent="✓ Verstuurd naar "+aan}
   catch(e){knop.disabled=false;knop.textContent="Mislukt: tik om via mail-app te sturen";knop.onclick=()=>{location.href=`mailto:${encodeURIComponent(aan)}?subject=${encodeURIComponent(onderwerp)}&body=${encodeURIComponent(krTekst(r))}`}}}
-function krMaandTekst(mk){const rows=krasRows.filter(r=>(r.datum||"").slice(0,7)===mk).sort((a,b)=>(a.datum||"").localeCompare(b.datum||""));
-  return [`Krastesten lakstraat ${maandNaam(mk)} (SKH-publicatie 05-01)`,"",...(rows.length?rows.map(r=>`${paperDate(r.datum)}  ${r.lak==="wit"?"Wit  ":r.lak==="zwart"?"Zwart":"     "}  klasse ${krKlasse(r)??"–"}  geslaagd: ${r.geslaagd===true?"ja":r.geslaagd===false?"NEE":"–"}  paraaf: ${r.initialen||"–"}`):["Geen krastesten in deze maand."]),"",`${rows.length} test${rows.length===1?"":"en"}, ${rows.filter(r=>r.geslaagd===true).length} geslaagd, ${rows.filter(r=>r.geslaagd===false).length} niet geslaagd.`,"","Verstuurd vanuit het Lakstraat Logboek."].join("\n")}
+let krSel=new Set();
+const krKies=(mk,ids)=>krasRows.filter(r=>ids?ids.includes(r.id):(r.datum||"").slice(0,7)===mk).sort((a,b)=>(a.datum||"").localeCompare(b.datum||"")||(a.aangemaakt||0)-(b.aangemaakt||0));
+const krPeriode=(mk,ids)=>{if(!ids)return maandNaam(mk);const r=krKies(mk,ids);if(!r.length)return "selectie";const a=r[0].datum,b=r[r.length-1].datum;return a===b?longDate(a):shortDate(a)+" t/m "+shortDate(b)};
+function krMaandTekst(mk,ids){const rows=krKies(mk,ids);
+  return [`Krastesten lakstraat ${krPeriode(mk,ids)} (SKH-publicatie 05-01)`,"",...(rows.length?rows.map(r=>`${paperDate(r.datum)}  ${r.lak==="wit"?"Wit  ":r.lak==="zwart"?"Zwart":"     "}  klasse ${krKlasse(r)??"–"}  geslaagd: ${r.geslaagd===true?"ja":r.geslaagd===false?"NEE":"–"}  paraaf: ${r.initialen||"–"}`):["Geen krastesten geselecteerd."]),"",`${rows.length} test${rows.length===1?"":"en"}, ${rows.filter(r=>r.geslaagd===true).length} geslaagd, ${rows.filter(r=>r.geslaagd===false).length} niet geslaagd.`,"","Verstuurd vanuit het Lakstraat Logboek."].join("\n")}
 // ingevuld maandformulier als PDF (getekend op canvas, één A4)
 function laadImg(src){return new Promise(r=>{if(!src)return r(null);const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=src})}
 function jpegPdf(jpgB64,w,h){const bin=atob(jpgB64),enc=new TextEncoder();const parts=[];let len=0;const offs=[];
@@ -3103,11 +3117,11 @@ function jpegPdf(jpgB64,w,h){const bin=atob(jpgB64),enc=new TextEncoder();const 
   const xref=len;let x="xref\n0 6\n0000000000 65535 f \n";for(let i=1;i<=5;i++)x+=String(offs[i]).padStart(10,"0")+" 00000 n \n";
   add(x+`trailer<</Size 6/Root 1 0 R>>\nstartxref\n${xref}\n%%EOF`);
   const out=new Uint8Array(len);let o=0;for(const p of parts){out.set(p,o);o+=p.length}return out}
-async function krFormPdf(mk){const W=1240,H=1754,c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");
+async function krFormPdf(mk,ids){const W=1240,H=1754,c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");
   x.fillStyle="#fff";x.fillRect(0,0,W,H);const M=70,BL="#0E4C92";
-  const rows=krasRows.filter(r=>(r.datum||"").slice(0,7)===mk).sort((a,b)=>(a.datum||"").localeCompare(b.datum||"")||(a.aangemaakt||0)-(b.aangemaakt||0));
+  const rows=krKies(mk,ids);
   x.fillStyle=BL;x.font="700 46px Arial";x.fillText("Krastest lakstraat",M,M+40);
-  x.fillStyle="#111";x.font="26px Arial";x.fillText("Maand: "+maandNaam(mk),M,M+90);
+  x.fillStyle="#111";x.font="26px Arial";x.fillText((ids?"Periode: ":"Maand: ")+krPeriode(mk,ids),M,M+90);
   x.fillStyle="#555";x.font="19px Arial";x.fillText("Volgens SKH-publicatie 05-01 · "+rows.length+" test"+(rows.length===1?"":"en")+(rows.length?` · ${rows.filter(r=>r.geslaagd===true).length} geslaagd, ${rows.filter(r=>r.geslaagd===false).length} niet geslaagd`:""),M,M+125);
   const lw=330,lx=W-M-lw,ly=M;x.strokeStyle=BL;x.lineWidth=3;x.strokeRect(lx,ly,lw,230);x.fillStyle=BL;x.font="700 22px Arial";x.fillText("SKH-klasse",lx+18,ly+34);x.fillStyle="#666";x.font="16px Arial";x.fillText("0 = beste",lx+lw-95,ly+34);
   KR_SCORE.forEach(([n,t],i)=>{const y=ly+68+i*31;x.fillStyle=BL;x.font="700 20px Arial";x.fillText(String(n),lx+18,y);x.fillStyle="#111";x.font="19px Arial";x.fillText(n===0?"Geen onthechting":n===5?"Meer dan 35% los":t+" los",lx+48,y)});
@@ -3124,18 +3138,18 @@ async function krFormPdf(mk){const W=1240,H=1754,c=document.createElement("canva
     const s=sigs[i];if(s){const sh=rh-14,sw=Math.min(cols[5][1]-20,sh*s.width/s.height);x.drawImage(s,p+10,y+7,sw,sh)}}
   x.fillStyle="#444";x.font="18px Arial";x.fillText("Klasse 3, 4 of 5: test na 4 weken herhalen.",M,ty+n*rh+34);
   const jpg=c.toDataURL("image/jpeg",0.9).split(",")[1];return jpegPdf(jpg,W,H)}
-async function krMaandMail(mk,knop,bevestigd){const aan=krMail();if(!aan){knop.textContent="Stel eerst een e-mailadres in (tab Krastest)";return}
-  const onderwerp="Krastesten lakstraat "+maandNaam(mk),tekst=krMaandTekst(mk);
+async function krMaandMail(mk,knop,bevestigd,ids){const aan=krMail();if(!aan){knop.textContent="Stel eerst een e-mailadres in (tab Krastest)";return}
+  const onderwerp="Krastesten lakstraat "+krPeriode(mk,ids),tekst=krMaandTekst(mk,ids);
   if(!navigator.onLine){location.href=`mailto:${encodeURIComponent(aan)}?subject=${encodeURIComponent(onderwerp)}&body=${encodeURIComponent(tekst)}`;return}
-  if(!bevestigd){const oud=knop.textContent;knop.textContent="Tik nog eens: mail naar "+aan;knop.onclick=()=>krMaandMail(mk,knop,true);setTimeout(()=>{if(knop.isConnected&&!knop.disabled){knop.textContent=oud;knop.onclick=()=>krMaandMail(mk,knop)}},6000);return}
+  if(!bevestigd){const oud=knop.textContent;knop.textContent="Tik nog eens: mail naar "+aan;knop.onclick=()=>krMaandMail(mk,knop,true,ids);setTimeout(()=>{if(knop.isConnected&&!knop.disabled){knop.textContent=oud;knop.onclick=()=>krMaandMail(mk,knop,false,ids)}},6000);return}
   knop.disabled=true;knop.textContent="Verzenden…";
   try{const token=await msToken();if(!token){knop.textContent="Aanmelden bij Microsoft…";return msLogin(null)}
-    knop.textContent="Formulier maken…";let formPdf=null;try{formPdf=await krFormPdf(mk)}catch(e){}
-    knop.textContent="Foto's ophalen…";const rows=krasRows.filter(r=>(r.datum||"").slice(0,7)===mk).sort((a,b)=>(a.datum||"").localeCompare(b.datum||""));
+    knop.textContent="Formulier maken…";let formPdf=null;try{formPdf=await krFormPdf(mk,ids)}catch(e){}
+    knop.textContent="Foto's ophalen…";const rows=krKies(mk,ids);
     const extra=[];let tot=0,over=0;for(const r of rows){let i=0;for(const fid of r.fotos||[]){i++;const d=await laadFoto(fid);if(!d)continue;const b64=d.split(",")[1]||"";
       if(tot+b64.length>3000000){over++;continue}tot+=b64.length;extra.push({name:`Krastest ${r.datum}${r.lak?" "+r.lak:""} foto ${i}.jpg`,type:"image/jpeg",b64})}}
     const tekst2=tekst+(formPdf?"\n\nHet ingevulde krastestformulier zit als PDF in de bijlage.":"")+(extra.length?`\n\nIn de bijlage: ${extra.length} foto${extra.length===1?"":"'s"} van de tests (met datum en tijd in beeld).`:"")+(over?`\n${over} foto${over===1?" paste":"'s pasten"} niet meer in deze mail; die staan in de app.`:"");
-    knop.textContent="Verzenden…";const res=await msVerstuur(null,formPdf,`Krastest formulier ${maandNaam(mk)}.pdf`,onderwerp,tekst2,token,aan,extra);if(res==="login")return msLogin(null);knop.textContent="✓ Verstuurd naar "+aan}
+    knop.textContent="Verzenden…";const res=await msVerstuur(null,formPdf,`Krastest formulier ${krPeriode(mk,ids).replace(/[\\/:*?"<>|]/g,"-")}.pdf`,onderwerp,tekst2,token,aan,extra);if(res==="login")return msLogin(null);knop.textContent="✓ Verstuurd naar "+aan}
   catch(e){knop.disabled=false;knop.textContent="Mislukt: tik om via mail-app te sturen";knop.onclick=()=>{location.href=`mailto:${encodeURIComponent(aan)}?subject=${encodeURIComponent(onderwerp)}&body=${encodeURIComponent(tekst)}`}}}
 async function saveKras(){const r=krEdit;
   krErr=!r.datum?"Vul een datum in.":r.score==null?"Kies een klasse.":r.geslaagd==null?"Kies of de krastest geslaagd is.":!r.initialen.trim()?"Vul je initialen in.":!r.handtekening?"Zet je handtekening.":"";
