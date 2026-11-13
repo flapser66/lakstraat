@@ -2246,6 +2246,26 @@ function pdfBytes(pages,imgs,W,H){
   const out=new Uint8Array(len);let p=0;for(const b of parts){out.set(b,p);p+=b.length}
   return out;
 }
+// ===================== HUISSTIJL (PDF-kop + mail) =====================
+let _logoImg=null;async function ideaalLogo(){if(!_logoImg)_logoImg=await new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src="logo-ideaal.png"});return _logoImg}
+// blauwe kopband met logo als JPEG (sc = pixels per punt)
+async function huisBand(w,h,sc=3){const c=document.createElement("canvas");c.width=Math.round(w*sc);c.height=Math.round(h*sc);const g=c.getContext("2d");
+  const gr=g.createLinearGradient(0,0,c.width,0);gr.addColorStop(0,"#0B3F7A");gr.addColorStop(1,"#1A6AD0");g.fillStyle=gr;g.fillRect(0,0,c.width,c.height);
+  const lg=await ideaalLogo(),lh=h*0.56*sc,pad=(h-h*0.56)/2*sc,lx=Math.max(pad,24*sc);let lw=0;if(lg){lw=lh*lg.width/lg.height;g.drawImage(lg,lx,pad,lw,lh)}
+  g.fillStyle="rgba(255,255,255,.35)";g.fillRect(lx+lw+14*sc,h*0.18*sc,1*sc,h*0.64*sc);
+  return {data:c.toDataURL("image/jpeg",0.92),tx:(lx+lw)/sc+28,pw:c.width,ph:c.height}}
+function huisVoet(p,M,W,links,rechts){p.push(`0.102 0.416 0.816 rg ${M} 34 ${W-2*M} 1.5 re f`);
+  p.push(`0.48 0.51 0.56 rg BT /F1 8 Tf ${M} 22 Td ${pdfStr(links)} Tj ET`);p.push(`0.48 0.51 0.56 rg BT /F1 8 Tf ${(W-M-tekstBreedte(rechts,8,false)).toFixed(1)} 22 Td ${pdfStr(rechts)} Tj ET`)}
+// platte tekst -> opgemaakte mail
+let _logoB64=null;async function logoB64(){if(_logoB64===null){try{const b=new Uint8Array(await (await fetch("logo-ideaal.png")).arrayBuffer());_logoB64=naarB64(b)}catch(e){_logoB64=""}}return _logoB64}
+function huisMail(onderwerp,tekst,logo){const e=t=>String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  const regels=String(tekst||"").split("\n").map(l=>{const m=l.match(/^([^:]{2,28}):\s(.+)$/);return m?`<tr><td style="padding:3px 14px 3px 0;color:#566173;white-space:nowrap;vertical-align:top">${e(m[1])}</td><td style="padding:3px 0;color:#141c26">${e(m[2])}</td></tr>`:null});
+  let html="",tab=[];const flush=()=>{if(tab.length){html+=`<table cellpadding="0" cellspacing="0" style="font-size:14px;margin:4px 0 10px">${tab.join("")}</table>`;tab=[]}};
+  String(tekst||"").split("\n").forEach((l,i)=>{if(regels[i])tab.push(regels[i]);else{flush();html+=l.trim()?`<div style="margin:0 0 2px">${e(l)}</div>`:`<div style="height:10px"></div>`}});flush();
+  return `<div style="background:#eef1f5;padding:18px 0;font-family:Segoe UI,Arial,sans-serif"><table align="center" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:8px;overflow:hidden">
+<tr><td bgcolor="#0E4C92" style="background:#0E4C92;background-image:linear-gradient(90deg,#0B3F7A,#1A6AD0);padding:16px 22px"><table cellpadding="0" cellspacing="0"><tr>${logo?`<td style="padding-right:16px;border-right:1px solid #6f97c9"><img src="cid:ideaallogo" height="38" alt="Houtindustrie Ideaal" style="display:block;height:38px"></td>`:""}<td style="padding-left:16px;color:#ffffff"><div style="font-size:10px;letter-spacing:2px;color:#cfe0f5">LAKSTRAAT LOGBOEK</div><div style="font-size:18px;font-weight:bold;color:#ffffff">${e(onderwerp)}</div></td></tr></table></td></tr>
+<tr><td style="padding:22px;font-size:14px;line-height:1.5;color:#141c26">${html}</td></tr>
+<tr><td style="padding:12px 22px;border-top:1px solid #e6e9ee;font-size:11px;color:#8a919c">Verstuurd vanuit het Lakstraat Logboek · Houtindustrie Ideaal</td></tr></table></div>`}
 async function maakStoringPdf(s,fotos,T={kop:"Storingsmelding",l1:"Oorzaak",l2:"Oplossing"}){
   const W=595,H=842,M=48,CW=W-2*M;const pages=[];let ops=[],y;
   const nieuwePagina=()=>{if(ops.length)pages.push(ops);ops=[];y=H-M};
@@ -2253,9 +2273,10 @@ async function maakStoringPdf(s,fotos,T={kop:"Storingsmelding",l1:"Oorzaak",l2:"
   const ruimte=h=>{if(y-h<M+20)nieuwePagina()};
   nieuwePagina();
   // kopband
-  ops.push(`0.055 0.298 0.573 rg 0 ${H-86} ${W} 86 re f`);
-  txt("HOUTINDUSTRIE IDEAAL · LAKSTRAAT",M,H-36,9,true,"0.85 0.9 1");
-  txt(T.kop,M,H-64,24,true,"1 1 1");
+  const imgs=[];const band=await huisBand(W,86);imgs.push({name:"Band",bytes:b64bytes(band.data),pw:band.pw,ph:band.ph});
+  ops.push(`q ${W} 0 0 86 0 ${H-86} cm /Band Do Q`);
+  txt("LAKSTRAAT LOGBOEK",band.tx,H-36,8.5,true,"0.81 0.88 0.96");
+  txt(T.kop,band.tx,H-60,20,true,"1 1 1");txt(longDate(s.datum||today()),band.tx,H-74,9,false,"0.85 0.9 1");
   y=H-86-30;
   for(const l of wrap(s.titel||"(zonder titel)",18,true,CW)){ruimte(24);txt(l,M,y,18,true);y-=24}
   y-=6;
@@ -2264,7 +2285,6 @@ async function maakStoringPdf(s,fotos,T={kop:"Storingsmelding",l1:"Oorzaak",l2:"
   const blok=(kop,tekst,kleur)=>{y-=10;ruimte(40);ops.push(`${kleur} rg ${M} ${y-4} 4 18 re f`);txt(kop.toUpperCase(),M+12,y,11,true,"0.34 0.39 0.48");y-=20;
     for(const l of wrap(tekst||"Niet ingevuld.",11.5,false,CW-12)){ruimte(16);txt(l,M+12,y,11.5,false);y-=16}};
   blok(T.l1,s.oorzaak,"0.6 0.36 0");if(T.l2)blok(T.l2,s.oplossing,"0.055 0.298 0.573");
-  const imgs=[];
   if(s.paraaf){y-=14;ruimte(80);txt("PARAAF",M,y,11,true,"0.34 0.39 0.48");y-=18;if(s.paraaf.ini){txt(s.paraaf.ini,M,y,13,true);}
     const m=s.paraaf.sig&&await imgMaat(s.paraaf.sig);if(m){const h=48,w=h*m.w/m.h;imgs.push({name:"Sig",bytes:b64bytes(s.paraaf.sig),pw:m.w,ph:m.h});ops.push(`q ${w.toFixed(1)} 0 0 ${h} ${M+90} ${(y-h+14).toFixed(1)} cm /Sig Do Q`);y-=h-4}else y-=6}
   // foto's
@@ -2274,7 +2294,7 @@ async function maakStoringPdf(s,fotos,T={kop:"Storingsmelding",l1:"Oorzaak",l2:"
       ops.push(`q ${w.toFixed(1)} 0 0 ${h.toFixed(1)} ${M} ${(y-h).toFixed(1)} cm /${name} Do Q`);y-=h+12}}
   pages.push(ops);
   // voettekst op elke pagina
-  pages.forEach((p,i)=>p.push(`0.55 0.58 0.63 rg BT /F1 8 Tf ${M} 26 Td ${pdfStr(`Lakstraat Logboek · gemaakt op ${longDate(today())} · pagina ${i+1} van ${pages.length}`)} Tj ET`));
+  pages.forEach((p,i)=>huisVoet(p,M,W,"Houtindustrie Ideaal · Lakstraat Logboek",`gemaakt ${longDate(today())} · pagina ${i+1} van ${pages.length}`));
   return pdfBytes(pages,imgs,W,H);
 }
 // ===================== LOGBOEK ALS PDF =====================
@@ -2285,8 +2305,9 @@ async function maakLogboekPdf(meld,opt){
   const W=842,H=595,M=36,CW=W-2*M;const pages=[],imgs=[];let ops=[],y;
   const BLAUW="0.055 0.298 0.573",GRIJS="0.34 0.39 0.48",DONKER="0.08 0.11 0.15",ROOD="0.75 0.15 0.18";
   const txt=(t,x,yy,size,bold,kleur)=>ops.push(`${kleur||DONKER} rg BT /${bold?"F2":"F1"} ${size} Tf ${x.toFixed(1)} ${yy.toFixed(1)} Td ${pdfStr(t)} Tj ET`);
+  const band=await huisBand(W,46);imgs.push({name:"Band",bytes:b64bytes(band.data),pw:band.pw,ph:band.ph});
   const nieuwePagina=()=>{if(ops.length)pages.push(ops);ops=[];
-    ops.push(`${BLAUW} rg 0 ${H-34} ${W} 34 re f`);txt("HOUTINDUSTRIE IDEAAL · LAKSTRAAT LOGBOEK",M,H-22,10,true,"1 1 1");y=H-34-26};
+    ops.push(`q ${W} 0 0 46 0 ${H-46} cm /Band Do Q`);txt("LAKSTRAAT LOGBOEK",band.tx,H-19,7.5,true,"0.81 0.88 0.96");txt(periode,band.tx,H-34,12,true,"1 1 1");y=H-46-26};
   const ruimte=hh=>{if(y-hh<M+16)nieuwePagina()};
   const kop1=t=>{nieuwePagina();txt(t,M,y,20,true,BLAUW);y-=10;ops.push(`${BLAUW} rg ${M} ${y} ${CW} 1.5 re f`);y-=20};
   const kop2=t=>{ruimte(60);y-=6;txt(t,M,y,13,true);y-=18};
@@ -2379,7 +2400,7 @@ async function maakLogboekPdf(meld,opt){
       y-=6;ruimte(10);ops.push(`0.85 0.87 0.9 rg ${M} ${y} ${CW} 0.8 re f`);y-=12}}
   if(deel("registratie")&&fReg.length)ruimte(20),alinea("Opbrengst in gr/m2. \"(buiten)\" betekent dat de waarde buiten het middengebied van het registratieblad valt.",8,false,GRIJS);
   pages.push(ops);
-  pages.forEach((pg,i)=>pg.push(`0.55 0.58 0.63 rg BT /F1 8 Tf ${M} 18 Td ${pdfStr(`Lakstraat Logboek · ${periode} · pagina ${i+1} van ${pages.length}`)} Tj ET`));
+  pages.forEach((pg,i)=>huisVoet(pg,M,W,"Houtindustrie Ideaal · Lakstraat Logboek",`gemaakt ${longDate(today())} · pagina ${i+1} van ${pages.length}`));
   meld("PDF opslaan…");
   return pdfBytes(pages,imgs,W,H);
 }
@@ -2473,9 +2494,10 @@ const msKlaar=(async()=>{ // terugkomst van de Microsoft-aanmelding
 })();
 function naarB64(bytes){let s="";for(let i=0;i<bytes.length;i+=0x8000)s+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000));return btoa(s)}
 async function msVerstuur(s,bytes,naam,onderwerp,tekst,token,aan=tdMail,extra=[]){
+  const lg=await logoB64();if(lg)extra=[...extra,{name:"ideaal-logo.png",type:"image/png",b64:lg,cid:"ideaallogo"}];
   const r=await fetch("https://graph.microsoft.com/v1.0/me/sendMail",{method:"POST",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
-    body:JSON.stringify({saveToSentItems:true,message:{subject:onderwerp,body:{contentType:"Text",content:tekst},toRecipients:[{emailAddress:{address:aan}}],
-      ...((bytes||extra.length)?{attachments:[...(bytes?[{"@odata.type":"#microsoft.graph.fileAttachment",name:naam,contentType:"application/pdf",contentBytes:naarB64(bytes)}]:[]),...extra.map(b=>({"@odata.type":"#microsoft.graph.fileAttachment",name:b.name,contentType:b.type,contentBytes:b.b64}))]}:{})}})});
+    body:JSON.stringify({saveToSentItems:true,message:{subject:onderwerp,body:{contentType:"HTML",content:huisMail(onderwerp,tekst,!!lg)},toRecipients:[{emailAddress:{address:aan}}],
+      ...((bytes||extra.length)?{attachments:[...(bytes?[{"@odata.type":"#microsoft.graph.fileAttachment",name:naam,contentType:"application/pdf",contentBytes:naarB64(bytes)}]:[]),...extra.map(b=>({"@odata.type":"#microsoft.graph.fileAttachment",name:b.name,contentType:b.type,contentBytes:b.b64,...(b.cid?{isInline:true,contentId:b.cid}:{})}))]}:{})}})});
   if(r.status===401){lsS("ms_tok",null);return "login"}
   if(!r.ok){let m="";try{m=(await r.json()).error.message}catch(e){}throw new Error(m||("fout "+r.status))}
   return "ok";
@@ -3199,9 +3221,16 @@ function jpegPdf(pagesIn){const enc=new TextEncoder();const parts=[];let len=0;c
   const tot=3+N*3,xref=len;let x=`xref\n0 ${tot}\n0000000000 65535 f \n`;for(let i=1;i<tot;i++)x+=String(offs[i]).padStart(10,"0")+" 00000 n \n";
   add(x+`trailer<</Size ${tot}/Root 1 0 R>>\nstartxref\n${xref}\n%%EOF`);
   const out=new Uint8Array(len);let q=0;for(const pp of parts){out.set(pp,q);q+=pp.length}return out}
+async function cvBand(g,W,h,titel){const gr=g.createLinearGradient(0,0,W,0);gr.addColorStop(0,"#0B3F7A");gr.addColorStop(1,"#1A6AD0");g.fillStyle=gr;g.fillRect(0,0,W,h);
+  const lg=await ideaalLogo(),lh=h*0.56,lx=70;let lw=0;if(lg){lw=lh*lg.width/lg.height;g.drawImage(lg,lx,(h-lh)/2,lw,lh)}
+  g.fillStyle="rgba(255,255,255,.35)";g.fillRect(lx+lw+30,h*0.2,2,h*0.6);const tx=lx+lw+60;
+  g.fillStyle="#CFE0F5";g.font="700 17px Arial";g.fillText("LAKSTRAAT LOGBOEK",tx,h/2-8);g.fillStyle="#fff";g.font="700 36px Arial";g.fillText(titel,tx,h/2+30)}
+function cvVoet(g,W,H,i,n){g.fillStyle="#1A6AD0";g.fillRect(70,H-70,W-140,3);g.fillStyle="#7A828F";g.font="17px Arial";g.fillText("Houtindustrie Ideaal · Lakstraat Logboek",70,H-40);
+  const t=`gemaakt ${longDate(today())} · pagina ${i} van ${n}`;g.fillText(t,W-70-g.measureText(t).width,H-40)}
 async function krFormPdf(mk,ids){const W=1240,H=1754,c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");
   x.fillStyle="#fff";x.fillRect(0,0,W,H);const M=70,BL="#0E4C92";
   const rows=krKies(mk,ids);
+  await cvBand(x,W,130,"Krastest "+krPeriode(mk,ids));x.save();x.translate(0,110);
   x.fillStyle=BL;x.font="700 46px Arial";x.fillText("Krastest lakstraat",M,M+40);
   x.fillStyle="#111";x.font="26px Arial";x.fillText((ids?"Periode: ":"Maand: ")+krPeriode(mk,ids),M,M+90);
   x.fillStyle="#555";x.font="19px Arial";x.fillText("Volgens SKH-publicatie 05-01 · "+rows.length+" test"+(rows.length===1?"":"en")+(rows.length?` · ${rows.filter(r=>r.geslaagd===true).length} geslaagd, ${rows.filter(r=>r.geslaagd===false).length} niet geslaagd`:""),M,M+125);
@@ -3218,17 +3247,17 @@ async function krFormPdf(mk,ids){const W=1240,H=1754,c=document.createElement("c
     x.font="700 24px Arial";x.fillText(k??"",p+44,y+46);p+=cols[2][1];x.fillStyle=r.geslaagd===true?"#1f7a3a":r.geslaagd===false?"#b3262a":"#111";x.fillText(r.geslaagd===true?"Ja":r.geslaagd===false?"Nee":"",p+40,y+46);p+=cols[3][1];
     x.fillStyle="#111";x.fillText(r.initialen||"",p+14,y+46);p+=cols[4][1];
     const s=sigs[i];if(s){const sh=rh-14,sw=Math.min(cols[5][1]-20,sh*s.width/s.height);x.drawImage(s,p+10,y+7,sw,sh)}}
-  x.fillStyle="#444";x.font="18px Arial";x.fillText("Klasse 3, 4 of 5: test na 4 weken herhalen.",M,ty+n*rh+34);
-  const paginas=[[c.toDataURL("image/jpeg",0.88).split(",")[1],W,H]];
+  x.fillStyle="#444";x.font="18px Arial";x.fillText("Klasse 3, 4 of 5: test na 4 weken herhalen.",M,ty+n*rh+34);x.restore();
+  const paginas=[[c,W,H]];
   // fotopagina's: 2 foto's per A4
   const lijst=[];for(const r of rows)(r.fotos||[]).forEach((f,i)=>lijst.push({r,f,i:i+1}));
   for(let p=0;p<lijst.length;p+=2){const pc=document.createElement("canvas");pc.width=W;pc.height=H;const g=pc.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,W,H);
-    g.fillStyle=BL;g.font="700 34px Arial";g.fillText("Foto's krastesten · "+krPeriode(mk,ids),M,M+30);
-    for(let k=0;k<2;k++){const it=lijst[p+k];if(!it)break;const d=await laadFoto(it.f),im=await laadImg(d);const top=M+70+k*800;
+    await cvBand(g,W,110,"Foto's krastesten · "+krPeriode(mk,ids));
+    for(let k=0;k<2;k++){const it=lijst[p+k];if(!it)break;const d=await laadFoto(it.f),im=await laadImg(d);const top=140+k*780;
       g.fillStyle="#111";g.font="700 24px Arial";g.fillText(`${shortDate(it.r.datum)}${it.r.lak?" · "+it.r.lak:""} · klasse ${krKlasse(it.r)??"–"} · ${it.r.geslaagd===true?"geslaagd":it.r.geslaagd===false?"NIET geslaagd":""} · foto ${it.i}`,M,top+24);
-      if(im){const bw=W-2*M,bh=720,sc=Math.min(bw/im.width,bh/im.height),w=im.width*sc,h=im.height*sc;g.drawImage(im,M+(bw-w)/2,top+40,w,h);g.strokeStyle="#ccc";g.strokeRect(M+(bw-w)/2,top+40,w,h)}}
-    paginas.push([pc.toDataURL("image/jpeg",0.82).split(",")[1],W,H])}
-  return jpegPdf(paginas)}
+      if(im){const bw=W-2*M,bh=690,sc=Math.min(bw/im.width,bh/im.height),w=im.width*sc,h=im.height*sc;g.drawImage(im,M+(bw-w)/2,top+40,w,h);g.strokeStyle="#ccc";g.strokeRect(M+(bw-w)/2,top+40,w,h)}}
+    paginas.push([pc,W,H])}
+  return jpegPdf(paginas.map(([cv,w,h],i)=>{cvVoet(cv.getContext("2d"),w,h,i+1,paginas.length);return [cv.toDataURL("image/jpeg",i?0.82:0.88).split(",")[1],w,h]}))}
 async function krMaandMail(mk,knop,bevestigd,ids){const aan=krMail();if(!aan){knop.textContent="Stel eerst een e-mailadres in (tab Krastest)";return}
   const onderwerp="Krastesten lakstraat "+krPeriode(mk,ids),tekst=krMaandTekst(mk,ids);
   if(!navigator.onLine){location.href=`mailto:${encodeURIComponent(aan)}?subject=${encodeURIComponent(onderwerp)}&body=${encodeURIComponent(tekst)}`;return}
