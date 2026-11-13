@@ -3094,7 +3094,11 @@ async function krMaandMail(mk,knop,bevestigd){const aan=krMail();if(!aan){knop.t
   if(!bevestigd){knop.textContent="Tik nog eens: mail naar "+aan;knop.onclick=()=>krMaandMail(mk,knop,true);return}
   knop.disabled=true;knop.textContent="Verzenden…";
   try{const token=await msToken();if(!token){knop.textContent="Aanmelden bij Microsoft…";return msLogin(null)}
-    const res=await msVerstuur(null,null,null,onderwerp,tekst,token,aan);if(res==="login")return msLogin(null);knop.textContent="✓ Verstuurd naar "+aan}
+    knop.textContent="Foto's ophalen…";const rows=krasRows.filter(r=>(r.datum||"").slice(0,7)===mk).sort((a,b)=>(a.datum||"").localeCompare(b.datum||""));
+    const extra=[];let tot=0,over=0;for(const r of rows){let i=0;for(const fid of r.fotos||[]){i++;const d=await laadFoto(fid);if(!d)continue;const b64=d.split(",")[1]||"";
+      if(tot+b64.length>3000000){over++;continue}tot+=b64.length;extra.push({name:`Krastest ${r.datum}${r.lak?" "+r.lak:""} foto ${i}.jpg`,type:"image/jpeg",b64})}}
+    const tekst2=tekst+(extra.length?`\n\nIn de bijlage: ${extra.length} foto${extra.length===1?"":"'s"} van de tests (met datum en tijd in beeld).`:"")+(over?`\n${over} foto${over===1?" paste":"'s pasten"} niet meer in deze mail; die staan in de app.`:"");
+    knop.textContent="Verzenden…";const res=await msVerstuur(null,null,null,onderwerp,tekst2,token,aan,extra);if(res==="login")return msLogin(null);knop.textContent="✓ Verstuurd naar "+aan}
   catch(e){knop.disabled=false;knop.textContent="Mislukt: tik om via mail-app te sturen";knop.onclick=()=>{location.href=`mailto:${encodeURIComponent(aan)}?subject=${encodeURIComponent(onderwerp)}&body=${encodeURIComponent(tekst)}`}}}
 async function saveKras(){const r=krEdit;
   krErr=!r.datum?"Vul een datum in.":r.score==null?"Kies een klasse.":r.geslaagd==null?"Kies of de krastest geslaagd is.":!r.initialen.trim()?"Vul je initialen in.":!r.handtekening?"Zet je handtekening.":"";
