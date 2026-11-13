@@ -795,6 +795,9 @@ input.landt{animation:landt .7s cubic-bezier(.2,1.4,.4,1) both}
 #app .section h3,.section h3{font-family:var(--f-body);font-size:15px;font-weight:700;letter-spacing:0;text-transform:none;color:var(--fg)}
 .inp input:not([type=number]):not([type=date]),.inp textarea,textarea{font-family:var(--f-body)}
 @media (min-width:1100px){.sheet>.foot,.sheet .foot{position:sticky;bottom:0;z-index:6;box-shadow:0 -6px 18px rgba(0,0,0,.08)}}
+.modal{z-index:200}
+.modal-box{max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain}
+.meer-box{padding-bottom:calc(22px + env(safe-area-inset-bottom))}
 </style>
 </head>
 <body>
