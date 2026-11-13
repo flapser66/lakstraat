@@ -3088,7 +3088,7 @@ function krFormulier(){const m=$("#modal");const sluit=()=>{m.hidden=true;m.inne
     <div class="kr-form-bar"><div class="maandkiezer" style="border:0;padding:0;flex:1;max-width:340px"><button type="button" id="kfPrev" aria-label="Vorige maand">◀</button><select id="kfSel" aria-label="Kies maand">${maanden.map(k=>`<option value="${k}"${k===krFormMaand?" selected":""}>${maandNaam(k)}</option>`).join("")}</select><button type="button" id="kfNext" aria-label="Volgende maand" ${krFormMaand>=nu?"disabled":""}>▶</button></div>
     <button class="btn primary" type="button" id="kfPrint">Printen / PDF</button><button class="btn" type="button" id="kfMail">Mailen</button><button class="btn" type="button" id="kfSluit">Sluiten</button></div>
     ${krPapier(krFormMaand)}
-    ${(()=>{const fr=krKies(krFormMaand).filter(r=>(r.fotos||[]).length);return fr.length?`<div class="kf-fotos"><h3>Foto's die worden meegestuurd (${fr.reduce((a,r)=>a+r.fotos.length,0)})</h3>${fr.map(r=>`<div class="kf-dag"><b>${esc(shortDate(r.datum))}${r.lak?" · "+r.lak:""} · klasse ${krKlasse(r)??"–"}</b><div class="kf-rij">${r.fotos.map(f=>`<img data-kff="${esc(f)}" alt="Foto krastest ${esc(shortDate(r.datum))}" src="${fotoCache[f]||"data:image/gif;base64,R0lGODlhAQABAAAAACw="}">`).join("")}</div></div>`).join("")}</div>`:`<p class="kf-geen">Er zijn deze maand geen foto's bij de krastesten.</p>`})()}</div>`;
+    ${(()=>{const fr=krKies(krFormMaand).filter(r=>(r.fotos||[]).length);return fr.length?`<div class="kf-fotos"><h3>Foto's die in de PDF komen (${fr.reduce((a,r)=>a+r.fotos.length,0)})</h3>${fr.map(r=>`<div class="kf-dag"><b>${esc(shortDate(r.datum))}${r.lak?" · "+r.lak:""} · klasse ${krKlasse(r)??"–"}</b><div class="kf-rij">${r.fotos.map(f=>`<img data-kff="${esc(f)}" alt="Foto krastest ${esc(shortDate(r.datum))}" src="${fotoCache[f]||"data:image/gif;base64,R0lGODlhAQABAAAAACw="}">`).join("")}</div></div>`).join("")}</div>`:`<p class="kf-geen">Er zijn deze maand geen foto's bij de krastesten.</p>`})()}</div>`;
   m.classList.add("modal-breed");m.hidden=false;m.onclick=e=>{if(e.target===m)sluit()};
   const ga=k=>{krFormMaand=k;krFormulier()};
   m.querySelectorAll("[data-kff]").forEach(im=>{const id=im.dataset.kff;if(!fotoCache[id])laadFoto(id).then(d=>{if(d)im.src=d});
@@ -3122,19 +3122,17 @@ function krMaandTekst(mk,ids){const rows=krKies(mk,ids);
   return [`Krastesten lakstraat ${krPeriode(mk,ids)} (SKH-publicatie 05-01)`,"",...(rows.length?rows.map(r=>`${paperDate(r.datum)}  ${r.lak==="wit"?"Wit  ":r.lak==="zwart"?"Zwart":"     "}  klasse ${krKlasse(r)??"–"}  geslaagd: ${r.geslaagd===true?"ja":r.geslaagd===false?"NEE":"–"}  paraaf: ${r.initialen||"–"}`):["Geen krastesten geselecteerd."]),"",`${rows.length} test${rows.length===1?"":"en"}, ${rows.filter(r=>r.geslaagd===true).length} geslaagd, ${rows.filter(r=>r.geslaagd===false).length} niet geslaagd.`,"","Verstuurd vanuit het Lakstraat Logboek."].join("\n")}
 // ingevuld maandformulier als PDF (getekend op canvas, één A4)
 function laadImg(src){return new Promise(r=>{if(!src)return r(null);const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=src})}
-function jpegPdf(jpgB64,w,h){const bin=atob(jpgB64),enc=new TextEncoder();const parts=[];let len=0;const offs=[];
-  const add=x=>{const b=typeof x==="string"?enc.encode(x):x;parts.push(b);len+=b.length};
-  const img=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)img[i]=bin.charCodeAt(i);
-  const content=`q 595.28 0 0 841.89 0 0 cm /Im0 Do Q`;
-  add("%PDF-1.4\n");
-  offs[1]=len;add("1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n");
-  offs[2]=len;add("2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n");
-  offs[3]=len;add("3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595.28 841.89]/Resources<</XObject<</Im0 4 0 R>>>>/Contents 5 0 R>>endobj\n");
-  offs[4]=len;add(`4 0 obj<</Type/XObject/Subtype/Image/Width ${w}/Height ${h}/ColorSpace/DeviceRGB/BitsPerComponent 8/Filter/DCTDecode/Length ${img.length}>>stream\n`);add(img);add("\nendstream endobj\n");
-  offs[5]=len;add(`5 0 obj<</Length ${content.length}>>stream\n${content}\nendstream endobj\n`);
-  const xref=len;let x="xref\n0 6\n0000000000 65535 f \n";for(let i=1;i<=5;i++)x+=String(offs[i]).padStart(10,"0")+" 00000 n \n";
-  add(x+`trailer<</Size 6/Root 1 0 R>>\nstartxref\n${xref}\n%%EOF`);
-  const out=new Uint8Array(len);let o=0;for(const p of parts){out.set(p,o);o+=p.length}return out}
+function jpegPdf(pagesIn){const enc=new TextEncoder();const parts=[];let len=0;const offs=[];
+  const add=x=>{const b=typeof x==="string"?enc.encode(x):x;parts.push(b);len+=b.length};const N=pagesIn.length;
+  add("%PDF-1.4\n");offs[1]=len;add("1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n");
+  offs[2]=len;add(`2 0 obj<</Type/Pages/Kids[${pagesIn.map((_,i)=>(3+i*3)+" 0 R").join(" ")}]/Count ${N}>>endobj\n`);
+  pagesIn.forEach(([b64,w,h],i)=>{const o=3+i*3,bin=atob(b64),img=new Uint8Array(bin.length);for(let j=0;j<bin.length;j++)img[j]=bin.charCodeAt(j);const ct="q 595.28 0 0 841.89 0 0 cm /Im0 Do Q";
+    offs[o]=len;add(`${o} 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595.28 841.89]/Resources<</XObject<</Im0 ${o+1} 0 R>>>>/Contents ${o+2} 0 R>>endobj\n`);
+    offs[o+1]=len;add(`${o+1} 0 obj<</Type/XObject/Subtype/Image/Width ${w}/Height ${h}/ColorSpace/DeviceRGB/BitsPerComponent 8/Filter/DCTDecode/Length ${img.length}>>stream\n`);add(img);add("\nendstream endobj\n");
+    offs[o+2]=len;add(`${o+2} 0 obj<</Length ${ct.length}>>stream\n${ct}\nendstream endobj\n`)});
+  const tot=3+N*3,xref=len;let x=`xref\n0 ${tot}\n0000000000 65535 f \n`;for(let i=1;i<tot;i++)x+=String(offs[i]).padStart(10,"0")+" 00000 n \n";
+  add(x+`trailer<</Size ${tot}/Root 1 0 R>>\nstartxref\n${xref}\n%%EOF`);
+  const out=new Uint8Array(len);let q=0;for(const pp of parts){out.set(pp,q);q+=pp.length}return out}
 async function krFormPdf(mk,ids){const W=1240,H=1754,c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");
   x.fillStyle="#fff";x.fillRect(0,0,W,H);const M=70,BL="#0E4C92";
   const rows=krKies(mk,ids);
@@ -3155,7 +3153,16 @@ async function krFormPdf(mk,ids){const W=1240,H=1754,c=document.createElement("c
     x.fillStyle="#111";x.fillText(r.initialen||"",p+14,y+46);p+=cols[4][1];
     const s=sigs[i];if(s){const sh=rh-14,sw=Math.min(cols[5][1]-20,sh*s.width/s.height);x.drawImage(s,p+10,y+7,sw,sh)}}
   x.fillStyle="#444";x.font="18px Arial";x.fillText("Klasse 3, 4 of 5: test na 4 weken herhalen.",M,ty+n*rh+34);
-  const jpg=c.toDataURL("image/jpeg",0.9).split(",")[1];return jpegPdf(jpg,W,H)}
+  const paginas=[[c.toDataURL("image/jpeg",0.88).split(",")[1],W,H]];
+  // fotopagina's: 2 foto's per A4
+  const lijst=[];for(const r of rows)(r.fotos||[]).forEach((f,i)=>lijst.push({r,f,i:i+1}));
+  for(let p=0;p<lijst.length;p+=2){const pc=document.createElement("canvas");pc.width=W;pc.height=H;const g=pc.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,W,H);
+    g.fillStyle=BL;g.font="700 34px Arial";g.fillText("Foto's krastesten · "+krPeriode(mk,ids),M,M+30);
+    for(let k=0;k<2;k++){const it=lijst[p+k];if(!it)break;const d=await laadFoto(it.f),im=await laadImg(d);const top=M+70+k*800;
+      g.fillStyle="#111";g.font="700 24px Arial";g.fillText(`${shortDate(it.r.datum)}${it.r.lak?" · "+it.r.lak:""} · klasse ${krKlasse(it.r)??"–"} · ${it.r.geslaagd===true?"geslaagd":it.r.geslaagd===false?"NIET geslaagd":""} · foto ${it.i}`,M,top+24);
+      if(im){const bw=W-2*M,bh=720,sc=Math.min(bw/im.width,bh/im.height),w=im.width*sc,h=im.height*sc;g.drawImage(im,M+(bw-w)/2,top+40,w,h);g.strokeStyle="#ccc";g.strokeRect(M+(bw-w)/2,top+40,w,h)}}
+    paginas.push([pc.toDataURL("image/jpeg",0.82).split(",")[1],W,H])}
+  return jpegPdf(paginas)}
 async function krMaandMail(mk,knop,bevestigd,ids){const aan=krMail();if(!aan){knop.textContent="Stel eerst een e-mailadres in (tab Krastest)";return}
   const onderwerp="Krastesten lakstraat "+krPeriode(mk,ids),tekst=krMaandTekst(mk,ids);
   if(!navigator.onLine){location.href=`mailto:${encodeURIComponent(aan)}?subject=${encodeURIComponent(onderwerp)}&body=${encodeURIComponent(tekst)}`;return}
@@ -3163,11 +3170,10 @@ async function krMaandMail(mk,knop,bevestigd,ids){const aan=krMail();if(!aan){kn
   knop.disabled=true;knop.textContent="Verzenden…";
   try{const token=await msToken();if(!token){knop.textContent="Aanmelden bij Microsoft…";return msLogin(null)}
     knop.textContent="Formulier maken…";let formPdf=null;try{formPdf=await krFormPdf(mk,ids)}catch(e){}
-    knop.textContent="Foto's ophalen…";const rows=krKies(mk,ids);
-    const extra=[];let tot=0,over=0;for(const r of rows){let i=0;for(const fid of r.fotos||[]){i++;const d=await laadFoto(fid);if(!d)continue;const b64=d.split(",")[1]||"";
-      if(tot+b64.length>3000000){over++;continue}tot+=b64.length;extra.push({name:`Krastest ${r.datum}${r.lak?" "+r.lak:""} foto ${i}.jpg`,type:"image/jpeg",b64})}}
-    const tekst2=tekst+(formPdf?"\n\nHet ingevulde krastestformulier zit als PDF in de bijlage.":"")+(extra.length?`\n\nIn de bijlage: ${extra.length} foto${extra.length===1?"":"'s"} van de tests (met datum en tijd in beeld).`:"")+(over?`\n${over} foto${over===1?" paste":"'s pasten"} niet meer in deze mail; die staan in de app.`:"");
-    knop.textContent="Verzenden…";const res=await msVerstuur(null,formPdf,`Krastest formulier ${krPeriode(mk,ids).replace(/[\\/:*?"<>|]/g,"-")}.pdf`,onderwerp,tekst2,token,aan,extra);if(res==="login")return msLogin(null);knop.textContent="✓ Verstuurd naar "+aan}
+    const nF=krKies(mk,ids).reduce((t,r)=>t+(r.fotos||[]).length,0);
+    if(formPdf&&formPdf.length>3000000){knop.disabled=false;knop.textContent="PDF te groot voor één mail: kies minder tests";return}
+    const tekst2=tekst+(formPdf?`\n\nIn de bijlage: het ingevulde krastestformulier als PDF${nF?` met ${nF} foto${nF===1?"":"'s"} van de tests erin (met datum en tijd in beeld)`:""}.`:"");
+    knop.textContent="Verzenden…";const res=await msVerstuur(null,formPdf,`Krastest formulier ${krPeriode(mk,ids).replace(/[\\/:*?"<>|]/g,"-")}.pdf`,onderwerp,tekst2,token,aan);if(res==="login")return msLogin(null);knop.textContent="✓ Verstuurd naar "+aan}
   catch(e){knop.disabled=false;knop.textContent="Mislukt: tik om via mail-app te sturen";knop.onclick=()=>{location.href=`mailto:${encodeURIComponent(aan)}?subject=${encodeURIComponent(onderwerp)}&body=${encodeURIComponent(tekst)}`}}}
 async function saveKras(){const r=krEdit;
   krErr=!r.datum?"Vul een datum in.":r.score==null?"Kies een klasse.":r.geslaagd==null?"Kies of de krastest geslaagd is.":!r.initialen.trim()?"Vul je initialen in.":!r.handtekening?"Zet je handtekening.":"";
