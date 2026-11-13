@@ -399,6 +399,48 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .vs-paraaf span{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
 .vs-paraaf img{height:44px;max-width:180px;background:#fff;border-radius:6px;border:1px solid var(--line);padding:2px}
 .kr-doc .row{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ===== nieuwe navigatie: zijbalk (breed) / onderbalk met Meer (tablet, telefoon) ===== */
+.tgrp{display:none}.tab-meer{display:none!important}
+@media (min-width:1100px){
+  body{padding-left:252px}
+  #tabs.tabs{position:fixed;left:0;top:0;bottom:0;width:236px;z-index:45;flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:2px;border-radius:0;border:0;border-right:1px solid var(--line);background:var(--panel);padding:18px 10px 18px;overflow-y:auto;backdrop-filter:none}
+  #tabs.tabs button{justify-content:flex-start;padding:10px 12px;font-size:15px;gap:11px;width:100%}
+  #tabs.tabs button svg{width:20px;height:20px}
+  .tgrp{display:block;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:14px 12px 4px}
+  .toolrow{justify-content:flex-end}
+}
+@media (max-width:1099px){
+  #tabs.tabs{position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:45;flex-wrap:nowrap;overflow:hidden;justify-content:space-around;background:color-mix(in srgb,var(--panel) 96%,transparent);border:1px solid var(--line);box-shadow:0 10px 30px rgba(10,30,60,.25);padding:4px}
+  #tabs.tabs button{flex-direction:column;gap:2px;font-size:11.5px;padding:7px 4px;min-width:0;flex:1 1 0}
+  #tabs.tabs button svg{width:22px;height:22px}
+  #tabs.tabs .tl{display:none}#tabs.tabs .tk{display:inline}
+  #tabs.tabs button[data-tab]:not([data-tab="start"]):not([data-tab="walsen"]):not([data-tab="materialen"]):not([data-tab="storingen"]){display:none}
+  .tab-meer{display:inline-flex!important}
+  .tab-pil{display:none}
+  #tabs.tabs button[aria-selected="true"],#tabs.tabs .tab-meer.actief{color:var(--accent);background:var(--accent-soft)}
+  #tabs.tabs .tab-meer.stip::after{content:"";position:absolute;top:6px;right:calc(50% - 18px);width:10px;height:10px;border-radius:50%;background:#d0383b;box-shadow:0 0 0 2px var(--panel)}
+  body{padding-bottom:110px}
+  .fab-save{bottom:calc(86px + env(safe-area-inset-bottom) + var(--kb,0px))}
+  body:has(input:focus,textarea:focus) #tabs.tabs{display:none}
+  body:has(input:focus,textarea:focus) .fab-save{bottom:calc(16px + env(safe-area-inset-bottom) + var(--kb,0px))}
+  #btnExport,#btnMail,#btnUsers,#btnBackup,#btnThema{display:none!important}
+}
+.meer-box{max-width:520px;width:100%}.meer-box h2{margin:0 0 6px}
+.meer-grp{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:14px 2px 6px}
+.meer-lijst{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.meer-it{display:flex;align-items:center;gap:10px;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--sunk);color:var(--fg);font:600 15px var(--f-body);text-align:left;position:relative}
+.meer-it svg{width:22px;height:22px;fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.meer-it.on{border-color:var(--accent);background:var(--accent-soft)}
+.meer-it .md{width:10px;height:10px;border-radius:50%;background:#d0383b;margin-left:auto}
+/* vandaag te doen */
+.todo-rij{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;grid-column:1/-1}
+@media (max-width:900px){.todo-rij{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.todo-t{display:flex;align-items:center;gap:12px;text-align:left;padding:14px;border-radius:14px;border:1px solid var(--line);border-left:6px solid var(--s);background:var(--panel);color:var(--fg);font:inherit;min-height:74px}
+.todo-t svg{width:30px;height:30px;flex:none;fill:none;stroke:var(--s);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.todo-t b{display:block;font-size:16px;line-height:1.2}.todo-t small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.todo-t.ok{--s:#2e9d4f}.todo-t.wa{--s:#e0952a}.todo-t.no{--s:#d0383b}
+.todo-kop{grid-column:1/-1;margin:0;font:700 20px var(--f-body)}
 /* voorraad */
 #tabs [data-tab].badge-rood{position:relative}#tabs [data-tab].badge-rood::after{content:"";position:absolute;top:6px;right:8px;width:10px;height:10px;border-radius:50%;background:#d0383b;box-shadow:0 0 0 2px var(--panel)}
 .vrd-st.bes{background:#fff1d6;color:#8a5a00}.vrd-bes{color:#8a5a00;font-weight:600}
@@ -710,7 +752,7 @@ input.landt{animation:landt .7s cubic-bezier(.2,1.4,.4,1) both}
   .list li button{padding:13px 14px}
 }
 @media (max-width:640px){
-  .tabs{position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:45;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;justify-content:flex-start;background:color-mix(in srgb,var(--panel) 94%,transparent);border:1px solid var(--line);box-shadow:0 10px 30px rgba(10,30,60,.25)}
+  .tabs-oud{position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:45;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;justify-content:flex-start;background:color-mix(in srgb,var(--panel) 94%,transparent);border:1px solid var(--line);box-shadow:0 10px 30px rgba(10,30,60,.25)}
   .tabs::-webkit-scrollbar{display:none}
   .tabs button{flex-direction:column;gap:2px;font-size:11px;padding:6px 8px;min-width:66px;flex:1 0 auto}
   .tabs button svg{width:21px;height:21px}
@@ -766,15 +808,19 @@ input.landt{animation:landt .7s cubic-bezier(.2,1.4,.4,1) both}
     <div class="toolrow" id="toolRow" hidden>
       <nav class="tabs" id="tabs" aria-label="Tabbladen">
         <button type="button" data-tab="start" aria-selected="true">Overzicht</button>
+        <span class="tgrp">Lakdag</span>
         <button type="button" data-tab="walsen" aria-selected="false">Walsen</button>
         <button type="button" data-tab="lampen" aria-selected="false">Lampen</button>
         <button type="button" data-tab="registratie" aria-selected="false">Registratieblad</button>
-        <button type="button" data-tab="krastest" aria-selected="false">Krastest</button>
         <button type="button" data-tab="materialen" aria-selected="false">Materialen</button>
-        <button type="button" data-tab="voorraad" aria-selected="false">Voorraad</button>
+        <span class="tgrp">Kwaliteit</span>
+        <button type="button" data-tab="krastest" aria-selected="false">Krastest</button>
         <button type="button" data-tab="storingen" aria-selected="false">Storingen</button>
         <button type="button" data-tab="punten" aria-selected="false">Punten van aandacht</button>
         <button type="button" data-tab="verslag" aria-selected="false">Dagverslag</button>
+        <span class="tgrp">Magazijn</span>
+        <button type="button" data-tab="voorraad" aria-selected="false">Voorraad</button>
+        <button type="button" class="tab-meer" id="tabMeer" aria-haspopup="dialog">Meer</button>
       </nav>
       <div class="top-actions" id="topActions">
         <span class="top-actions" id="walsActions">
@@ -791,6 +837,7 @@ input.landt{animation:landt .7s cubic-bezier(.2,1.4,.4,1) both}
         <button class="btn" id="btnMail" type="button">Mailen</button>
         <button class="btn" id="btnUsers" type="button" hidden>Gebruikers</button>
         <button class="btn" id="btnBackup" type="button" hidden>Back-up</button>
+        <button class="btn" id="btnThema" type="button" title="Licht of donker thema">◐ Thema</button>
       </div>
     </div>
   </div>
@@ -1409,7 +1456,16 @@ function renderStart(){
   const reeks=dagen.filter(d=>d.lak===grafLak).sort((a,b)=>(a.datum||"").localeCompare(b.datum||"")||dagTijd(a)-dagTijd(b))
     .map(d=>{const x=(d.walsen||[]).find(w=>w.id===grafWals);const v=x?(grafVeld==="stand"?(x.stand??null):(x.hoogte??null)):null;return v==null?null:{x:shortDate(d.datum),y:v,kleur:d.tevredenheid>=4?"#22a447":d.tevredenheid!=null&&d.tevredenheid<=2?"#d64545":"var(--accent)"}}).filter(Boolean).slice(-30);
   const trend=reeks.length>1?Math.round((reeks[reeks.length-1].y-reeks[0].y)*100)/100:null;
+  const ic=k=>`<svg viewBox="0 0 24 24" aria-hidden="true">${TAB_ICON[k]||""}</svg>`;
+  const krV=krasRows.filter(r=>r.datum===t),nBest=vrdRows.filter(r=>vrdLaag(r)&&!vrdBesteld(r)).length,lv=vandaag[vandaag.length-1];
+  const tegels=[
+    lv?["ok","walsen",ic("walsen"),"Lakdag gestart",(lv.lak?lv.lak+" · ":"")+(lv.checklist?"checklist ✓":"bezig"),"dag:"+lv.id]:["wa","walsen",ic("walsen"),"Nog geen lakdag","tik om te starten","nieuw"],
+    krV.length?["ok","krastest",ic("krastest"),"Krastest gedaan","klasse "+(krKlasse(krV[krV.length-1])??"–")+(krV[krV.length-1].geslaagd===false?" · NIET geslaagd":""),""]:["wa","krastest",ic("krastest"),"Krastest","nog niet gedaan",""],
+    nBest?["no","voorraad",ic("voorraad"),nBest+" bestellen",vrdRows.filter(r=>vrdLaag(r)&&!vrdBesteld(r)).map(r=>r.naam.split(" ").slice(0,2).join(" ")).slice(0,3).join(", "),""]:["ok","voorraad",ic("voorraad"),"Voorraad op peil",vrdRows.length?"niets te bestellen":"nog geen producten",""],
+    oS.length?["no","storingen",ic("storingen"),oS.length+" open storing"+(oS.length===1?"":"en"),"tik om te bekijken",""]:["ok","storingen",ic("storingen"),"Storingen","geen open",""]];
   el.innerHTML=`<div class="dash">
+    <h2 class="todo-kop">Vandaag te doen</h2>
+    <div class="todo-rij">${tegels.map(([st,k,i,b,sm,x])=>`<button type="button" class="todo-t ${st}" data-todo="${k}" data-x="${esc(x)}">${i}<span><b>${esc(b)}</b><small>${esc(sm)}</small></span></button>`).join("")}</div>
     ${planningHtml()}
     <section class="tegel t-vandaag"><h3>Vandaag</h3>
       ${vandaag.length?vandaag.map(d=>`<button type="button" class="dag-knop" data-dag="${esc(d.id)}">${lakBadge(d.lak)} <b>Lakdag ${d.lak==="zwart"?"zwart":d.lak==="wit"?"wit":""}</b><span>${d.tevredenheid!=null?d.tevredenheid+"/5":"bezig"} ›</span></button>`).join(""):`<p class="tegel-leeg">Nog geen lakdag vandaag.</p>`}
@@ -1443,6 +1499,8 @@ function renderStart(){
   el.querySelectorAll("[data-dag]").forEach(b=>b.onclick=()=>{setTab("walsen");if(tab==="walsen")select(b.dataset.dag)});
   $("#dashNieuw").onclick=()=>{setTab("walsen");if(tab==="walsen")startChecklist()};
   {const bk=el.querySelector("#dashBackup");if(bk)bk.onclick=maakBackup}
+  el.querySelectorAll("[data-todo]").forEach(b=>b.onclick=()=>{const x=b.dataset.x;if(x==="nieuw"){setTab("walsen");if(tab==="walsen")startChecklist();return}
+    if(x.startsWith("dag:")){setTab("walsen");if(tab==="walsen")select(x.slice(4));return}setTab(b.dataset.todo)});
   el.querySelectorAll("[data-ga]").forEach(b=>b.onclick=()=>{const k=b.dataset.ga;if(b.dataset.f){if(k==="storingen")stStatus="open";else paStatus="open"}setTab(k)});
   el.querySelectorAll("[data-glak]").forEach(b=>b.onclick=()=>{grafLak=b.dataset.glak;grafWals=null;renderStart()});
   $("#grafWals").onchange=e=>{grafWals=e.target.value;renderStart()};
@@ -3692,10 +3750,41 @@ function zetThema(){const lak=huidigeLak();
     setTimeout(()=>zetAttr(),380);setTimeout(()=>g.classList.add("weg"),520);setTimeout(()=>g.remove(),1000);
     const mc=document.querySelector('meta[name="theme-color"]');if(mc)mc.content=lak==="zwart"?"#0F141B":"#0E4C92";return}
   zetAttr();
-  function zetAttr(){if(lak==="zwart")r.setAttribute("data-theme","dark");else if(lak==="wit")r.setAttribute("data-theme","light");else r.removeAttribute("data-theme");
+  function zetAttr(){const v=themaVoorkeur();if(v==="licht")r.setAttribute("data-theme","light");else if(v==="donker")r.setAttribute("data-theme","dark");else if(lak==="zwart")r.setAttribute("data-theme","dark");else if(lak==="wit")r.setAttribute("data-theme","light");else r.removeAttribute("data-theme");
   }
-  const mc=document.querySelector('meta[name="theme-color"]');if(mc)mc.content=lak==="zwart"?"#0F141B":"#0E4C92"}
-setInterval(()=>{zetThema();zetPil()},700);
+  const mc=document.querySelector('meta[name="theme-color"]');if(mc)mc.content=(themaVoorkeur()==="donker"||(themaVoorkeur()==="auto"&&lak==="zwart"))?"#0F141B":"#0E4C92"}
+setInterval(()=>{zetThema();zetPil();zetMeer()},700);
+const TAB_CORE=["start","walsen","materialen","storingen"];
+TAB_ICON.meer='<path d="M4 7h16M4 12h16M4 17h16"/>';
+{const mb=$("#tabMeer");mb.innerHTML=`<svg viewBox="0 0 24 24" aria-hidden="true">${TAB_ICON.meer}</svg><span class="tl">Meer</span><span class="tk">Meer</span>`;mb.onclick=openMeer}
+function zetMeer(){const mb=$("#tabMeer");if(!mb)return;mb.classList.toggle("actief",!TAB_CORE.includes(tab));
+  mb.classList.toggle("stip",[...document.querySelectorAll("#tabs [data-tab]")].some(b=>!TAB_CORE.includes(b.dataset.tab)&&(b.classList.contains("mist")||b.classList.contains("badge-rood"))))}
+function openMeer(){const m=$("#modal");const sluit=()=>{m.hidden=true;m.innerHTML=""};
+  const groepen=[["Lakdag",["walsen","lampen","registratie","materialen"]],["Kwaliteit",["krastest","storingen","punten","verslag"]],["Magazijn",["voorraad"]]];
+  const naam=k=>{const b=document.querySelector(`#tabs [data-tab="${k}"] .tl`);return b?b.textContent:k};
+  const isAdm=!$("#btnUsers").hidden;
+  const it=(k)=>{const b=document.querySelector(`#tabs [data-tab="${k}"]`);const dot=b&&(b.classList.contains("mist")||b.classList.contains("badge-rood"));
+    return `<button type="button" class="meer-it${tab===k?" on":""}" data-mt="${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${TAB_ICON[k]||""}</svg>${esc(naam(k))}${dot?'<span class="md"></span>':""}</button>`};
+  const act=(id,ic,t)=>`<button type="button" class="meer-it" data-ma="${id}"><svg viewBox="0 0 24 24" aria-hidden="true">${ic}</svg>${t}</button>`;
+  const th=themaVoorkeur();
+  m.innerHTML=`<div class="modal-box meer-box" role="dialog" aria-modal="true" aria-labelledby="meerT"><h2 id="meerT">Meer</h2>
+    <div class="meer-grp">Start</div><div class="meer-lijst">${it("start")}</div>
+    ${groepen.map(([g,ks])=>`<div class="meer-grp">${g}</div><div class="meer-lijst">${ks.map(it).join("")}</div>`).join("")}
+    <div class="meer-grp">Overig</div><div class="meer-lijst">
+      ${act("pdf",'<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',"PDF downloaden")}${act("mail",'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',"Mailen")}
+      ${act("thema",'<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor"/>',"Thema: "+(th==="licht"?"licht":th==="donker"?"donker":"automatisch"))}
+      ${isAdm?act("users",'<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M17 11a3 3 0 1 0 0-6M21 20c0-2-1-4-3-4.5"/>',"Gebruikers")+act("backup",'<path d="M4 7h16v13H4z"/><path d="M8 7V4h8v3M9 13l3 3 3-3M12 10v6"/>',"Back-up"):""}
+    </div>
+    <div class="row" style="margin-top:14px"><button class="btn" type="button" id="meerSluit">Sluiten</button></div></div>`;
+  m.hidden=false;m.onclick=e=>{if(e.target===m)sluit()};$("#meerSluit").onclick=sluit;
+  m.querySelectorAll("[data-mt]").forEach(b=>b.onclick=()=>{sluit();setTab(b.dataset.mt)});
+  m.querySelectorAll("[data-ma]").forEach(b=>b.onclick=()=>{const a=b.dataset.ma;
+    if(a==="thema"){wisselThema();openMeer();return}sluit();
+    if(a==="pdf")exportPdf();else if(a==="mail")exportPdf(true);else if(a==="users")$("#btnUsers").click();else if(a==="backup")maakBackup()})}
+function themaVoorkeur(){try{return localStorage.getItem("thema")||"auto"}catch(e){return "auto"}}
+function wisselThema(){const v=themaVoorkeur(),n=v==="auto"?"licht":v==="licht"?"donker":"auto";try{localStorage.setItem("thema",n)}catch(e){}laatsteThema=Symbol();zetThema();
+  const b=$("#btnThema");if(b)b.textContent="◐ "+(n==="licht"?"Licht":n==="donker"?"Donker":"Automatisch")}
+{const b=$("#btnThema");b.textContent="◐ "+({licht:"Licht",donker:"Donker",auto:"Automatisch"}[themaVoorkeur()]);b.onclick=wisselThema}
 
 // zwevende opslaanknop (tablet/mobiel): zichtbaar zolang er niet-opgeslagen wijzigingen zijn
 (function(){const f=$("#fabSave"),t=f.querySelector("span");let bezig=false,okTot=0;
