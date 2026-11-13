@@ -788,6 +788,7 @@ input.landt{animation:landt .7s cubic-bezier(.2,1.4,.4,1) both}
           <button class="btn primary" id="btnRegNew" type="button">+ Nieuw registratieblad</button>
         </span>
         <button class="btn" id="btnExport" type="button">Downloaden als PDF</button>
+        <button class="btn" id="btnMail" type="button">Mailen</button>
         <button class="btn" id="btnUsers" type="button" hidden>Gebruikers</button>
         <button class="btn" id="btnBackup" type="button" hidden>Back-up</button>
       </div>
@@ -2248,7 +2249,7 @@ async function maakLogboekPdf(meld,opt){
   const tijd=t=>new Date(t).toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"});
   // voorblad
   nieuwePagina();y-=60;txt("Lakstraat logboek",M,y,34,true,BLAUW);y-=28;txt("Periode: "+periode,M,y,13,true);y-=20;txt("Houtindustrie Ideaal · gemaakt op "+longDate(today()),M,y,11,false,GRIJS);y-=36;
-  [["Lakdagen",fDagen.length,"walsen"],["Lampregels",fLamp.length,"lampen"],["Registratiebladen",fReg.length,"registratie"],["Materialenbladen",fMat.length,"materialen"],["Storingen",fSt.length,"storingen"],["Punten van aandacht",fPa.length,"punten"],["Dagverslagen",fVs.length,"verslag"]].filter(x=>deel(x[2])).forEach(([a,b])=>{txt(a,M,y,12,true);txt(String(b),M+170,y,12,false);y-=20});
+  [["Lakdagen",fDagen.length,"walsen"],["Lampregels",fLamp.length,"lampen"],["Registratiebladen",fReg.length,"registratie"],["Materialenbladen",fMat.length,"materialen"],["Storingen",fSt.length,"storingen"],["Punten van aandacht",fPa.length,"punten"],["Dagverslagen",fVs.length,"verslag"],["Krastesten",krasRows.filter(inR).length,"krastest"],["Voorraadproducten",vrdRows.length,"voorraad"]].filter(x=>deel(x[2])).forEach(([a,b])=>{txt(a,M,y,12,true);txt(String(b),M+170,y,12,false);y-=20});
   // lakdagen
   if(deel("walsen")){meld("Lakdagen…");kop1("Walsen (lakdagen)");
   const ld=fDagen.slice().reverse();if(!ld.length)alinea("Nog geen lakdagen opgeslagen.");
@@ -2293,6 +2294,13 @@ async function maakLogboekPdf(meld,opt){
     if(s.fotos&&s.fotos.length)await fotoRij(s.fotos,3,230);
     y-=6;ruimte(10);ops.push(`0.85 0.87 0.9 rg ${M} ${y} ${CW} 0.8 re f`);y-=12}}
   // punten van aandacht, met foto's
+  if(deel("krastest")){meld("Krastesten…");kop1("Krastesten (SKH-publicatie 05-01)");const kr=krKies("",krasRows.filter(inR).map(r=>r.id));
+    if(!kr.length)alinea("Geen krastesten in deze periode.");else{
+    tabel([["Datum","Lak","SKH-klasse","Geslaagd","Paraaf"],...kr.map(r=>{const k=krKlasse(r),q=KR_SCORE.find(z=>z[0]===k);return [paperDate(r.datum),r.lak?LAKKEN[r.lak]:"–",k!=null?k+" ("+q[1]+")":"–",r.geslaagd===true?"Ja":r.geslaagd===false?"NEE":"–",r.initialen||"–"]})],[2,2,2,1.5,1.5],{header:true});
+    for(const r of kr)if((r.fotos||[]).length){kop2("Foto's krastest "+shortDate(r.datum)+(r.lak?" · "+r.lak:""));meld("Foto's krastest "+shortDate(r.datum)+"…");await fotoRij(r.fotos)}}}
+  if(deel("voorraad")){meld("Voorraad…");kop1("Voorraad · stand op "+longDate(today()));const vr=vrdSorted();
+    if(!vr.length)alinea("Nog geen producten in de voorraad.");else
+    tabel([["Product","Art.nr.","Voorraad","Nog voor","Status"],...vr.map(it=>{const w=vrdWekenOver(it),l=vrdLaag(it);return [it.naam,it.code||"–",vrdTxt(it,vrdStand(it)),w!=null?f1(w)+" weken":"–",l?(vrdBesteld(it)?"Besteld":"Bestellen"):"Op voorraad"]})],[4,2,2.2,1.4,1.4],{header:true})}
   if(deel("punten")){kop1("Punten van aandacht");const st=fPa;
   if(!st.length)alinea("Nog geen punten van aandacht vastgelegd.");
   for(const s of st){meld("Punt "+(s.titel||"")+"…");kop2(s.titel||"(zonder titel)");
@@ -2307,14 +2315,14 @@ async function maakLogboekPdf(meld,opt){
       regel([["Lak",v.lak?LAKKEN[v.lak]:"–"]].concat(v.door?[["Door",v.door]]:[]));
       alinea(v.tekst||"Geen tekst.");if(v.fotos&&v.fotos.length)await fotoRij(v.fotos,3,230);
       y-=6;ruimte(10);ops.push(`0.85 0.87 0.9 rg ${M} ${y} ${CW} 0.8 re f`);y-=12}}
-  ruimte(20);alinea("Opbrengst in gr/m2. \"(buiten)\" betekent dat de waarde buiten het middengebied van het registratieblad valt.",8,false,GRIJS);
+  if(deel("registratie")&&fReg.length)ruimte(20),alinea("Opbrengst in gr/m2. \"(buiten)\" betekent dat de waarde buiten het middengebied van het registratieblad valt.",8,false,GRIJS);
   pages.push(ops);
   pages.forEach((pg,i)=>pg.push(`0.55 0.58 0.63 rg BT /F1 8 Tf ${M} 18 Td ${pdfStr(`Lakstraat Logboek · ${periode} · pagina ${i+1} van ${pages.length}`)} Tj ET`));
   meld("PDF opslaan…");
   return pdfBytes(pages,imgs,W,H);
 }
-const PDF_DELEN=[["walsen","Lakdagen (walsen)"],["lampen","Lampen"],["registratie","Registratiebladen"],["materialen","Materialen"],["storingen","Storingen"],["punten","Punten van aandacht"],["verslag","Dagverslagen"]];
-function exportPdf(){
+const PDF_DELEN=[["walsen","Lakdagen (walsen)"],["lampen","Lampen"],["registratie","Registratiebladen"],["materialen","Materialen"],["storingen","Storingen"],["punten","Punten van aandacht"],["verslag","Dagverslagen"],["krastest","Krastesten"],["voorraad","Voorraad (huidige stand)"]];
+function exportPdf(mail){mail=mail===true;
   const m=$("#modal"),t=today(),mk=t.slice(0,7);
   const maandEind=k=>{const [j,mm]=k.split("-").map(Number);return k+"-"+String(new Date(j,mm,0).getDate()).padStart(2,"0")};
   const vorig=(()=>{const d=new Date(+mk.slice(0,4),+mk.slice(5)-2,1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")})();
@@ -2323,28 +2331,38 @@ function exportPdf(){
   const snel=[open?["Deze lakdag",open,open]:null,["Vandaag",t,t],["Deze maand",mk+"-01",maandEind(mk)],["Vorige maand",vorig+"-01",maandEind(vorig)],["Alles",alles[0]||t,alles[alles.length-1]||t]].filter(Boolean);
   const start=open?[open,open]:[mk+"-01",maandEind(mk)];
   m.innerHTML=`<div class="modal-box check" role="dialog" aria-modal="true" aria-labelledby="pdfT">
-    <h2 id="pdfT">PDF downloaden</h2>
-    <p>Kies welke periode en welke onderdelen in de PDF komen.</p>
+    <h2 id="pdfT">${mail?"Mailen":"PDF downloaden"}</h2>
+    <p>Kies welke periode en welke onderdelen ${mail?"je wilt versturen. Alles komt in één PDF in één mail.":"in de PDF komen."}</p>
     <div class="pdf-snel">${snel.map((s,i)=>`<button type="button" class="btn" data-snel="${i}">${s[0]}</button>`).join("")}</div>
     <div class="pdf-dat"><div class="field"><label for="pdfVan">Van</label><div class="inp"><input type="date" id="pdfVan" value="${start[0]}"></div></div>
       <div class="field"><label for="pdfTot">Tot en met</label><div class="inp"><input type="date" id="pdfTot" value="${start[1]}"></div></div></div>
     <ul class="ck-list pdf-delen">${PDF_DELEN.map(([k,n])=>`<li><label><input type="checkbox" data-deel="${k}" checked><span>${n}</span></label></li>`).join("")}</ul>
     <span class="ck-tel" id="pdfTel"></span>
-    <div class="row"><button class="btn primary" type="button" id="pdfGo">PDF maken</button><button class="btn" type="button" id="pdfNee">Annuleren</button></div>
+    ${mail?`<div class="field"><label for="pdfAan">Versturen naar</label><div class="inp"><input type="email" id="pdfAan" value="${esc(vsMail||krMail()||"")}" placeholder="naam@ideaal.nl" style="font-family:var(--f-body);font-size:15px"></div></div>`:""}
+    <div class="row"><button class="btn primary" type="button" id="pdfGo">${mail?"Versturen":"PDF maken"}</button><button class="btn" type="button" id="pdfNee">Annuleren</button></div>
   </div>`;
   m.hidden=false;
   const van=$("#pdfVan"),tot=$("#pdfTot"),go=$("#pdfGo"),sluit=()=>{m.hidden=true;m.innerHTML=""};
   const delen=()=>[...m.querySelectorAll("[data-deel]")].filter(x=>x.checked).map(x=>x.dataset.deel);
   const tel=()=>{const a=van.value,b=tot.value,inR=r=>r.datum>=a&&r.datum<=b;
     const n=dagen.filter(inR).length,s=storingen.filter(inR).length;
-    const fout=!a||!b||a>b?"Kies een geldige periode.":!delen().length?"Kies minstens één onderdeel.":"";
+    const aanV=mail?($("#pdfAan").value||"").trim():"x@x.x";const fout=!a||!b||a>b?"Kies een geldige periode.":!delen().length?"Kies minstens één onderdeel.":!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(aanV)?"Vul een geldig e-mailadres in.":"";
     $("#pdfTel").textContent=fout||`${n} lakdag${n===1?"":"en"} en ${s} storing${s===1?"":"en"} in deze periode`;go.disabled=!!fout;
     m.querySelectorAll("[data-snel]").forEach(bt=>{const x=snel[bt.dataset.snel];bt.classList.toggle("primary",x[1]===a&&x[2]===b)})};
   m.querySelectorAll("[data-snel]").forEach(bt=>bt.onclick=()=>{const x=snel[bt.dataset.snel];van.value=x[1];tot.value=x[2];tel()});
   [van,tot].forEach(i=>{i.onchange=tel;i.onclick=()=>{try{i.showPicker()}catch(e){}}});
-  m.querySelectorAll("[data-deel]").forEach(c=>c.onchange=tel);
+  m.querySelectorAll("[data-deel]").forEach(c=>c.onchange=tel);if(mail)$("#pdfAan").oninput=tel;
   $("#pdfNee").onclick=sluit;m.onclick=e=>{if(e.target===m)sluit()};
-  go.onclick=async()=>{const opt={van:van.value,tot:tot.value,delen:delen()};go.disabled=true;
+  let bev=false;go.onclick=async()=>{const opt={van:van.value,tot:tot.value,delen:delen()};
+    if(mail){const aan=$("#pdfAan").value.trim();if(!bev){bev=true;go.textContent="Tik nog eens: mail naar "+aan;setTimeout(()=>{if(go.isConnected&&!go.disabled){bev=false;go.textContent="Versturen"}},6000);return}
+      go.disabled=true;try{const token=await msToken();if(!token){go.textContent="Aanmelden bij Microsoft…";return msLogin(null)}
+        const bytes=await maakLogboekPdf(t=>{go.textContent=t},opt);const per=opt.van===opt.tot?longDate(opt.van):shortDate(opt.van)+" t/m "+shortDate(opt.tot);
+        const namen=PDF_DELEN.filter(([k])=>opt.delen.includes(k)).map(x=>x[1]);
+        if(bytes.length>3000000){go.textContent="PDF is te groot voor één mail. Kies een kortere periode of minder onderdelen.";go.disabled=false;bev=false;return}
+        go.textContent="Verzenden…";const res=await msVerstuur(null,bytes,"Lakstraat logboek "+per.replace(/[\\/:*?"<>|]/g,"-")+".pdf","Lakstraat logboek "+per,`Lakstraat logboek ${per}\n\nIn de bijlage (PDF):\n- ${namen.join("\n- ")}\n\nVerstuurd vanuit het Lakstraat Logboek${vrdDoor()?" door "+vrdDoor():""}.`,token,aan);
+        if(res==="login"){go.textContent="Aanmelden bij Microsoft…";return msLogin(null)}go.textContent="✓ Verstuurd naar "+aan;setTimeout(sluit,1800)}
+      catch(e){console.error(e);go.textContent="Versturen mislukt";go.disabled=false;bev=false}return}
+    go.disabled=true;
     try{const bytes=await maakLogboekPdf(t=>{go.textContent=t},opt);
       const blob=new Blob([bytes],{type:"application/pdf"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);
       a.download="lakstraat-logboek-"+(opt.van===opt.tot?opt.van:opt.van+"-tm-"+opt.tot)+".pdf";
@@ -3641,7 +3659,7 @@ async function start(user){
 
 $("#btnNew").onclick=()=>startChecklist();
 $("#btnSetup").onclick=openSetup;
-$("#btnExport").onclick=exportPdf;
+$("#btnExport").onclick=()=>exportPdf();$("#btnMail").onclick=()=>exportPdf(true);
 // ===== frisse look: tab-iconen, schuivende pil, groet, lak-thema =====
 const TAB_ICON={voorraad:'<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>',krastest:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 17 14 6M10 18l7-11"/><path d="M7 7l10 10"/>',start:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',walsen:'<circle cx="7" cy="12" r="4"/><circle cx="17" cy="12" r="4"/><path d="M3 18h18"/>',lampen:'<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/>',registratie:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v3h6V3M9 11h6M9 15h4"/>',materialen:'<path d="M5 7h14v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zM4 7h16M9 3h6v4H9z"/>',storingen:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>',punten:'<path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17.5v.5"/>',verslag:'<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 11h7M9 15h7M9 19h4"/>'};
 const TAB_KORT={voorraad:"Voorraad",krastest:"Kras",start:"Start",verslag:"Verslag",registratie:"Registratie",materialen:"Materiaal",punten:"Punten",storingen:"Storingen"};
