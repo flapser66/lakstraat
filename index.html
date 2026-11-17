@@ -1550,7 +1550,12 @@ function renderStart(){
   $("#grafWals").onchange=e=>{grafWals=e.target.value;renderStart()};
   el.querySelectorAll("[data-gv]").forEach(b=>b.onclick=()=>{grafVeld=b.dataset.gv;renderStart()});
 }
-let startRz;window.addEventListener("resize",()=>{clearTimeout(startRz);startRz=setTimeout(()=>{if(tab==="start")renderStart()},300)});
+function typtIn(sel){const a=document.activeElement;return !!(a&&a.closest&&a.closest(sel)&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))}
+let startRz,startW=window.innerWidth;window.addEventListener("resize",()=>{clearTimeout(startRz);startRz=setTimeout(()=>{
+  // alleen bij echte breedteverandering (draaien/venster), niet als het toetsenbord opent; nooit tijdens typen
+  if(Math.abs(window.innerWidth-startW)<40)return;startW=window.innerWidth;
+  const a=document.activeElement;if(a&&a.closest&&a.closest("#startView")&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;
+  if(tab==="start")renderStart()},300)});
 // ===== herinnering: stipje op tabbladen als er vandaag nog iets mist =====
 function zetHerinnering(){const t=today(),actief=dagen.some(d=>d.datum===t);
   [["registratie",regSheets],["lampen",lampRows],["materialen",matRows.filter(r=>r.soort!=="afschuren")]].forEach(([k,rows])=>{const b=document.querySelector(`#tabs [data-tab="${k}"]`);if(!b)return;
@@ -3780,7 +3785,7 @@ async function start(user){
   unsubs.push(db.collection("instellingen").where(firebase.firestore.FieldPath.documentId(),">=","g").onSnapshot(s=>{
     const docs=s.docs.map(d=>({id:d.id,...d.data()}));
     lampRows=docs.filter(d=>d.id.startsWith("lamp_")); regSheets=docs.filter(d=>d.id.startsWith("reg_"));
-    storingen=docs.filter(d=>d.id.startsWith("stor_")); const tdd=docs.find(d=>d.id==="tdmail"); tdMail=(tdd&&tdd.email)||""; if(tab==="storingen")renderTdMail(); matRows=docs.filter(d=>d.id.startsWith("mat_")); matLoaded=true; krasRows=docs.filter(d=>d.id.startsWith("kras_")); krLoaded=true; {const km=docs.find(d=>d.id==="krmail");krMailAdres=(km&&km.email)||""} vrdRows=docs.filter(d=>d.id.startsWith("vrd_")); vrdLoaded=true; syncEigenMats(); if(vrdRows.some(r=>r.etiketV!==1))vrdEtiketten(); if(tab==="materialen"&&!matDirty)renderMatSheet&&renderMatSheet(); {const vm=docs.find(d=>d.id==="vrdmail");vrdMailAdres=(vm&&vm.email)||"";const vi=docs.find(d=>d.id==="vrdinst");if(vi)vrdInst={levertijd:vi.levertijd??6,levertijdS:vi.levertijdS??3,marge:vi.marge??1}} if(tab==="voorraad"&&!vrdDirty&&!vrdSaving&&!vrdDel)renderVoorraad(); vrdBadge(); vrdDagMelding(); if(tab==="krastest"&&!krDirty&&!krSaving&&!krDel)renderKras();
+    storingen=docs.filter(d=>d.id.startsWith("stor_")); const tdd=docs.find(d=>d.id==="tdmail"); tdMail=(tdd&&tdd.email)||""; if(tab==="storingen")renderTdMail(); matRows=docs.filter(d=>d.id.startsWith("mat_")); matLoaded=true; krasRows=docs.filter(d=>d.id.startsWith("kras_")); krLoaded=true; {const km=docs.find(d=>d.id==="krmail");krMailAdres=(km&&km.email)||""} vrdRows=docs.filter(d=>d.id.startsWith("vrd_")); vrdLoaded=true; syncEigenMats(); if(vrdRows.some(r=>r.etiketV!==1))vrdEtiketten(); if(tab==="materialen"&&!matDirty)renderMatSheet&&renderMatSheet(); {const vm=docs.find(d=>d.id==="vrdmail");vrdMailAdres=(vm&&vm.email)||"";const vi=docs.find(d=>d.id==="vrdinst");if(vi)vrdInst={levertijd:vi.levertijd??6,levertijdS:vi.levertijdS??3,marge:vi.marge??1}} if(tab==="voorraad"&&!vrdDirty&&!vrdSaving&&!vrdDel&&!typtIn("#vrdView"))renderVoorraad(); vrdBadge(); vrdDagMelding(); if(tab==="krastest"&&!krDirty&&!krSaving&&!krDel&&!typtIn("#krasView"))renderKras();
     if(tab==="materialen"){renderMatList();if(!matDirty&&!matSaving){if(matDraft&&matDraft.id){const r=matRows.find(x=>x.id===matDraft.id);matDraft=r?matFrom(r):null;if(!r)matSel=null}renderMatSheet()}}
     planning=docs.filter(d=>d.id.startsWith("plan_"));
     verslagen=docs.filter(d=>d.id.startsWith("vsl_"));vsLoaded=true;{const vm=docs.find(d=>d.id==="vsmail");vsMail=(vm&&vm.email!=null)?vm.email:"peter@ideaal.nl"}
