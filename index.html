@@ -843,6 +843,7 @@ div.sheet.kr-sheet,div.sheet.vrd-sheet{background:var(--panel);border:1px solid 
 .pp-rij span{color:var(--muted)}.pp-rij b{text-align:right;font-weight:600;word-break:break-word}
 .pp-knoppen{display:grid;grid-template-columns:1fr 1fr;gap:8px}.pp-knoppen #ppKlaar,.pp-knoppen #ppSluit{grid-column:1/-1}
 .pp-knoppen .zeker{background:#c62828;color:#fff;border-color:#c62828}
+.ck-tel{font-family:var(--f-body);font-size:13px;letter-spacing:0}
 </style>
 </head>
 <body>
@@ -1849,7 +1850,7 @@ let lampRows=[], lampEdits={}, lampNew=[], lampDirty=false, lampSaving=false, la
 const LAMP_VELDEN=["datum","lak","l12","l16","l24","l24w","l28","tijd","sterkte"];
 function blankLampRows(){return [0,1,2].map(()=>({_k:uid(),datum:"",lak:null,l12:null,l16:null,l24:false,l24w:null,l28:null,tijd:"",sterkte:null}))}
 lampNew=blankLampRows();
-function lampHas(r){return !!(r.datum||r.l12!=null||r.l16!=null||r.l24||r.l24w!=null||r.l28!=null||r.tijd||r.sterkte!=null)}
+function lampHas(r){return !!(r.l12!=null||r.l16!=null||r.l24||r.l24w!=null||r.l28!=null||r.tijd||r.sterkte!=null)}
 function lampSorted(){return lampRows.slice().sort((a,b)=>(a.datum||"").localeCompare(b.datum||"")||(a.aangemaakt||0)-(b.aangemaakt||0))}
 function lampRowObj(k){
   if(k.startsWith("n:"))return lampNew.find(r=>r._k===k.slice(2));
