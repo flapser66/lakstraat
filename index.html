@@ -835,6 +835,14 @@ div.sheet.kr-sheet,div.sheet.vrd-sheet{background:var(--panel);border:1px solid 
 .st-zoek .unit{display:inline-block;align-self:stretch;min-height:22px;padding:0;margin-left:8px}
 @media (min-width:700px) and (max-width:1099px){#tabs.tabs{left:0;right:0;margin:0 auto;max-width:600px}}
 @media (max-width:420px){.lakk{padding-left:10px;padding-right:10px;gap:8px}}
+.pp-box{max-width:440px}
+.pp-box h2{margin:0 0 6px;word-break:break-word}
+.pp-klaar{display:inline-block;background:#e3f4e8;color:#1d7a3e;font-weight:700;font-size:13px;padding:3px 10px;border-radius:999px;margin-bottom:6px}
+.pp-info{display:flex;flex-direction:column;margin:8px 0 16px;border-top:1px solid var(--line)}
+.pp-rij{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid var(--line);font-size:15px}
+.pp-rij span{color:var(--muted)}.pp-rij b{text-align:right;font-weight:600;word-break:break-word}
+.pp-knoppen{display:grid;grid-template-columns:1fr 1fr;gap:8px}.pp-knoppen #ppKlaar,.pp-knoppen #ppSluit{grid-column:1/-1}
+.pp-knoppen .zeker{background:#c62828;color:#fff;border-color:#c62828}
 </style>
 </head>
 <body>
@@ -1473,9 +1481,23 @@ function bindPlanning(el){const P=planDraft;
       const vorigeDatum=P.datum,vorigeLak=P.lak;planEdit=null;planDraft=planLeeg();planDraft.datum=vorigeDatum;planDraft.lak=vorigeLak;renderStart()}
     catch(e){ok.disabled=false;er.hidden=false;er.textContent=saveErr(e)}};
   const an=el.querySelector("#planAnnuleer");if(an)an.onclick=()=>{planEdit=null;planDraft=planLeeg();renderStart()};
-  el.querySelectorAll("[data-pe]").forEach(b=>b.onclick=()=>{const r=planning.find(x=>x.id===b.dataset.pe);if(!r)return;planEdit=r.id;
+  el.querySelectorAll("[data-pe]").forEach(b=>b.onclick=()=>openPlan(b.dataset.pe));
+  const planBewerk=id=>{const r=planning.find(x=>x.id===id);if(!r)return;planEdit=r.id;
     planDraft={datum:r.datum,lak:r.lak||null,tekst:r.tekst||"",aantal:r.aantal||"",opmerking:r.opmerking||""};renderStart();
-    const f=$("#planTekst");if(f){f.focus();f.scrollIntoView({behavior:"smooth",block:"center"})}});
+    const f=$("#planTekst");if(f){f.focus();f.scrollIntoView({behavior:"smooth",block:"center"})}};
+  const openPlan=id=>{const r=planning.find(x=>x.id===id);if(!r)return;const m=$("#modal");const sluit=()=>{m.hidden=true;m.innerHTML=""};
+    const rij=(k,v)=>v?`<div class="pp-rij"><span>${k}</span><b>${esc(v)}</b></div>`:"";
+    m.innerHTML=`<div class="modal-box pp-box" role="dialog" aria-modal="true" aria-labelledby="ppT">
+      <h2 id="ppT">${esc(r.tekst||"Planning")}</h2>
+      ${r.klaar?'<div class="pp-klaar">✓ Afgerond</div>':""}
+      <div class="pp-info">${rij("Datum",r.datum?longDate(r.datum):"")}${rij("Lak",LAKKEN[r.lak]||"")}${rij("Aantal",r.aantal)}${rij("Opmerking",r.opmerking)}${rij("Ingepland door",r.door)}</div>
+      <div class="pp-knoppen"><button type="button" class="btn primary" id="ppKlaar">${r.klaar?"Toch niet klaar":"✓ Markeer als klaar"}</button>
+        <button type="button" class="btn" id="ppEdit">Bewerken</button><button type="button" class="btn" id="ppDel">Verwijderen</button><button type="button" class="btn" id="ppSluit">Sluiten</button></div></div>`;
+    m.hidden=false;m.onclick=e=>{if(e.target===m)sluit()};$("#ppSluit").onclick=sluit;
+    $("#ppEdit").onclick=()=>{sluit();planBewerk(r.id)};
+    $("#ppKlaar").onclick=async()=>{r.klaar=!r.klaar;sluit();try{await db.collection("instellingen").doc(r.id).update({klaar:r.klaar,bijgewerkt:Date.now()})}catch(e){}renderStart()};
+    const d=$("#ppDel");d.onclick=async()=>{if(d.dataset.zeker!=="1"){d.dataset.zeker="1";d.textContent="Zeker verwijderen?";d.classList.add("zeker");return}
+      sluit();try{await db.collection("instellingen").doc(r.id).delete();planning=planning.filter(x=>x.id!==r.id)}catch(e){}if(planEdit===r.id){planEdit=null;planDraft=planLeeg()}renderStart()}};
   el.querySelectorAll("[data-pk]").forEach(b=>b.onclick=async()=>{const r=planning.find(x=>x.id===b.dataset.pk);if(!r)return;r.klaar=!r.klaar;
     try{await db.collection("instellingen").doc(r.id).update({klaar:r.klaar,bijgewerkt:Date.now()})}catch(e){}renderStart()});
   el.querySelectorAll("[data-pd]").forEach(b=>b.onclick=async()=>{const r=planning.find(x=>x.id===b.dataset.pd);if(!r)return;
