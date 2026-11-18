@@ -1333,7 +1333,7 @@ ${BEOORDELINGEN.map(b=>beoordelingHtml(b)).join("")}
   el.querySelectorAll(".stepper button").forEach(b=>b.onclick=()=>{
     const id=b.dataset.w, f=b.dataset.f, inp=el.querySelector(`input[data-w="${CSS.escape(id)}"][data-f="${f}"]`);
     const w=draft.walsen[id]||{};
-    const b=BEGIN_VAN[f]||f; const cur=w[f] ?? (BEGIN_VAN[f]?w[b]:null) ?? prevW[id]?.[b] ?? 0;
+    const bk=BEGIN_VAN[f]||f; const cur=w[f] ?? (BEGIN_VAN[f]?w[bk]:null) ?? prevW[id]?.[bk] ?? 0;
     const v=Math.round((cur+Number(b.dataset.step)*stepFor(cur))*100)/100;
     setVal(id,f,v,inp.dataset.naam); inp.value=fmt(v); touch(); updateDelta(id);
   });
