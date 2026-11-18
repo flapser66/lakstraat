@@ -1453,7 +1453,10 @@ function planDagNaam(datum){const t=today();if(datum===t)return "Vandaag";const 
 function planningHtml(){
   if(!planDraft)planDraft=planLeeg();const P=planDraft,t=today();
   const rijen=planning.slice().sort((a,b)=>(a.datum||"").localeCompare(b.datum||"")||(a.aangemaakt||0)-(b.aangemaakt||0));
-  const achter=rijen.filter(r=>r.datum<t&&!r.klaar),komend=rijen.filter(r=>r.datum>=t),oud=rijen.filter(r=>r.datum<t&&r.klaar);
+  const grens=new Date(Date.now()-30*864e5).toISOString().slice(0,10);
+  // afgevinkt: alleen vandaag laten staan (onderaan de dag); de rest gaat naar 'Afgerond' (laatste 30 dagen)
+  const achter=rijen.filter(r=>r.datum<t&&!r.klaar),komend=rijen.filter(r=>r.datum>=t&&(!r.klaar||r.datum===t)).sort((a,b)=>(a.datum||"").localeCompare(b.datum||"")||(!!a.klaar-!!b.klaar)),
+    oud=rijen.filter(r=>r.klaar&&r.datum!==t&&(r.datum>=grens||(r.klaarOp||0)>Date.now()-30*864e5)).sort((a,b)=>(b.datum||"").localeCompare(a.datum||""));
   const groep={};komend.forEach(r=>{(groep[r.datum]=groep[r.datum]||[]).push(r)});
   const item=r=>`<li class="plan-item${r.klaar?" klaar":""}${planEdit===r.id?" bewerk":""}">
       <button type="button" class="plan-vink" data-pk="${esc(r.id)}" aria-label="${r.klaar?"Markeer als niet klaar":"Markeer als klaar"}" aria-pressed="${!!r.klaar}">${r.klaar?"✓":""}</button>
@@ -1470,7 +1473,7 @@ function planningHtml(){
     </div>
     ${achter.length?`<div class="plan-dag achter">Nog niet afgerond</div><ul class="plan-lijst">${achter.map(item).join("")}</ul>`:""}
     ${Object.keys(groep).length?Object.keys(groep).map(d=>`<div class="plan-dag${d===t?" vandaag":""}">${planDagNaam(d)}</div><ul class="plan-lijst">${groep[d].map(item).join("")}</ul>`).join(""):`<p class="tegel-leeg">Nog niets gepland. Vul hierboven in wat er gelakt gaat worden.</p>`}
-    ${oud.length?`<button type="button" class="linkbtn" id="planOud">${planToonOud?"Verberg":"Toon"} afgeronde dagen (${oud.length})</button>${planToonOud?`<ul class="plan-lijst oud">${oud.slice().reverse().map(r=>item(r).replace('<b>',`<span class="plan-datum">${esc(shortDate(r.datum))}</span> <b>`)).join("")}</ul>`:""}`:""}
+    ${oud.length?`<button type="button" class="linkbtn" id="planOud">${planToonOud?"Verberg":"Toon"} afgerond (${oud.length})</button>${planToonOud?`<ul class="plan-lijst oud">${oud.map(r=>item(r).replace('<b>',`<span class="plan-datum">${esc(shortDate(r.datum))}</span> <b>`)).join("")}</ul>`:""}`:""}
   </section>`}
 function bindPlanning(el){const P=planDraft;
   const zet=(id,k)=>{const x=el.querySelector("#"+id);if(x)x.oninput=x.onchange=()=>{P[k]=x.value}};
@@ -1499,11 +1502,11 @@ function bindPlanning(el){const P=planDraft;
         <button type="button" class="btn" id="ppEdit">Bewerken</button><button type="button" class="btn" id="ppDel">Verwijderen</button><button type="button" class="btn" id="ppSluit">Sluiten</button></div></div>`;
     m.hidden=false;m.onclick=e=>{if(e.target===m)sluit()};$("#ppSluit").onclick=sluit;
     $("#ppEdit").onclick=()=>{sluit();planBewerk(r.id)};
-    $("#ppKlaar").onclick=async()=>{r.klaar=!r.klaar;sluit();try{await db.collection("instellingen").doc(r.id).update({klaar:r.klaar,bijgewerkt:Date.now()})}catch(e){}renderStart()};
+    $("#ppKlaar").onclick=async()=>{r.klaar=!r.klaar;sluit();try{await db.collection("instellingen").doc(r.id).update({klaar:r.klaar,klaarOp:r.klaar?(r.klaarOp=Date.now()):null,bijgewerkt:Date.now()})}catch(e){}renderStart()};
     const d=$("#ppDel");d.onclick=async()=>{if(d.dataset.zeker!=="1"){d.dataset.zeker="1";d.textContent="Zeker verwijderen?";d.classList.add("zeker");return}
       sluit();try{await db.collection("instellingen").doc(r.id).delete();planning=planning.filter(x=>x.id!==r.id)}catch(e){}if(planEdit===r.id){planEdit=null;planDraft=planLeeg()}renderStart()}};
   el.querySelectorAll("[data-pk]").forEach(b=>b.onclick=async()=>{const r=planning.find(x=>x.id===b.dataset.pk);if(!r)return;r.klaar=!r.klaar;
-    try{await db.collection("instellingen").doc(r.id).update({klaar:r.klaar,bijgewerkt:Date.now()})}catch(e){}renderStart()});
+    try{await db.collection("instellingen").doc(r.id).update({klaar:r.klaar,klaarOp:r.klaar?(r.klaarOp=Date.now()):null,bijgewerkt:Date.now()})}catch(e){}renderStart()});
   el.querySelectorAll("[data-pd]").forEach(b=>b.onclick=async()=>{const r=planning.find(x=>x.id===b.dataset.pd);if(!r)return;
     if(b.dataset.zeker!=="1"){b.dataset.zeker="1";b.textContent="Zeker?";b.classList.add("zeker");setTimeout(()=>{if(b.isConnected){b.dataset.zeker="";b.textContent="×";b.classList.remove("zeker")}},3000);return}
     try{await db.collection("instellingen").doc(r.id).delete();planning=planning.filter(x=>x.id!==r.id)}catch(e){}if(planEdit===r.id){planEdit=null;planDraft=planLeeg()}renderStart()});
