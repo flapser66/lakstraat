@@ -844,6 +844,14 @@ div.sheet.kr-sheet,div.sheet.vrd-sheet{background:var(--panel);border:1px solid 
 .pp-knoppen{display:grid;grid-template-columns:1fr 1fr;gap:8px}.pp-knoppen #ppKlaar,.pp-knoppen #ppSluit{grid-column:1/-1}
 .pp-knoppen .zeker{background:#c62828;color:#fff;border-color:#c62828}
 .ck-tel{font-family:var(--f-body);font-size:13px;letter-spacing:0}
+.pa-box{max-width:560px}.pa-box .hint{margin:0 0 10px;color:var(--muted);font-size:13px}
+.pa-maand{border-top:1px solid var(--line)}.pa-maand summary{cursor:pointer;padding:12px 2px;font-weight:700;text-transform:capitalize;display:flex;justify-content:space-between}
+.pa-maand summary span{color:var(--muted);font-weight:500}.pa-maand ul{list-style:none;margin:0 0 8px;padding:0}
+.pa-maand li{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:8px 2px;border-top:1px dashed var(--line)}
+.pa-d{font-size:12.5px;color:var(--muted);white-space:nowrap}.pa-maand li b{display:block;font-weight:600}.pa-maand li small{color:var(--muted)}
+.pa-terug{border:1px solid var(--line);background:transparent;border-radius:8px;width:36px;height:36px;font-size:17px;cursor:pointer;color:var(--fg)}
+#paLijst2{margin:10px 0 14px}
+.pa-box .hint{font-family:var(--f-body)}.pa-box .st-zoek{display:flex;flex-direction:row;align-items:center;gap:6px;padding:4px 10px}.pa-box .st-zoek input{flex:1;padding:10px 4px;min-width:0}
 </style>
 </head>
 <body>
@@ -1473,9 +1481,21 @@ function planningHtml(){
     </div>
     ${achter.length?`<div class="plan-dag achter">Nog niet afgerond</div><ul class="plan-lijst">${achter.map(item).join("")}</ul>`:""}
     ${Object.keys(groep).length?Object.keys(groep).map(d=>`<div class="plan-dag${d===t?" vandaag":""}">${planDagNaam(d)}</div><ul class="plan-lijst">${groep[d].map(item).join("")}</ul>`).join(""):`<p class="tegel-leeg">Nog niets gepland. Vul hierboven in wat er gelakt gaat worden.</p>`}
-    ${oud.length?`<button type="button" class="linkbtn" id="planOud">${planToonOud?"Verberg":"Toon"} afgerond (${oud.length})</button>${planToonOud?`<ul class="plan-lijst oud">${oud.map(r=>item(r).replace('<b>',`<span class="plan-datum">${esc(shortDate(r.datum))}</span> <b>`)).join("")}</ul>`:""}`:""}
+    ${rijen.some(r=>r.klaar)?`<button type="button" class="linkbtn" id="planArchief">📁 Archief (${rijen.filter(r=>r.klaar).length})</button> `:""}${oud.length?`<button type="button" class="linkbtn" id="planOud">${planToonOud?"Verberg":"Toon"} afgerond (${oud.length})</button>${planToonOud?`<ul class="plan-lijst oud">${oud.map(r=>item(r).replace('<b>',`<span class="plan-datum">${esc(shortDate(r.datum))}</span> <b>`)).join("")}</ul>`:""}`:""}
   </section>`}
-function bindPlanning(el){const P=planDraft;
+function planArchief(){const m=$("#modal");const sluit=()=>{m.hidden=true;m.innerHTML=""};let q="";
+  const teken=()=>{const alle=planning.filter(r=>r.klaar&&(!q||[r.tekst,r.aantal,r.opmerking,r.door,LAKKEN[r.lak]].join(" ").toLowerCase().includes(q))).sort((a,b)=>(b.datum||"").localeCompare(a.datum||""));
+    const maanden={};alle.forEach(r=>{const k=(r.datum||"").slice(0,7);(maanden[k]=maanden[k]||[]).push(r)});
+    const mNaam=k=>{const [y,mm]=k.split("-");return new Date(+y,+mm-1,1).toLocaleDateString("nl-NL",{month:"long",year:"numeric"})};
+    $("#paLijst2").innerHTML=Object.keys(maanden).length?Object.keys(maanden).map((k,i)=>`<details class="pa-maand"${i===0||q?" open":""}><summary>${mNaam(k)} <span>${maanden[k].length}</span></summary><ul>${maanden[k].map(r=>`<li><span class="pa-d">${esc(shortDate(r.datum))}</span><div><b>${esc(r.tekst||"")}</b><small>${[LAKKEN[r.lak],r.aantal,r.opmerking].filter(Boolean).map(esc).join(" · ")}</small></div><button type="button" class="pa-terug" data-pz="${esc(r.id)}" title="Terugzetten in planning">↺</button></li>`).join("")}</ul></details>`).join(""):`<p class="tegel-leeg">${q?"Niets gevonden.":"Nog geen afgeronde taken."}</p>`;
+    m.querySelectorAll("[data-pz]").forEach(b=>b.onclick=async()=>{const r=planning.find(x=>x.id===b.dataset.pz);if(!r)return;r.klaar=false;r.klaarOp=null;
+      try{await db.collection("instellingen").doc(r.id).update({klaar:false,klaarOp:null,bijgewerkt:Date.now()})}catch(e){}teken();renderStart()})};
+  m.innerHTML=`<div class="modal-box pa-box" role="dialog" aria-modal="true" aria-labelledby="paT"><h2 id="paT">Archief planning</h2>
+    <p class="hint">Alle afgevinkte taken, per maand. Met ↺ zet je een taak terug in de planning.</p>
+    <label class="inp st-zoek"><span class="unit">Zoek</span><input id="paZoek" type="search" placeholder="Zoek op order, lak, opmerking…" autocomplete="off"></label>
+    <div id="paLijst2"></div><div class="pp-knoppen"><button type="button" class="btn" id="paSluit" style="grid-column:1/-1">Sluiten</button></div></div>`;
+  m.hidden=false;m.onclick=e=>{if(e.target===m)sluit()};$("#paSluit").onclick=sluit;$("#paZoek").oninput=e=>{q=e.target.value.trim().toLowerCase();teken()};teken()}
+function bindPlanning(el){const P=planDraft;{const a=el.querySelector("#planArchief");if(a)a.onclick=planArchief}
   const zet=(id,k)=>{const x=el.querySelector("#"+id);if(x)x.oninput=x.onchange=()=>{P[k]=x.value}};
   zet("planDatum","datum");zet("planTekst","tekst");zet("planAantal","aantal");zet("planOpm","opmerking");
   const pd=el.querySelector("#planDatum");if(pd)pd.onclick=()=>{try{pd.showPicker()}catch(e){}};
