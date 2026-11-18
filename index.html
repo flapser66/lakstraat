@@ -1010,6 +1010,9 @@ function renderLdFotos(){const box=$("#ldFotos");if(!box||!draft)return;
 const CH_K=["primer","primer2","grondlak","grondlak2","deklak","deklak2"];
 function chObj(src,trim){const o={};CH_K.forEach(k=>{const v=(src&&src[k])||"";o[k]=trim?String(v).trim():v});return o}
 function chHas(c){return !!c&&CH_K.some(k=>(c[k]||"").trim())}
+// charges van het materialenblad (zelfde datum, zelfde lak of geen lak gekozen)
+function matChOp(datum,lak){if(typeof matRows==="undefined"||!datum)return null;const ms=matRows.filter(m=>m.soort!=="afschuren"&&m.datum===datum&&(!lak||!m.lak||m.lak===lak)&&chHas(m.charge)).sort((a,b)=>(b.bijgewerkt||0)-(a.bijgewerkt||0));return ms[0]?ms[0].charge:null}
+function chMerge(a,...bs){const o=chObj(a);bs.forEach(b=>{if(b)CH_K.forEach(k=>{if(!String(o[k]||"").trim()&&b[k]&&String(b[k]).trim())o[k]=String(b[k]).trim()})});return o}
 function chTekst(c,k){return [c&&c[k],c&&c[k+"2"]].map(x=>(x||"").trim()).filter(Boolean).join(" + ")}
 // ---- draft handling
 function blankDraft(){
@@ -1018,7 +1021,7 @@ function blankDraft(){
 function draftFrom(rec){
   const w={};(rec.walsen||[]).forEach(x=>{const o={naam:x.naam};VELDEN.forEach(f=>{if(x[f]!=null)o[f]=x[f]});w[x.id]=o});
   const vg=(rec.walsen||[]).map(x=>({id:x.id,naam:x.naam}));
-  return {walsVolgorde:vg.length?vg:null,id:rec.id,datum:rec.datum||"",temperatuur:rec.temperatuur??null,luchtvochtigheid:rec.luchtvochtigheid??null,walsen:w,bijzonderheden:rec.bijzonderheden||"",tevredenheid:rec.tevredenheid??null,slotgaten:rec.slotgaten??null,fotos:(rec.fotos&&rec.fotos.length)?null:[],fotoIds:rec.fotos||[],slotOpmerking:rec.slotOpmerking||"",charge:chObj(rec.charge),checklist:rec.checklist||null,lak:rec.lak||null};
+  return {walsVolgorde:vg.length?vg:null,id:rec.id,datum:rec.datum||"",temperatuur:rec.temperatuur??null,luchtvochtigheid:rec.luchtvochtigheid??null,walsen:w,bijzonderheden:rec.bijzonderheden||"",tevredenheid:rec.tevredenheid??null,slotgaten:rec.slotgaten??null,fotos:(rec.fotos&&rec.fotos.length)?null:[],fotoIds:rec.fotos||[],slotOpmerking:rec.slotOpmerking||"",charge:chMerge(rec.charge,matChOp(rec.datum,rec.lak)),checklist:rec.checklist||null,lak:rec.lak||null};
 }
 function sorted(){return dagen.slice().sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||(b.bijgewerkt||0)-(a.bijgewerkt||0))}
 function previousOf(d){
@@ -1630,7 +1633,7 @@ function toRecord(){
   const order=walsen.map(w=>w.id);
   const ids=Object.keys(draft.walsen).sort((a,b)=>{const ia=order.indexOf(a),ib=order.indexOf(b);return (ia<0?999:ia)-(ib<0?999:ib)});
   for(const id of ids){const x=draft.walsen[id];if(x&&VELDEN.some(f=>x[f]!=null)){const cfg=walsen.find(w=>w.id===id);const o={id,naam:cfg?cfg.naam:x.naam};VELDEN.forEach(f=>o[f]=x[f]??null);ws.push(o)}}
-  return {datum:draft.datum,temperatuur:draft.temperatuur,luchtvochtigheid:draft.luchtvochtigheid,walsen:ws,bijzonderheden:draft.bijzonderheden||"",tevredenheid:draft.tevredenheid??null,slotgaten:draft.slotgaten??null,slotOpmerking:(draft.slotOpmerking||"").trim(),charge:chObj(draft.charge,true),checklist:draft.checklist||null,lak:draft.lak||null,bijgewerkt:Date.now()};
+  return {datum:draft.datum,temperatuur:draft.temperatuur,luchtvochtigheid:draft.luchtvochtigheid,walsen:ws,bijzonderheden:draft.bijzonderheden||"",tevredenheid:draft.tevredenheid??null,slotgaten:draft.slotgaten??null,slotOpmerking:(draft.slotOpmerking||"").trim(),charge:chMerge(chObj(draft.charge,true),(dagen.find(d=>d.id===draft.id)||{}).charge,matChOp(draft.datum,draft.lak)),checklist:draft.checklist||null,lak:draft.lak||null,bijgewerkt:Date.now()};
 }
 async function save(){
   syncWalsen();
@@ -1647,7 +1650,10 @@ async function save(){
       const ref=draft.id?db.collection("lakdagen").doc(draft.id):db.collection("lakdagen").doc();
       {const oud=draft.id&&dagen.find(r=>r.id===draft.id);rec.aangemaakt=(oud&&(oud.aangemaakt||oud.bijgewerkt))||Date.now()}
       await ref.set(rec);
-      draft.id=ref.id; selectedId=ref.id;
+      draft.id=ref.id; selectedId=ref.id;draft.charge={...rec.charge};
+      if(chHas(rec.charge))for(const m of matRows.filter(m=>m.soort!=="afschuren"&&m.datum===rec.datum&&(!m.lak||!rec.lak||m.lak===rec.lak))){
+        const nc=chObj(m.charge,true);let anders=false;CH_K.forEach(k=>{const v=String(rec.charge[k]||"").trim();if(v&&v!==nc[k]){nc[k]=v;anders=true}});
+        if(anders){try{await db.collection("instellingen").doc(m.id).update({charge:nc});m.charge=nc}catch(e){}}}
       if(!dagen.find(r=>r.id===ref.id))dagen.push({id:ref.id,...rec}); else dagen=dagen.map(r=>r.id===ref.id?{id:ref.id,...rec}:r);
     } else {
       const id=draft.id||("local-"+Date.now());
@@ -3740,8 +3746,8 @@ async function saveMat(){const vrdVoor=vrdLaagIds();
     const oudM=r.id&&matRows.find(x=>x.id===r.id);const rec={aangemaakt:(oudM&&(oudM.aangemaakt||oudM.bijgewerkt))||Date.now(),soort:r.soort==="afschuren"?"afschuren":"normaal",datum:r.datum,lak:r.soort==="afschuren"?null:(r.lak||matLak(r)),opmerking:(r.opmerking||"").trim(),charge:ch,bijgewerkt:Date.now()};MATS.forEach(m=>rec[m.k]=r[m.k]??null);LAK_K.forEach(k=>rec[k+"B"]=r[k+"B"]??null);
     const id=r.id||DOC_ID("mat_");await db.collection("instellingen").doc(id).set(rec);
     const ld=r.soort==="afschuren"?null:lakdagOp(r.datum,r.lak);
-    if(ld&&CH_K.some(k=>((ld.charge&&ld.charge[k])||"")!==ch[k])){await db.collection("lakdagen").doc(ld.id).update({charge:ch});ld.charge=ch;
-      if(draft&&draft.id===ld.id&&!dirty)draft.charge={...ch}}
+    const ldCh=ld?chMerge(ch,ld.charge):null;if(ld&&CH_K.some(k=>((ld.charge&&ld.charge[k])||"")!==ldCh[k])){await db.collection("lakdagen").doc(ld.id).update({charge:ldCh});ld.charge=ldCh;
+      if(draft&&draft.id===ld.id){if(!dirty)draft.charge={...ldCh};else draft.charge=chMerge(draft.charge,ldCh)}}
     r.chargeAangepast=false;
     r.id=id;matSel=id;matRows=matRows.filter(x=>x.id!==id).concat([{id,...rec}]);matDirty=false;matSaved=true;if(rec.datum)matMaand=rec.datum.slice(0,7);{const nu=vrdLaagIds().filter(i=>!vrdVoor.includes(i));if(nu.length)setTimeout(()=>vrdMeld(nu),400)}}
   catch(e){matErr=saveErr(e)}
