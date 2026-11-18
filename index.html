@@ -3741,6 +3741,7 @@ ${MATS.some(m=>m.groep==="eigen")?`    <div class="section"><h3>Overig</h3><div 
 }
 async function saveMat(){const vrdVoor=vrdLaagIds();
   const r=matDraft;if(!r.datum){matErr="Vul een datum in.";return renderMatSheet()}
+  if(r.soort!=="afschuren"&&!(r.lak||matLak(r))&&["grondlak","deklak"].some(k=>matTot(r,k)>0)){matErr="Kies witte of zwarte lak, dan gaan de blikken van de juiste voorraad af.";return renderMatSheet()}
   matSaving=true;matErr="";renderMatSheet();
   try{const ch=chObj(r.charge,true);
     const oudM=r.id&&matRows.find(x=>x.id===r.id);const rec={aangemaakt:(oudM&&(oudM.aangemaakt||oudM.bijgewerkt))||Date.now(),soort:r.soort==="afschuren"?"afschuren":"normaal",datum:r.datum,lak:r.soort==="afschuren"?null:(r.lak||matLak(r)),opmerking:(r.opmerking||"").trim(),charge:ch,bijgewerkt:Date.now()};MATS.forEach(m=>rec[m.k]=r[m.k]??null);LAK_K.forEach(k=>rec[k+"B"]=r[k+"B"]??null);
