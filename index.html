@@ -852,6 +852,7 @@ div.sheet.kr-sheet,div.sheet.vrd-sheet{background:var(--panel);border:1px solid 
 .pa-terug{border:1px solid var(--line);background:transparent;border-radius:8px;width:36px;height:36px;font-size:17px;cursor:pointer;color:var(--fg)}
 #paLijst2{margin:10px 0 14px}
 .pa-box .hint{font-family:var(--f-body)}.pa-box .st-zoek{display:flex;flex-direction:row;align-items:center;gap:6px;padding:4px 10px}.pa-box .st-zoek input{flex:1;padding:10px 4px;min-width:0}
+.vrd-los{margin-top:14px;padding:12px 14px;border:1px solid var(--line);border-radius:12px}.vrd-los h4{margin:0 0 8px;font-size:14px;font-family:var(--f-body)}.vrd-los .vrd-actie{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.vrd-los .inp{flex:1;min-width:180px}.vrd-los input{font-family:var(--f-body)}
 </style>
 </head>
 <body>
@@ -3503,6 +3504,10 @@ ${vrdMsg&&!orig?`<p class="vrd-ok" style="margin-top:10px">${esc(vrdMsg)}</p>`:"
         <p class="hint" style="font-family:var(--f-body);margin:0"><b>Dit is de voorraad nu</b>: na tellen, het getal vervangt de stand. <b>Bijtellen</b>: bij een levering, het getal komt erbij.</p>
       </div>
       <p class="hint" style="font-family:var(--f-body)">Telling op ${esc(shortDate(orig.telDatum||""))}: ${f1(+orig.telAantal||0)} · leveringen +${f1(vrdMut(orig))} · verbruik −${f1(vrdVerbruik(orig))} = <b>${vrdTxt(orig,vrdStand(orig))}</b></p>
+      <div class="vrd-los"><h4>Los bestellen</h4>
+        <div class="vrd-actie"><div class="inp"><input id="vrd-bes-aant" type="text" autocomplete="off" placeholder="Hoeveel? bijv. 4 ${esc(on.meer||"stuks")}" aria-label="Gewenst aantal"></div>
+        ${vrdMailAdres?`<button class="btn primary" type="button" id="vrdLosMail">Dit artikel mailen</button>`:`<span class="hint" style="font-family:var(--f-body)">Stel eerst een e-mailadres in voor bestellingen.</span><button class="btn" type="button" id="vrdLosAdres">E-mailadres instellen</button>`}</div>
+        <p class="hint" style="font-family:var(--f-body);margin:4px 0 0">Mailt alleen dit product${vrdMailAdres?` naar <b>${esc(vrdMailAdres)}</b>`:""}, met stand, verbruik${orig.foto?" en de foto":""}.</p></div>
       ${hist.length?`<ul class="vrd-hist">${hist.slice(-8).reverse().map(m=>`<li>${esc(shortDate(m.datum))} · levering +${vrdTxt(orig,+m.aantal)}${m.door?` · ${esc(m.door)}`:""}</li>`).join("")}</ul>`:""}
     </div>`})():""}`:""}
   </div>`;
@@ -3534,6 +3539,10 @@ ${vrdMsg&&!orig?`<p class="vrd-ok" style="margin-top:10px">${esc(vrdMsg)}</p>`:"
   const vm=$("#vrd-mat");if(vm)vm.onchange=e=>{r.keys=e.target.value?e.target.value.split(","):[];vrdDirty=true;vrdErr="";renderVoorraad()};
   $("#vrdSave").onclick=saveVoorraad;
   $("#vrdSluit").onclick=()=>{if(vrdDirty)return vraagOpslaan("voorraad",()=>{vrdEdit=null;renderVoorraad()});vrdEdit=null;vrdErr="";renderVoorraad()};
+  {const lm=$("#vrdLosMail");if(lm)lm.onclick=()=>{const a=($("#vrd-bes-aant").value||"").trim();vrdBestel(lm,false,vrdRows.find(x=>x.id===vrdEdit.id)||vrdEdit,a)};
+   const la=$("#vrdLosAdres");if(la)la.onclick=()=>{const box=la.parentElement;box.innerHTML=`<div class="inp" style="max-width:320px"><input id="vrdMi2" type="email" placeholder="inkoop@ideaal.nl" aria-label="E-mailadres voor bestellingen" style="font-family:var(--f-body);font-size:15px"></div><button type="button" class="btn primary" id="vrdMi2Ok">Opslaan</button>`;
+     $("#vrdMi2").focus();$("#vrdMi2Ok").onclick=async()=>{const v=$("#vrdMi2").value.trim();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){$("#vrdMi2").style.outline="2px solid var(--danger)";return}
+       try{await db.collection("instellingen").doc("vrdmail").set({email:v,bijgewerkt:Date.now()});vrdMailAdres=v}catch(e){}renderVoorraad()}}}
   const d1=$("#vrdDelBtn");if(d1)d1.onclick=()=>{vrdDel=true;renderVoorraad()};
   const dn=$("#vrdDelNee");if(dn)dn.onclick=()=>{vrdDel=false;renderVoorraad()};
   const dy=$("#vrdDelJa");if(dy)dy.onclick=async()=>{try{const o=vrdRows.find(x=>x.id===r.id);if(o&&o.foto){try{await db.collection("instellingen").doc(o.foto).delete()}catch(x){}}await db.collection("instellingen").doc(r.id).delete();vrdRows=vrdRows.filter(x=>x.id!==r.id);syncEigenMats();vrdEdit=null;vrdDirty=false}catch(e){vrdErr="Verwijderen mislukt."}vrdDel=false;renderVoorraad()};
@@ -3576,7 +3585,7 @@ function vrdBestelDatum(it){const p=vrdPerWeek(it),bp=vrdBestelpunt(it),s=vrdSta
 const vrdBesteld=it=>it.besteldOp&&(Date.now()-new Date(it.besteldOp).getTime())<14*864e5;
 function vrdBadge(){const n=vrdRows.filter(r=>vrdLaag(r)&&!vrdBesteld(r)).length;document.querySelectorAll('[data-tab="voorraad"]').forEach(b=>b.classList.toggle("badge-rood",n>0))}
 let vrdMailAdres="";
-function vrdBestelTekst(its){return ["Graag bestellen voor de lakstraat:","",...its.map(it=>{const s=vrdStand(it),w=vrdWekenOver(it),p=vrdPerWeek(it);return `- ${it.naam}${it.code?" (art. "+it.code+")":""}: nog ${vrdTxt(it,s)}${w!=null?`, genoeg voor ongeveer ${f1(w)} weken`:""}${p?` (verbruik ± ${vrdTxt(it,p)} per week, levertijd ± ${vrdLt(it)} weken)`:""}`}),its.some(i=>i.foto)?"\nFoto's van de producten zitten als bijlage bij deze mail.":"","","Verstuurd vanuit het Lakstraat Logboek"+(vrdDoor()?" door "+vrdDoor():"")+"."].join("\n")}
+function vrdBestelTekst(its,aantal){return ["Graag bestellen voor de lakstraat:","",...its.map(it=>{const s=vrdStand(it),w=vrdWekenOver(it),p=vrdPerWeek(it);return `- ${it.naam}${it.code?" (art. "+it.code+")":""}: nog ${vrdTxt(it,s)}${w!=null?`, genoeg voor ongeveer ${f1(w)} weken`:""}${p?` (verbruik ± ${vrdTxt(it,p)} per week, levertijd ± ${vrdLt(it)} weken)`:""}${aantal?`\n  Gewenst aantal: ${aantal}`:""}`}),its.some(i=>i.foto)?"\nFoto's van de producten zitten als bijlage bij deze mail.":"","","Verstuurd vanuit het Lakstraat Logboek"+(vrdDoor()?" door "+vrdDoor():"")+"."].join("\n")}
 function vrdBestelHtml(){const its=vrdRows.filter(vrdLaag);if(!its.length)return "";
   return `<div class="section vrd-bestel"><h3>Te bestellen (${its.length})</h3>
     <ul>${its.map(it=>`<li><b>${esc(it.naam)}</b>: nog ${vrdTxt(it,vrdStand(it))}${vrdBesteld(it)?` · <span class="vrd-bes">besteld op ${esc(shortDate(it.besteldOp))}</span>`:""}</li>`).join("")}</ul>
@@ -3588,15 +3597,15 @@ function renderVrdMail(){const el=$("#vrdMail");if(!el)return;
     $("#vrdMiOk").onclick=async()=>{const v=$("#vrdMi").value.trim();if(v&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){$("#vrdMi").style.outline="2px solid var(--danger)";return}
       try{await db.collection("instellingen").doc("vrdmail").set({email:v,bijgewerkt:Date.now()});vrdMailAdres=v}catch(e){}renderVrdMail()}};
   const go=$("#vrdMailGo");if(go)go.onclick=()=>vrdBestel(go)}
-async function vrdBestel(knop,bevestigd){const its=vrdRows.filter(vrdLaag);if(!its.length)return;
-  const onderwerp="Bestelling lakstraat "+longDate(today()),tekst=vrdBestelTekst(its);
+async function vrdBestel(knop,bevestigd,los,aantal){const its=los?[los]:vrdRows.filter(vrdLaag);if(!its.length)return;const label=knop.textContent;
+  const onderwerp=(los?"Bestelling "+los.naam+" · ":"Bestelling lakstraat ")+longDate(today()),tekst=vrdBestelTekst(its,aantal);
   if(!navigator.onLine){location.href=`mailto:${encodeURIComponent(vrdMailAdres)}?subject=${encodeURIComponent(onderwerp)}&body=${encodeURIComponent(tekst)}`;return}
-  if(!bevestigd){knop.textContent="Tik nog eens: mail naar "+vrdMailAdres;knop.onclick=()=>vrdBestel(knop,true);setTimeout(()=>{if(knop.isConnected&&!knop.disabled){knop.textContent="Bestelling mailen";knop.onclick=()=>vrdBestel(knop)}},6000);return}
+  if(!bevestigd){knop.textContent="Tik nog eens: mail naar "+vrdMailAdres;knop.onclick=()=>vrdBestel(knop,true,los,aantal);setTimeout(()=>{if(knop.isConnected&&!knop.disabled){knop.textContent=label;knop.onclick=()=>vrdBestel(knop,false,los,aantal)}},6000);return}
   knop.disabled=true;knop.textContent="Verzenden…";
   try{const token=await msToken();if(!token){knop.textContent="Aanmelden bij Microsoft…";return msLogin(null)}
     const extra=[];let tot=0;for(const it of its){if(!it.foto)continue;const d=await laadFoto(it.foto);if(!d)continue;const b64=d.split(",")[1]||"";if(tot+b64.length>3000000)break;tot+=b64.length;extra.push({name:(it.naam+(it.code?" "+it.code:"")).replace(/[\\/:*?"<>|]/g,"-")+".jpg",type:"image/jpeg",b64})}
     const res=await msVerstuur(null,null,null,onderwerp,tekst,token,vrdMailAdres,extra);if(res==="login"){knop.textContent="Aanmelden bij Microsoft…";return msLogin(null)}
-    for(const it of its)await vrdBewaar(it,{besteldOp:today()});vrdMsg="Bestelling verstuurd naar "+vrdMailAdres+".";renderVoorraad();vrdBadge()}
+    for(const it of its)await vrdBewaar(it,{besteldOp:today()});vrdMsg=(los?los.naam+": bestelling":"Bestelling")+" verstuurd naar "+vrdMailAdres+".";if(los){vrdEdit=null;vrdDirty=false}renderVoorraad();vrdBadge()}
   catch(e){knop.disabled=false;knop.textContent="Mislukt: tik om via mail-app te sturen";knop.onclick=()=>{location.href=`mailto:${encodeURIComponent(vrdMailAdres)}?subject=${encodeURIComponent(onderwerp)}&body=${encodeURIComponent(tekst)}`}}}
 // ===== herinneringen en back-up =====
 function herinneringen(){const h=[];
